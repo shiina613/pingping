@@ -193,7 +193,12 @@ export class CollaborationController {
       event.preventDefault();
       this.sendMessage();
     });
+    document.getElementById('chat-mention-autocomplete')?.addEventListener('click', event => {
+      const item = event.target.closest('.mention-item');
+      if (item) this.selectMention(item.dataset.name);
+    });
     document.getElementById('chat-message-input')?.addEventListener('keydown', event => {
+      if (this.handleMentionKeydown(event)) return;
       if (!shouldSendOnEnter(event)) return;
       event.preventDefault();
       this.sendMessage();
@@ -201,6 +206,7 @@ export class CollaborationController {
     document.getElementById('chat-message-input')?.addEventListener('input', event => {
       this.autoResizeComposer(event.currentTarget);
       this.broadcastTyping();
+      this.handleMentionInput(event.currentTarget);
     });
     document.getElementById('chat-new-message-btn')?.addEventListener('click', () => this.scrollToLatest());
     document.getElementById('chat-message-list')?.addEventListener('click', event => {
@@ -221,6 +227,91 @@ export class CollaborationController {
     document.getElementById('chat-message-list')?.addEventListener('scroll', event => {
       if (isNearBottom(event.currentTarget)) this.hideNewMessageButton();
     });
+  }
+
+  handleMentionInput(input) {
+    const list = document.getElementById('chat-mention-autocomplete');
+    if (!list || !this.portal?.members) return;
+    
+    const val = input.value;
+    const cursor = input.selectionStart;
+    const textBefore = val.slice(0, cursor);
+    const match = textBefore.match(/(^|\s)@([a-zA-ZÀ-ỹ\s]{0,20})$/);
+    
+    if (match) {
+      const query = match[2].toLowerCase();
+      const members = this.portal.members.filter(m => effectiveMemberName(m).toLowerCase().includes(query));
+      if (members.length > 0) {
+        list.hidden = false;
+        list.innerHTML = members.map((m, i) => `<div class="mention-item${i===0 ? ' active' : ''}" data-name="${escapeHtml(effectiveMemberName(m))}"><div class="mention-avatar">${avatarMarkup(m)}</div> <span style="font-weight: 500">${escapeHtml(effectiveMemberName(m))}</span></div>`).join('');
+        this.mentionActive = true;
+        this.mentionMatchLength = match[2].length;
+        this.mentionActiveIndex = 0;
+        return;
+      }
+    }
+    
+    list.hidden = true;
+    this.mentionActive = false;
+  }
+
+  handleMentionKeydown(event) {
+    if (!this.mentionActive) return false;
+    
+    const list = document.getElementById('chat-mention-autocomplete');
+    const items = list.querySelectorAll('.mention-item');
+    if (!items.length) return false;
+    
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      items[this.mentionActiveIndex]?.classList.remove('active');
+      this.mentionActiveIndex = (this.mentionActiveIndex + 1) % items.length;
+      items[this.mentionActiveIndex]?.classList.add('active');
+      items[this.mentionActiveIndex]?.scrollIntoView({ block: 'nearest' });
+      return true;
+    }
+    if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      items[this.mentionActiveIndex]?.classList.remove('active');
+      this.mentionActiveIndex = (this.mentionActiveIndex - 1 + items.length) % items.length;
+      items[this.mentionActiveIndex]?.classList.add('active');
+      items[this.mentionActiveIndex]?.scrollIntoView({ block: 'nearest' });
+      return true;
+    }
+    if (event.key === 'Enter' || event.key === 'Tab') {
+      event.preventDefault();
+      const activeItem = items[this.mentionActiveIndex];
+      if (activeItem) this.selectMention(activeItem.dataset.name);
+      return true;
+    }
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      list.hidden = true;
+      this.mentionActive = false;
+      return true;
+    }
+    return false;
+  }
+
+  selectMention(name) {
+    const input = document.getElementById('chat-message-input');
+    const list = document.getElementById('chat-mention-autocomplete');
+    if (!input) return;
+    
+    const val = input.value;
+    const cursor = input.selectionStart;
+    const textBefore = val.slice(0, cursor);
+    const textAfter = val.slice(cursor);
+    
+    const newBefore = textBefore.slice(0, -(this.mentionMatchLength + 1)) + '@' + name + ' ';
+    input.value = newBefore + textAfter;
+    
+    input.focus();
+    input.selectionStart = input.selectionEnd = newBefore.length;
+    
+    list.hidden = true;
+    this.mentionActive = false;
+    this.autoResizeComposer(input);
   }
 
   bindNotificationUI() {
@@ -758,6 +849,9 @@ export class CollaborationController {
       this.autoResizeComposer(input);
       this.clearSelectedFile();
       this.broadcastTyping();
+      const list = document.getElementById('chat-mention-autocomplete');
+      if (list) list.hidden = true;
+      this.mentionActive = false;
       status.textContent = '';
       status.classList.remove('error');
 

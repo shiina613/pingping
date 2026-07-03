@@ -2718,6 +2718,8 @@ body.light-theme .modal-close-btn:hover {
 .chat-meta strong { font-size: 0.78rem; }
 .chat-meta time { color: var(--color-text-muted); font-size: 0.66rem; }
 .chat-bubble p { margin: 0; line-height: 1.5; overflow-wrap: anywhere; }
+.chat-mention { color: var(--color-accent); font-weight: 600; background: color-mix(in srgb, var(--color-accent) 15%, transparent); padding: 0.1rem 0.3rem; border-radius: 0.25rem; }
+.chat-message.mine .chat-mention { color: #fff; background: rgba(255,255,255,0.25); }
 .chat-attachment { margin-top: 0.5rem; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0.1rem 0.45rem; padding: 0.55rem; border-radius: 8px; background: var(--color-surface-subtle); color: var(--color-text); text-decoration: none; }
 .chat-attachment span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .chat-attachment small { grid-column: 2; color: var(--color-text-muted); }

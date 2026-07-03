@@ -624,8 +624,19 @@ export class CollaborationController {
     const showAvatar = !isMine && ['single', 'last'].includes(groupPosition);
     const senderName = showIdentity ? `<strong class="chat-sender-name">${escapeHtml(effectiveMemberName(message.sender || {}))}</strong>` : '';
     const avatar = isMine ? '' : `<div class="chat-avatar-slot${showAvatar ? '' : ' empty'}">${showAvatar ? avatarMarkup(message.sender) : ''}</div>`;
+    
+    let htmlText = message.text ? escapeHtml(message.text).replaceAll('\n', '<br>') : '';
+    if (htmlText && this.portal?.members) {
+      const names = this.portal.members.map(m => effectiveMemberName(m)).sort((a, b) => b.length - a.length);
+      for (const name of names) {
+         const escapedName = escapeHtml(name);
+         const regex = new RegExp(`(^|\\s|>)@${escapedName}(?=\\s|$|[.,!?<])`, 'g');
+         htmlText = htmlText.replace(regex, `$1<strong class="chat-mention">@${escapedName}</strong>`);
+      }
+    }
+    
     const attachment = attachmentMarkup(message.attachment);
-    return `<div class="chat-message-item" data-message-id="${escapeHtml(message.id)}">${separator}<article class="chat-message${mine} chat-group-${groupPosition}" title="${escapeHtml(fullTime)}">${avatar}<div class="chat-message-content">${senderName}<div class="chat-bubble">${message.text ? `<p>${escapeHtml(message.text).replaceAll('\n', '<br>')}</p>` : ''}${attachment}</div></div></article></div>`;
+    return `<div class="chat-message-item" data-message-id="${escapeHtml(message.id)}">${separator}<article class="chat-message${mine} chat-group-${groupPosition}" title="${escapeHtml(fullTime)}">${avatar}<div class="chat-message-content">${senderName}<div class="chat-bubble">${htmlText ? `<p>${htmlText}</p>` : ''}${attachment}</div></div></article></div>`;
   }
 
   renderSelectedFile(file) {

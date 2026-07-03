@@ -2728,7 +2728,7 @@ body.light-theme .modal-close-btn:hover {
 .chat-mention-autocomplete { position: absolute; left: 1rem; right: 1rem; bottom: 100%; max-height: 200px; overflow-y: auto; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 12px; box-shadow: var(--shadow-md); z-index: 20; display: flex; flex-direction: column; padding: 0.5rem 0; margin-bottom: 0.5rem; }
 .chat-mention-autocomplete[hidden] { display: none !important; }
 .mention-item { padding: 0.5rem 1rem; display: flex; align-items: center; gap: 0.75rem; cursor: pointer; transition: background 0.15s; }
-.mention-item:hover, .mention-item.active { background: var(--color-bg); }
+.mention-item:hover, .mention-item.active { background: color-mix(in srgb, var(--color-accent) 15%, transparent); color: var(--color-accent); }
 .mention-avatar { width: 24px; height: 24px; border-radius: 50%; object-fit: cover; background: var(--color-border); display: grid; place-items: center; font-size: 0.7rem; font-weight: 600; }
 .chat-file-button { width: 42px; height: 42px; display: grid; place-items: center; border: 1px solid var(--color-border); border-radius: 10px; cursor: pointer; }
 .chat-upload-status { position: absolute; left: 4.5rem; bottom: 0.2rem; max-width: calc(100% - 9rem); overflow: hidden; color: var(--color-text-muted); font-size: 0.7rem; text-overflow: ellipsis; white-space: nowrap; }

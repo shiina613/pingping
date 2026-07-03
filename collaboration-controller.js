@@ -650,50 +650,96 @@ export class CollaborationController {
     if (!this.requireLogin()) return;
     const input = document.getElementById('chat-message-input');
     const fileInput = document.getElementById('chat-file-input');
-    const sendButton = document.getElementById('chat-send-btn');
     const status = document.getElementById('chat-upload-status');
     const file = fileInput.files?.[0] || null;
+    
+    if (!input.value.trim() && !file) return;
+    
+    let tempId = null;
+    let targetRoom = this.activeRoom;
+
     try {
       const checkedFile = file ? validateUpload(file) : null;
       validateMessage(input.value, checkedFile);
-      sendButton.disabled = true;
-      sendButton.textContent = 'Đang gửi...';
+      
+      const rawText = input.value;
+      tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      
+      const tempMessage = {
+        id: tempId,
+        room_id: targetRoom,
+        text: rawText,
+        kind: 'user',
+        created_at: new Date().toISOString(),
+        sender: this.session.member,
+        attachment: checkedFile ? {
+          id: tempId,
+          name: checkedFile.name,
+          mime_type: checkedFile.type || 'application/octet-stream',
+          size_bytes: checkedFile.size,
+          public_url: URL.createObjectURL(checkedFile)
+        } : null
+      };
+
+      input.value = '';
+      this.autoResizeComposer(input);
+      this.clearSelectedFile();
+      status.textContent = '';
+      status.classList.remove('error');
+
+      this.appendMessage(tempMessage, { forceScroll: true });
+      const tempEl = document.querySelector(`[data-message-id="${CSS.escape(tempId)}"]`);
+      if (tempEl) tempEl.style.opacity = '0.6';
+
       let attachmentId = null;
       if (checkedFile) attachmentId = await this.uploadAttachment(checkedFile);
-      const message = validateMessage(input.value, attachmentId ? { id: attachmentId } : null);
+      const message = validateMessage(rawText, attachmentId ? { id: attachmentId } : null);
+      
       const { data, error } = await this.client.rpc('send_chat_message', {
         p_member_id: this.session.member.id,
         p_login_code: this.session.code,
-        p_room_id: this.activeRoom,
+        p_room_id: targetRoom,
         p_text: message.text,
         p_attachment_id: attachmentId
       }).single();
+      
       if (error) throw error;
       const result = chatSendResult(data);
+      
       if (result.mutedUntil) {
         this.session.member.chat_muted_until = result.mutedUntil;
         localStorage.setItem('pp_session', JSON.stringify(this.session));
         this.renderAccount();
         this.renderMuteState();
       }
+      
+      this.renderedMessageIds.delete(tempId);
+      this.renderedMessages = this.renderedMessages.filter(m => m.id !== tempId);
+      if (tempEl) tempEl.remove();
+
       if (result.messageId) {
-        const insertedMessage = await this.fetchMessage(result.messageId, this.activeRoom);
-        this.appendMessage(insertedMessage, { forceScroll: true });
+        if (!this.renderedMessageIds.has(result.messageId)) {
+          const insertedMessage = await this.fetchMessage(result.messageId, targetRoom);
+          if (targetRoom === this.activeRoom) {
+            this.appendMessage(insertedMessage, { forceScroll: true });
+          }
+        }
       }
       if (!result.accepted) {
-        if (attachmentId) this.clearSelectedFile();
         status.textContent = result.message;
         status.classList.add('error');
-        return;
       }
-      input.value = '';
-      this.autoResizeComposer(input);
-      this.clearSelectedFile();
     } catch (error) {
       status.textContent = error.message || 'Không thể gửi tin nhắn.';
       status.classList.add('error');
+      if (tempId) {
+        this.renderedMessageIds.delete(tempId);
+        this.renderedMessages = this.renderedMessages.filter(m => m.id !== tempId);
+        const tempEl = document.querySelector(`[data-message-id="${CSS.escape(tempId)}"]`);
+        if (tempEl) tempEl.remove();
+        this.rerenderMessages();
+      }
     } finally {
-      sendButton.textContent = 'Gửi';
       this.renderMuteState();
     }
   }

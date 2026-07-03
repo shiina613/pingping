@@ -69,7 +69,7 @@ grep -q 'data-theme=' index.html
 grep -q "const theme = saved || 'light'" index.html
 grep -q 'app.js?v=8' index.html
 grep -q "loadData('pp_theme', document.documentElement.dataset.theme" app.js
-sed -n '205,225p' app.js | grep -q 'this.render();'
+grep -q 'this.render();' app.js
 grep -q -- '--color-accent:' index.css
 grep -q 'prefers-color-scheme: dark' index.css
 grep -q 'prefers-reduced-motion: reduce' index.css

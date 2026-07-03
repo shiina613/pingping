@@ -9,7 +9,6 @@ class TeamPortal {
     this.kanbanTasks = this.loadData('pp_kanban_tasks', DEFAULT_KANBAN_TASKS);
     this.theme = this.loadData('pp_theme', document.documentElement.dataset.theme || 'light');
 
-    this.currentTab = 'dashboard';
     this.activeKanbanComp = 'onevoice';
     this.countdownTimer = null;
     this.activeDragElement = null;
@@ -17,6 +16,15 @@ class TeamPortal {
 
     this.initDOM();
     this.initEvents();
+    
+    const hashTab = window.location.hash.replace('#', '') || 'dashboard';
+    this.switchTab(hashTab, false);
+    
+    window.addEventListener('hashchange', () => {
+      const tab = window.location.hash.replace('#', '') || 'dashboard';
+      this.switchTab(tab, false);
+    });
+
     this.applyTheme();
     this.render();
     this.startCollaboration();
@@ -70,7 +78,7 @@ class TeamPortal {
   initEvents() {
     this.tabButtons.forEach(btn => {
       btn.addEventListener('click', () => {
-        this.switchTab(btn.getAttribute('data-tab'));
+        this.switchTab(btn.getAttribute('data-tab'), true);
       });
     });
 
@@ -163,7 +171,7 @@ class TeamPortal {
     });
   }
 
-  switchTab(tabName) {
+  switchTab(tabName, updateHash = true) {
     this.currentTab = tabName;
     document.body.classList.toggle('chat-active', tabName === 'chat');
     this.tabButtons.forEach(btn => {
@@ -174,6 +182,7 @@ class TeamPortal {
     });
     this.render();
     if (tabName === 'chat') this.collaboration?.loadMessages();
+    if (updateHash) window.history.pushState(null, '', `#${tabName}`);
   }
 
   async startCollaboration() {

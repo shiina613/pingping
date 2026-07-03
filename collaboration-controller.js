@@ -145,6 +145,7 @@ export class CollaborationController {
     this.selectedFilePreviewUrl = null;
     this.lightboxReturnFocus = null;
     this.muteTimer = null;
+    this.typingTimeout = null;
     this.notifications = [];
     this.browserNotificationsEnabled = localStorage.getItem('pp_browser_notifications') === 'true';
   }
@@ -197,7 +198,10 @@ export class CollaborationController {
       event.preventDefault();
       this.sendMessage();
     });
-    document.getElementById('chat-message-input')?.addEventListener('input', event => this.autoResizeComposer(event.currentTarget));
+    document.getElementById('chat-message-input')?.addEventListener('input', event => {
+      this.autoResizeComposer(event.currentTarget);
+      this.broadcastTyping();
+    });
     document.getElementById('chat-new-message-btn')?.addEventListener('click', () => this.scrollToLatest());
     document.getElementById('chat-message-list')?.addEventListener('click', event => {
       const trigger = event.target.closest?.('[data-media-kind]');
@@ -413,7 +417,9 @@ export class CollaborationController {
   }
 
   subscribe() {
-    this.channel = this.client.channel('pingping-live');
+    this.channel = this.client.channel('pingping-live', {
+      config: { presence: { key: this.session?.member?.id || 'anon' } }
+    });
     for (const table of ['members', 'allocations', 'tasks']) {
       this.channel.on('postgres_changes', { event: '*', schema: 'public', table }, () => this.scheduleSnapshot());
     }
@@ -426,7 +432,62 @@ export class CollaborationController {
     this.channel.on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, payload => {
       this.handleNotification(payload.new);
     });
+    this.channel.on('presence', { event: 'sync' }, () => {
+      this.renderTypingIndicator();
+    });
     this.channel.subscribe(status => this.setConnection(status === 'SUBSCRIBED', status));
+  }
+
+  broadcastTyping() {
+    if (!this.session?.member || !this.channel) return;
+    const input = document.getElementById('chat-message-input');
+    const isTyping = input?.value.trim().length > 0;
+    
+    if (this.typingTimeout) clearTimeout(this.typingTimeout);
+    
+    if (isTyping) {
+      this.channel.track({ typingRoom: this.activeRoom, name: this.session.member.name, at: Date.now() });
+      this.typingTimeout = setTimeout(() => {
+        this.channel.track({});
+      }, 5000);
+    } else {
+      this.channel.track({});
+    }
+  }
+
+  renderTypingIndicator() {
+    if (!this.channel) return;
+    const state = this.channel.presenceState();
+    const typingUsers = [];
+    
+    for (const [key, presences] of Object.entries(state)) {
+      if (key === this.session?.member?.id) continue;
+      const p = presences[0];
+      if (p && p.typingRoom === this.activeRoom && p.name) {
+        typingUsers.push(p.name);
+      }
+    }
+    
+    const indicator = document.getElementById('chat-typing-indicator');
+    if (!indicator) return;
+    
+    if (typingUsers.length === 0) {
+      indicator.hidden = true;
+      indicator.innerHTML = '';
+      return;
+    }
+    
+    indicator.hidden = false;
+    let text = '';
+    if (typingUsers.length === 1) {
+      text = `<b>${escapeHtml(typingUsers[0])}</b> đang gõ`;
+    } else if (typingUsers.length === 2) {
+      text = `<b>${escapeHtml(typingUsers[0])}</b> và <b>${escapeHtml(typingUsers[1])}</b> đang gõ`;
+    } else {
+      text = `${typingUsers.length} người đang gõ`;
+    }
+    
+    indicator.innerHTML = `<span class="typing-dots"><span>.</span><span>.</span><span>.</span></span> ${text}`;
   }
 
   scheduleSnapshot() {
@@ -437,6 +498,7 @@ export class CollaborationController {
   async openRoom(roomId) {
     if (!ROOM_NAMES[roomId]) return;
     this.activeRoom = roomId;
+    this.renderTypingIndicator();
     document.querySelectorAll('.chat-room').forEach(button => button.classList.toggle('active', button.dataset.room === roomId));
     document.getElementById('chat-room-title').textContent = ROOM_NAMES[roomId];
     const roomAvatar = document.getElementById('chat-room-avatar');
@@ -684,6 +746,7 @@ export class CollaborationController {
       input.value = '';
       this.autoResizeComposer(input);
       this.clearSelectedFile();
+      this.broadcastTyping();
       status.textContent = '';
       status.classList.remove('error');
 

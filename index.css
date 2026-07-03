@@ -2725,6 +2725,14 @@ body.light-theme .modal-close-btn:hover {
 .chat-compose-form textarea { min-height: 42px; max-height: 140px; resize: vertical; padding: 0.65rem 0.8rem; border: 1px solid var(--color-border); border-radius: 10px; background: var(--color-surface); color: var(--color-text); font: inherit; }
 .chat-file-button { width: 42px; height: 42px; display: grid; place-items: center; border: 1px solid var(--color-border); border-radius: 10px; cursor: pointer; }
 .chat-upload-status { position: absolute; left: 4.5rem; bottom: 0.2rem; max-width: calc(100% - 9rem); overflow: hidden; color: var(--color-text-muted); font-size: 0.7rem; text-overflow: ellipsis; white-space: nowrap; }
+
+.chat-typing-indicator { position: absolute; left: 1rem; bottom: 3.5rem; color: var(--color-text-muted); font-size: 0.8rem; background: var(--color-bg); padding: 0.2rem 0.6rem; border-radius: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); display: flex; align-items: center; gap: 0.3rem; z-index: 10; animation: typing-fade-in 0.3s ease-out; }
+.chat-typing-indicator[hidden] { display: none !important; }
+.typing-dots span { animation: typing-bounce 1.4s infinite ease-in-out both; font-weight: bold; }
+.typing-dots span:nth-child(1) { animation-delay: -0.32s; }
+.typing-dots span:nth-child(2) { animation-delay: -0.16s; }
+@keyframes typing-bounce { 0%, 80%, 100% { transform: translateY(0); } 40% { transform: translateY(-3px); } }
+@keyframes typing-fade-in { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 .chat-mute-status { position: absolute; inset-inline: 58px 14px; bottom: 0; color: var(--color-danger); font-size: 0.72rem; font-weight: 700; }
 .chat-mute-status[hidden] { display: none; }
 .chat-compose-form.muted { padding-bottom: 28px; }

@@ -1,0 +1,10 @@
+.git
+.github
+.vercel
+.env*
+node_modules
+code.md
+note.md
+docs
+tests
+supabase

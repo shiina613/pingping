@@ -1,4 +1,6 @@
 import { DEFAULT_MEMBERS, COMPETITIONS, INITIAL_ALLOCATIONS, DEFAULT_KANBAN_TASKS } from './src/constants.js';
+import { CollaborationController } from './collaboration-controller.js';
+import { buildCalendar, getTeamSizeWarning } from './collaboration.js';
 
 class TeamPortal {
   constructor() {

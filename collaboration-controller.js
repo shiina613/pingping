@@ -638,7 +638,20 @@ export class CollaborationController {
     const roomId = realtimeRow?.room_id;
     if (!realtimeRow?.id || roomId !== this.activeRoom || this.renderedMessageIds.has(realtimeRow.id)) return;
     try {
-      const message = await this.fetchMessage(realtimeRow.id, roomId);
+      let message;
+      if (!realtimeRow.attachment_id && this.portal?.members) {
+        message = {
+          id: realtimeRow.id,
+          room_id: realtimeRow.room_id,
+          text: realtimeRow.text,
+          kind: realtimeRow.kind,
+          created_at: realtimeRow.created_at,
+          sender: this.portal.members.find(m => m.id === realtimeRow.sender_id) || null,
+          attachment: null
+        };
+      } else {
+        message = await this.fetchMessage(realtimeRow.id, roomId);
+      }
       if (roomId === this.activeRoom) this.appendMessage(message);
     } catch (error) {
       this.setConnection(false, error.message);
@@ -887,7 +900,20 @@ export class CollaborationController {
 
       if (result.messageId) {
         if (!this.renderedMessageIds.has(result.messageId)) {
-          const insertedMessage = await this.fetchMessage(result.messageId, targetRoom);
+          let insertedMessage;
+          if (!attachmentId && this.portal?.members) {
+            insertedMessage = {
+              id: result.messageId,
+              room_id: targetRoom,
+              text: message.text,
+              kind: tempMessage.kind,
+              created_at: tempMessage.created_at,
+              sender: this.session.member,
+              attachment: null
+            };
+          } else {
+            insertedMessage = await this.fetchMessage(result.messageId, targetRoom);
+          }
           if (targetRoom === this.activeRoom) {
             this.appendMessage(insertedMessage, { forceScroll: true });
           }

@@ -187,6 +187,7 @@ body.light-theme .nav-tabs {
 .tab-btn {
   background: transparent;
   border: none;
+  text-decoration: none;
   color: var(--text-secondary);
   font-size: 0.85rem;
   font-weight: 500;

@@ -45,7 +45,7 @@ class TeamPortal {
   }
 
   initDOM() {
-    this.tabButtons = document.querySelectorAll('.tab-btn[data-tab]');
+    this.tabButtons = document.querySelectorAll('.tab-btn');
     this.tabPanels = document.querySelectorAll('.tab-panel');
 
     this.statActiveComp = document.getElementById('stat-active-comp');

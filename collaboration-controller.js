@@ -22,7 +22,7 @@ const ROOM_NAMES = Object.freeze({
   viettel: 'Viettel AI Race'
 });
 
-const MESSAGE_SELECT = 'id,room_id,text,kind,created_at,sender:members!messages_sender_id_fkey(id,name,avatar,color,chat_muted_until),attachment:attachments(id,name,mime_type,size_bytes,public_url),reply_to:messages!messages_reply_to_id_fkey(id,text,kind,sender:members!messages_sender_id_fkey(name)),reactions:message_reactions(emoji,member_id)';
+const MESSAGE_SELECT = 'id,room_id,text,kind,created_at,sender:members!messages_sender_id_fkey(id,name,avatar,color,chat_muted_until),attachment:attachments(id,name,mime_type,size_bytes,public_url),reply_to(id,text,kind,sender:members!messages_sender_id_fkey(name)),reactions:message_reactions(emoji,member_id)';
 
 export function escapeHtml(value) {
   return String(value ?? '')
@@ -1075,7 +1075,7 @@ export class CollaborationController {
             insertedMessage = {
               id: result.messageId,
               room_id: targetRoom,
-              text: message.text,
+              text: rawText,
               kind: tempMessage.kind,
               created_at: tempMessage.created_at,
               sender: this.session.member,

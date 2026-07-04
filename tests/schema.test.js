@@ -7,6 +7,7 @@ const notificationSql = readFileSync(new URL('../supabase/migrations/20260629192
 const migrationsDir = new URL('../supabase/migrations/', import.meta.url);
 const moderationMigration = readdirSync(migrationsDir).find(name => name.endsWith('_chat_moderation_retention.sql'));
 const moderationSql = moderationMigration ? readFileSync(new URL(moderationMigration, migrationsDir), 'utf8') : '';
+const allMigrationSql = readdirSync(migrationsDir).map(name => readFileSync(new URL(name, migrationsDir), 'utf8')).join('\n');
 
 for (const table of ['members', 'allocations', 'tasks', 'messages', 'attachments']) {
   test(`schema creates ${table}`, () => {
@@ -82,4 +83,10 @@ test('chat send RPC prunes rooms, protects writes, and skips system notification
   assert.match(moderationSql, /revoke execute on function public\.send_chat_message[\s\S]*from public/i);
   assert.match(moderationSql, /grant execute on function public\.send_chat_message[\s\S]*to anon/i);
   assert.match(moderationSql, /if new\.kind <> 'user' then[\s\S]*return new/i);
+});
+
+test('chat replies expose a to-one computed relationship for PostgREST', () => {
+  assert.match(allMigrationSql, /function public\.reply_to\(public\.messages\)/i);
+  assert.match(allMigrationSql, /returns setof public\.messages rows 1/i);
+  assert.match(allMigrationSql, /where message\.id = source\.reply_to_id/i);
 });

@@ -119,6 +119,12 @@ test('chat text is escaped before rendering', () => {
   assert.equal(escapeHtml('<img src=x onerror=alert(1)>'), '&lt;img src=x onerror=alert(1)&gt;');
 });
 
+test('message self-join uses a PostgREST computed relationship', () => {
+  const source = readFileSync(new URL('../collaboration-controller.js', import.meta.url), 'utf8');
+  assert.match(source, /reply_to\(id,text,kind/);
+  assert.doesNotMatch(source, /reply_to:messages!/);
+});
+
 test('chat avatars render image data as a contained image', () => {
   const markup = avatarMarkup({ name: 'Tùng', avatar: 'data:image/png;base64,abc' }, 'chat-message-avatar');
   assert.match(markup, /<img src="data:image\/png;base64,abc"/);
@@ -255,6 +261,13 @@ test('sending a message uses the atomic RPC and fetches accepted rows', () => {
   assert.match(sendSource, /chatSendResult\(data\)/);
   assert.match(sendSource, /this\.fetchMessage\(result\.messageId/);
   assert.doesNotMatch(sendSource, /loadMessages\(/);
+});
+
+test('optimistic plain-text sends preserve the submitted text', () => {
+  const source = readFileSync(new URL('../collaboration-controller.js', import.meta.url), 'utf8');
+  const sendSource = source.slice(source.indexOf('async sendMessage()'), source.indexOf('async uploadAttachment'));
+  assert.match(sendSource, /text: rawText/);
+  assert.doesNotMatch(sendSource, /text: message\.text/);
 });
 
 test('chat controller handles mute state, retention deletes, and tab titles', () => {

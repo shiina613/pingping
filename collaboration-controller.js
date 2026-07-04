@@ -22,7 +22,7 @@ const ROOM_NAMES = Object.freeze({
   viettel: 'Viettel AI Race'
 });
 
-const MESSAGE_SELECT = 'id,room_id,text,kind,created_at,sender:members!messages_sender_id_fkey(id,name,avatar,color,chat_muted_until),attachment:attachments(id,name,mime_type,size_bytes,public_url)';
+const MESSAGE_SELECT = 'id,room_id,text,kind,created_at,sender:members!messages_sender_id_fkey(id,name,avatar,color,chat_muted_until),attachment:attachments(id,name,mime_type,size_bytes,public_url),reply_to:messages!messages_reply_to_id_fkey(id,text,kind,sender:members!messages_sender_id_fkey(name)),reactions:message_reactions(emoji,member_id)';
 
 export function escapeHtml(value) {
   return String(value ?? '')
@@ -38,10 +38,11 @@ export function avatarMarkup(member = {}, className = 'chat-message-avatar') {
   const avatar = String(member.avatar || '');
   const safeClass = escapeHtml(className);
   const fallback = name.split(/\s+/).filter(Boolean).map(part => part[0]).join('').slice(0, 2).toUpperCase() || '?';
+  const dataId = member.id ? ` data-user-id="${escapeHtml(member.id)}"` : '';
   if (avatar.startsWith('data:image/')) {
-    return `<div class="${safeClass}"><img src="${escapeHtml(avatar)}" alt="${escapeHtml(name)}"></div>`;
+    return `<div class="${safeClass}"${dataId}><img src="${escapeHtml(avatar)}" alt="${escapeHtml(name)}"></div>`;
   }
-  return `<div class="${safeClass}">${escapeHtml(avatar || fallback)}</div>`;
+  return `<div class="${safeClass}"${dataId}>${escapeHtml(avatar || fallback)}</div>`;
 }
 
 function genericAttachmentMarkup(attachment, extraClass = '') {
@@ -203,6 +204,7 @@ export class CollaborationController {
       event.preventDefault();
       this.sendMessage();
     });
+    document.getElementById('chat-message-input')?.addEventListener('focus', () => this.markRoomNotificationsRead(this.activeRoom));
     document.getElementById('chat-message-input')?.addEventListener('input', event => {
       this.autoResizeComposer(event.currentTarget);
       this.broadcastTyping();
@@ -210,6 +212,7 @@ export class CollaborationController {
     });
     document.getElementById('chat-new-message-btn')?.addEventListener('click', () => this.scrollToLatest());
     document.getElementById('chat-message-list')?.addEventListener('click', event => {
+      this.markRoomNotificationsRead(this.activeRoom);
       const trigger = event.target.closest?.('[data-media-kind]');
       if (trigger) this.openMediaLightbox(trigger);
     });
@@ -225,8 +228,50 @@ export class CollaborationController {
       if (event.key === 'Escape') this.closeMediaLightbox();
     });
     document.getElementById('chat-message-list')?.addEventListener('scroll', event => {
-      if (isNearBottom(event.currentTarget)) this.hideNewMessageButton();
+      if (isNearBottom(event.currentTarget)) {
+        this.hideNewMessageButton();
+        this.markRoomNotificationsRead(this.activeRoom);
+      }
     });
+    document.getElementById('chat-message-list')?.addEventListener('click', event => {
+      const replyBtn = event.target.closest('[data-action="reply"]');
+      if (replyBtn) {
+        const messageId = replyBtn.dataset.id;
+        const message = this.renderedMessages.find(m => m.id === messageId);
+        if (message) this.setReplyingTo(message);
+      }
+
+      const reactBtn = event.target.closest('[data-action="react"]');
+      if (reactBtn) {
+        if (!this.requireLogin()) return;
+        const messageId = reactBtn.dataset.id;
+        const emoji = reactBtn.dataset.emoji;
+        this.client.rpc('toggle_chat_reaction', { p_member_id: this.session.member.id, p_login_code: this.session.code || this.session.login_code, p_message_id: messageId, p_emoji: emoji }).then(() => {});
+      }
+
+      const quote = event.target.closest('.chat-reply-quote');
+      if (quote) {
+        const replyId = quote.dataset.replyId;
+        const target = document.querySelector(`[data-message-id="${CSS.escape(replyId)}"]`);
+        if (target) target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    });
+    document.getElementById('chat-reply-preview-remove')?.addEventListener('click', () => this.setReplyingTo(null));
+  }
+
+  setReplyingTo(message) {
+    this.replyingTo = message;
+    const preview = document.getElementById('chat-reply-preview');
+    if (!message || !preview) {
+      if (preview) preview.hidden = true;
+      return;
+    }
+    preview.hidden = false;
+    const sender = message.sender?.name || 'Ai đó';
+    const text = message.text || (message.attachment ? 'Đã gửi một tệp' : '');
+    const content = document.getElementById('chat-reply-preview-content');
+    if (content) content.innerHTML = `<strong>Đang trả lời ${escapeHtml(sender)}:</strong> <span>${escapeHtml(text)}</span>`;
+    document.getElementById('chat-message-input')?.focus();
   }
 
   handleMentionInput(input) {
@@ -240,7 +285,8 @@ export class CollaborationController {
     
     if (match) {
       const query = match[2].toLowerCase();
-      const members = this.portal.members.filter(m => effectiveMemberName(m).toLowerCase().includes(query));
+      const allMembers = [{ id: 'all', name: 'all', avatar: '@' }, ...this.portal.members];
+      const members = allMembers.filter(m => effectiveMemberName(m).toLowerCase().includes(query));
       if (members.length > 0) {
         list.hidden = false;
         list.innerHTML = members.map((m, i) => `<div class="mention-item${i===0 ? ' active' : ''}" data-name="${escapeHtml(effectiveMemberName(m))}"><div class="mention-avatar">${avatarMarkup(m)}</div> <span style="font-weight: 500">${escapeHtml(effectiveMemberName(m))}</span></div>`).join('');
@@ -250,7 +296,7 @@ export class CollaborationController {
         return;
       }
     }
-    
+
     list.hidden = true;
     this.mentionActive = false;
   }
@@ -514,6 +560,10 @@ export class CollaborationController {
     for (const table of ['members', 'allocations', 'tasks']) {
       this.channel.on('postgres_changes', { event: '*', schema: 'public', table }, () => this.scheduleSnapshot());
     }
+    this.channel.on('postgres_changes', { event: '*', schema: 'public', table: 'message_reactions' }, payload => {
+      const messageId = payload.new?.message_id || payload.old?.message_id;
+      if (messageId && this.renderedMessageIds.has(messageId)) this.fetchMessage(messageId);
+    });
     this.channel.on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
       if (payload.new.room_id === this.activeRoom) this.appendRealtimeMessage(payload.new);
     });
@@ -525,6 +575,7 @@ export class CollaborationController {
     });
     this.channel.on('presence', { event: 'sync' }, () => {
       this.renderTypingIndicator();
+      this.renderPresence();
     });
     this.channel.subscribe(status => this.setConnection(status === 'SUBSCRIBED', status));
   }
@@ -558,7 +609,7 @@ export class CollaborationController {
         typingUsers.push(p.name);
       }
     }
-    
+
     const indicator = document.getElementById('chat-typing-indicator');
     if (!indicator) return;
     
@@ -567,7 +618,7 @@ export class CollaborationController {
       indicator.innerHTML = '';
       return;
     }
-    
+
     indicator.hidden = false;
     let text = '';
     if (typingUsers.length === 1) {
@@ -578,7 +629,27 @@ export class CollaborationController {
       text = `${typingUsers.length} người đang gõ`;
     }
     
+    if (text) {
+      indicator.classList.add('visible');
+    } else {
+      indicator.classList.remove('visible');
+    }
+
     indicator.innerHTML = `<span class="typing-dots"><span>.</span><span>.</span><span>.</span></span> ${text}`;
+  }
+
+  renderPresence() {
+    if (!this.channel) return;
+    const state = this.channel.presenceState();
+    const onlineIds = new Set(Object.keys(state));
+    document.querySelectorAll('[data-user-id]').forEach(el => {
+      const id = el.dataset.userId;
+      if (id && onlineIds.has(id)) {
+        el.classList.add('online');
+      } else {
+        el.classList.remove('online');
+      }
+    });
   }
 
   scheduleSnapshot() {
@@ -625,6 +696,8 @@ export class CollaborationController {
     this.renderedMessages = messages;
     list.innerHTML = messages.map(message => this.messageMarkup(message)).join('');
     this.scrollToLatest();
+    this.renderPresence();
+    this.hydrateLinkPreviews();
   }
 
   async fetchMessage(messageId, roomId = this.activeRoom) {
@@ -681,6 +754,8 @@ export class CollaborationController {
     this.renderedMessageIds.add(message.id);
     if (stayAtLatest) this.scrollToLatest();
     else this.showNewMessageButton();
+    this.renderPresence();
+    this.hydrateLinkPreviews();
     return true;
   }
 
@@ -708,6 +783,51 @@ export class CollaborationController {
     if (button) button.hidden = true;
   }
 
+  hydrateLinkPreviews() {
+    document.querySelectorAll('.link-preview-container:empty').forEach(container => {
+      container.innerHTML = ' ';
+      this.loadLinkPreview(container.dataset.url, container);
+    });
+  }
+
+  async loadLinkPreview(url, container) {
+    try {
+      const cacheKey = `pp_link_preview_${url}`;
+      const cached = localStorage.getItem(cacheKey);
+      let data;
+      if (cached) {
+        data = JSON.parse(cached);
+      } else {
+        const response = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`);
+        if (!response.ok) return;
+        const json = await response.json();
+        const doc = new DOMParser().parseFromString(json.contents, 'text/html');
+        const getMeta = (prop) => doc.querySelector(`meta[property="${prop}"], meta[name="${prop}"]`)?.content;
+        data = {
+          title: getMeta('og:title') || doc.title,
+          description: getMeta('og:description') || getMeta('description'),
+          image: getMeta('og:image') || getMeta('twitter:image')
+        };
+        if (!data.title && !data.image) return;
+        localStorage.setItem(cacheKey, JSON.stringify(data));
+      }
+
+      const safeTitle = escapeHtml(data.title || new URL(url).hostname);
+      const safeDesc = escapeHtml(data.description || '');
+      const safeImg = data.image ? `<img src="${escapeHtml(data.image)}" alt="Preview">` : '';
+
+      container.innerHTML = `
+        <a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" class="link-preview-card">
+          ${safeImg ? `<div class="link-preview-image">${safeImg}</div>` : ''}
+          <div class="link-preview-info">
+            <strong>${safeTitle}</strong>
+            ${safeDesc ? `<span>${safeDesc}</span>` : ''}
+          </div>
+        </a>
+      `;
+    } catch (e) {}
+  }
+
   autoResizeComposer(input = document.getElementById('chat-message-input')) {
     if (!input) return;
     input.style.height = 'auto';
@@ -729,18 +849,64 @@ export class CollaborationController {
     const senderName = showIdentity ? `<strong class="chat-sender-name">${escapeHtml(effectiveMemberName(message.sender || {}))}</strong>` : '';
     const avatar = isMine ? '' : `<div class="chat-avatar-slot${showAvatar ? '' : ' empty'}">${showAvatar ? avatarMarkup(message.sender) : ''}</div>`;
     
-    let htmlText = message.text ? escapeHtml(message.text).replaceAll('\n', '<br>') : '';
+    let htmlText = '';
+    let previewContainers = '';
+    let previewUrls = new Set();
+    if (message.text) {
+      const urlRegex = /(https?:\/\/[^\s]*[^.,:;"')\]\s])/g;
+      const parts = message.text.split(urlRegex);
+      for (let i = 0; i < parts.length; i++) {
+        if (i % 2 === 1) {
+          const escapedUrl = escapeHtml(parts[i]);
+          htmlText += `<a href="${escapedUrl}" target="_blank" rel="noopener noreferrer" class="chat-link">${escapedUrl}</a>`;
+          if (!previewUrls.has(parts[i])) {
+            previewUrls.add(parts[i]);
+            previewContainers += `<div class="link-preview-container" data-url="${escapedUrl}"></div>`;
+          }
+        } else {
+          htmlText += escapeHtml(parts[i]).replaceAll('\n', '<br>');
+        }
+      }
+    }
+
     if (htmlText && this.portal?.members) {
-      const names = this.portal.members.map(m => effectiveMemberName(m)).sort((a, b) => b.length - a.length);
+      const names = ['all', ...this.portal.members.map(m => effectiveMemberName(m))].sort((a, b) => b.length - a.length);
       for (const name of names) {
          const escapedName = escapeHtml(name);
          const regex = new RegExp(`(^|\\s|>)@${escapedName}(?=\\s|$|[.,!?<])`, 'g');
          htmlText = htmlText.replace(regex, `$1<strong class="chat-mention">@${escapedName}</strong>`);
       }
     }
-    
+
     const attachment = attachmentMarkup(message.attachment);
-    return `<div class="chat-message-item" data-message-id="${escapeHtml(message.id)}">${separator}<article class="chat-message${mine} chat-group-${groupPosition}" title="${escapeHtml(fullTime)}">${avatar}<div class="chat-message-content">${senderName}<div class="chat-bubble">${htmlText ? `<p>${htmlText}</p>` : ''}${attachment}</div></div></article></div>`;
+
+    let quoteHtml = '';
+    if (message.reply_to) {
+      const quoteSender = message.reply_to.sender?.name || 'Ai đó';
+      const quoteText = message.reply_to.text || (message.reply_to.attachment ? 'Đã gửi một tệp' : '');
+      quoteHtml = `<div class="chat-reply-quote" data-reply-id="${escapeHtml(message.reply_to.id)}"><strong>${escapeHtml(quoteSender)}</strong><span>${escapeHtml(quoteText)}</span></div>`;
+    }
+
+    let reactionsHtml = '';
+    if (message.reactions && message.reactions.length > 0) {
+      const counts = {};
+      const reacted = {};
+      for (const r of message.reactions) {
+        counts[r.emoji] = (counts[r.emoji] || 0) + 1;
+        if (r.member_id === this.session?.member?.id) reacted[r.emoji] = true;
+      }
+      const badges = Object.entries(counts).map(([emoji, count]) =>
+        `<button type="button" class="chat-reaction-badge${reacted[emoji] ? ' active' : ''}" data-action="react" data-emoji="${escapeHtml(emoji)}" data-id="${escapeHtml(message.id)}">${escapeHtml(emoji)} ${count}</button>`
+      ).join('');
+      reactionsHtml = `<div class="chat-reactions">${badges}</div>`;
+    }
+
+    const emojis = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
+    const pickerHtml = emojis.map(e => `<button type="button" class="chat-message-action-btn" title="${e}" data-action="react" data-emoji="${e}" data-id="${escapeHtml(message.id)}">${e}</button>`).join('');
+
+    const actionsHtml = `<div class="chat-message-actions"><div class="chat-reaction-picker-wrapper"><button type="button" class="chat-message-action-btn" title="Thả cảm xúc">☺</button><div class="chat-reaction-picker-menu">${pickerHtml}</div></div><button type="button" class="chat-message-action-btn" title="Trả lời" data-action="reply" data-id="${escapeHtml(message.id)}">↩</button></div>`;
+
+    return `<div class="chat-message-item" data-message-id="${escapeHtml(message.id)}">${separator}<article class="chat-message${mine} chat-group-${groupPosition}" title="${escapeHtml(fullTime)}">${avatar}<div class="chat-message-content">${senderName}<div class="chat-bubble">${quoteHtml}${htmlText ? `<p>${htmlText}</p>` : ''}${attachment}${previewContainers}</div>${reactionsHtml}${actionsHtml}</div></article></div>`;
   }
 
   renderSelectedFile(file) {
@@ -855,10 +1021,12 @@ export class CollaborationController {
           mime_type: checkedFile.type || 'application/octet-stream',
           size_bytes: checkedFile.size,
           public_url: URL.createObjectURL(checkedFile)
-        } : null
+        } : null,
+        reply_to: this.replyingTo
       };
 
       input.value = '';
+      this.setReplyingTo(null);
       this.autoResizeComposer(input);
       this.clearSelectedFile();
       this.broadcastTyping();
@@ -874,15 +1042,17 @@ export class CollaborationController {
 
       let attachmentId = null;
       if (checkedFile) attachmentId = await this.uploadAttachment(checkedFile);
-      const message = validateMessage(rawText, attachmentId ? { id: attachmentId } : null);
       
-      const { data, error } = await this.client.rpc('send_chat_message', {
+      const payload = {
         p_member_id: this.session.member.id,
-        p_login_code: this.session.code,
+        p_login_code: this.session.code || this.session.login_code,
         p_room_id: targetRoom,
-        p_text: message.text,
-        p_attachment_id: attachmentId
-      }).single();
+        p_text: rawText,
+        p_attachment_id: attachmentId || null,
+        p_reply_to_id: tempMessage.reply_to?.id || null
+      };
+
+      const { data, error } = await this.client.rpc('send_chat_message', payload).single();
       
       if (error) throw error;
       const result = chatSendResult(data);
@@ -1018,10 +1188,19 @@ export class CollaborationController {
   handleNotification(notification) {
     if (!notification || notification.recipient_id !== this.session?.member?.id) return;
     if (this.notifications.some(item => item.id === notification.id)) return;
+
+    if (notification.kind === 'message' && notification.room_id === this.activeRoom && document.hasFocus() && isNearBottom(document.getElementById('chat-message-list'))) {
+      notification.read_at = new Date().toISOString();
+      this.client.from('notifications').update({ read_at: notification.read_at })
+        .eq('id', notification.id).eq('recipient_id', this.session.member.id).then(() => {});
+    }
+
     this.notifications.unshift(notification);
     this.notifications = this.notifications.slice(0, 50);
     this.renderNotifications();
-    this.showBrowserNotification(notification);
+    if (!notification.read_at) {
+      this.showBrowserNotification(notification);
+    }
   }
 
   renderNotifications() {

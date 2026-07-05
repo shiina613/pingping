@@ -1,6 +1,6 @@
 # Competition Countdown Rows Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Replace the single dashboard countdown with five horizontal countdown rows, one per competition.
 
@@ -16,21 +16,21 @@
 - Create: `src/countdown.js`
 - Create: `tests/countdown.test.js`
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
 
 Add tests that import `getCompetitionCountdowns` and `getCountdownParts`, then assert that each competition selects its earliest future event, completed competitions return a null event, invalid dates are ignored, input order is preserved, and durations split into padded day/hour/minute/second strings.
 
-- [ ] **Step 2: Verify the tests fail**
+- [x] **Step 2: Verify the tests fail**
 
 Run: `node --test tests/countdown.test.js`
 
 Expected: FAIL because `src/countdown.js` does not exist.
 
-- [ ] **Step 3: Implement the minimal helpers**
+- [x] **Step 3: Implement the minimal helpers**
 
 Create `getCompetitionCountdowns(competitions, now)` using `map`, date validation, future filtering, and ascending sort. Create `getCountdownParts(target, now)` with a zero clamp and fixed unit divisors.
 
-- [ ] **Step 4: Verify the tests pass**
+- [x] **Step 4: Verify the tests pass**
 
 Run: `node --test tests/countdown.test.js`
 
@@ -44,25 +44,25 @@ Expected: all countdown tests pass.
 - Modify: `index.css`
 - Modify: `tests/frontend-contract.sh`
 
-- [ ] **Step 1: Add a failing frontend contract**
+- [x] **Step 1: Add a failing frontend contract**
 
 Require `id="competition-countdowns"` in `index.html`, reject legacy IDs `countdown-comp-name`, `cd-days`, `cd-hours`, `cd-minutes`, and `cd-seconds`, and require `getCompetitionCountdowns` usage in `app.js`.
 
-- [ ] **Step 2: Verify the contract fails**
+- [x] **Step 2: Verify the contract fails**
 
 Run: `bash tests/frontend-contract.sh`
 
 Expected: FAIL because the new container and helper usage are absent.
 
-- [ ] **Step 3: Replace markup and renderer**
+- [x] **Step 3: Replace markup and renderer**
 
 Replace the single card with `<div id="competition-countdowns" class="competition-countdowns">`. Import the helper module, cache the container, render one `.countdown-box` per competition, update values via `data-countdown-*` selectors, and rebuild when an event expires.
 
-- [ ] **Step 4: Add row styling**
+- [x] **Step 4: Add row styling**
 
 Make `.competition-countdowns` a vertical stack, reduce per-row padding, arrange row header and digits horizontally on desktop, and stack them on narrow screens while retaining a four-column digit grid.
 
-- [ ] **Step 5: Verify the contract and unit tests pass**
+- [x] **Step 5: Verify the contract and unit tests pass**
 
 Run: `bash tests/frontend-contract.sh && node --test tests/countdown.test.js`
 
@@ -73,13 +73,13 @@ Expected: both commands pass.
 **Files:**
 - Verify all changed files.
 
-- [ ] **Step 1: Run the full suite**
+- [x] **Step 1: Run the full suite**
 
 Run: `npm test`
 
 Expected: all tests pass with zero failures.
 
-- [ ] **Step 2: Check the patch**
+- [x] **Step 2: Check the patch**
 
 Run: `git diff --check && git status --short`
 

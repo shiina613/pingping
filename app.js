@@ -1,6 +1,7 @@
 import { DEFAULT_MEMBERS, COMPETITIONS, INITIAL_ALLOCATIONS, DEFAULT_KANBAN_TASKS } from './src/constants.js';
 import { CollaborationController } from './collaboration-controller.js';
 import { buildCalendar, getTeamSizeWarning } from './collaboration.js';
+import { getCompetitionCountdowns, getCountdownParts } from './src/countdown.js';
 
 class TeamPortal {
   constructor() {
@@ -52,12 +53,7 @@ class TeamPortal {
     this.statActiveTeams = document.getElementById('stat-active-teams');
     this.statNearestDays = document.getElementById('stat-nearest-days');
 
-    this.cdCompName = document.getElementById('countdown-comp-name');
-    this.cdMilestoneName = document.getElementById('countdown-milestone-name');
-    this.cdDays = document.getElementById('cd-days');
-    this.cdHours = document.getElementById('cd-hours');
-    this.cdMinutes = document.getElementById('cd-minutes');
-    this.cdSeconds = document.getElementById('cd-seconds');
+    this.countdownContainer = document.getElementById('competition-countdowns');
 
     this.modal = document.getElementById('edit-member-modal');
     this.modalTitle = document.getElementById('modal-title-text');
@@ -296,46 +292,51 @@ class TeamPortal {
   setupCountdown() {
     if (this.countdownTimer) {
       clearInterval(this.countdownTimer);
+      this.countdownTimer = null;
     }
 
-    const nearest = this.getNearestMilestone();
-    if (!nearest) {
-      this.cdCompName.innerText = "Đã hoàn thành các mốc";
-      this.cdMilestoneName.innerText = "Không có sự kiện sắp tới";
-      this.cdDays.innerText = "00";
-      this.cdHours.innerText = "00";
-      this.cdMinutes.innerText = "00";
-      this.cdSeconds.innerText = "00";
-      return;
-    }
-
-    this.cdCompName.innerText = nearest.comp.name;
-    this.cdMilestoneName.innerText = `${nearest.event.label} (${new Date(nearest.event.date).toLocaleDateString('vi-VN')})`;
+    const countdowns = getCompetitionCountdowns(COMPETITIONS);
+    this.countdownContainer.innerHTML = countdowns.map(({ comp, event }) => `
+      <div class="glass-card countdown-box competition-countdown-row" data-countdown-id="${comp.id}">
+        <div class="countdown-header">
+          <div>
+            <span class="stat-label" style="color: var(--accent-rose);">Sự kiện sắp tới</span>
+            <h3 class="countdown-title">${comp.name}</h3>
+          </div>
+          <div class="countdown-milestone">${event ? `${event.label} (${new Date(event.date).toLocaleDateString('vi-VN')})` : 'Đã hoàn thành'}</div>
+        </div>
+        <div class="countdown-display">
+          ${[['days', 'Ngày'], ['hours', 'Giờ'], ['minutes', 'Phút'], ['seconds', 'Giây']].map(([part, label]) => `
+            <div class="countdown-unit">
+              <span class="countdown-value" data-countdown-part="${part}">00</span>
+              <span class="countdown-label">${label}</span>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `).join('');
 
     const updateTimer = () => {
-      const now = new Date().getTime();
-      const target = new Date(nearest.event.date).getTime();
-      const diff = target - now;
+      const now = new Date();
+      for (const { comp, event } of countdowns) {
+        if (!event) continue;
+        if (new Date(event.date) <= now) {
+          this.setupCountdown();
+          return;
+        }
 
-      if (diff <= 0) {
-        clearInterval(this.countdownTimer);
-        this.setupCountdown();
-        return;
+        const row = this.countdownContainer.querySelector(`[data-countdown-id="${comp.id}"]`);
+        const parts = getCountdownParts(new Date(event.date), now);
+        Object.entries(parts).forEach(([part, value]) => {
+          row.querySelector(`[data-countdown-part="${part}"]`).innerText = value;
+        });
       }
-
-      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-
-      this.cdDays.innerText = String(days).padStart(2, '0');
-      this.cdHours.innerText = String(hours).padStart(2, '0');
-      this.cdMinutes.innerText = String(minutes).padStart(2, '0');
-      this.cdSeconds.innerText = String(seconds).padStart(2, '0');
     };
 
     updateTimer();
-    this.countdownTimer = setInterval(updateTimer, 1000);
+    if (countdowns.some(({ event }) => event)) {
+      this.countdownTimer = setInterval(updateTimer, 1000);
+    }
   }
 
   renderStats() {

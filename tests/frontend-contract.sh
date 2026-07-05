@@ -67,9 +67,15 @@ grep -q 'notificationDocumentTitle(summary.total)' collaboration-controller.js
 
 grep -q 'data-theme=' index.html
 grep -q "const theme = saved || 'light'" index.html
-grep -q 'app.js?v=8' index.html
+grep -q 'app.js?v=9' index.html
+grep -q 'index.css?v=9' index.html
 grep -q "loadData('pp_theme', document.documentElement.dataset.theme" app.js
 grep -q 'this.render();' app.js
+grep -q 'id="competition-countdowns"' index.html
+grep -q 'getCompetitionCountdowns' app.js
+for legacy_countdown_id in countdown-comp-name cd-days cd-hours cd-minutes cd-seconds; do
+  ! grep -q "id=\"$legacy_countdown_id\"" index.html
+done
 grep -q -- '--color-accent:' index.css
 grep -q 'prefers-color-scheme: dark' index.css
 grep -q 'prefers-reduced-motion: reduce' index.css

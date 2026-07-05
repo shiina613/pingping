@@ -16,7 +16,7 @@
       }
     })();
   </script>
-  <link rel="stylesheet" href="index.css?v=8">
+  <link rel="stylesheet" href="index.css?v=9">
 </head>
 <body>
   <!-- Particle Background Container -->
@@ -170,34 +170,8 @@
       <div class="dashboard-layout">
         <!-- Left: Countdown & Allocations Summary -->
         <div>
-          <!-- Countdown Box -->
-          <div class="glass-card countdown-box" id="countdown-card-root">
-            <div class="countdown-header">
-              <div>
-                <span class="stat-label" style="color: var(--accent-rose);">Sự kiện sắp diễn ra nhất</span>
-                <h3 class="countdown-title" id="countdown-comp-name">Tải dữ liệu...</h3>
-              </div>
-              <div class="countdown-milestone" id="countdown-milestone-name">Đang xác định mốc...</div>
-            </div>
-            <div class="countdown-display">
-              <div class="countdown-unit">
-                <span class="countdown-value" id="cd-days">00</span>
-                <span class="countdown-label">Ngày</span>
-              </div>
-              <div class="countdown-unit">
-                <span class="countdown-value" id="cd-hours">00</span>
-                <span class="countdown-label">Giờ</span>
-              </div>
-              <div class="countdown-unit">
-                <span class="countdown-value" id="cd-minutes">00</span>
-                <span class="countdown-label">Phút</span>
-              </div>
-              <div class="countdown-unit">
-                <span class="countdown-value" id="cd-seconds">00</span>
-                <span class="countdown-label">Giây</span>
-              </div>
-            </div>
-          </div>
+          <!-- Competition countdown rows -->
+          <div class="competition-countdowns" id="competition-countdowns" aria-label="Đếm ngược các cuộc thi"></div>
 
           <!-- Dashboard Workload Chart -->
           <div class="glass-card" style="margin-bottom: 1.5rem;">
@@ -575,6 +549,6 @@
       }
     });
   </script>
-  <script type="module" src="app.js?v=8"></script>
+  <script type="module" src="app.js?v=9"></script>
 </body>
 </html>

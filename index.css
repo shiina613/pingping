@@ -352,12 +352,58 @@ body.light-theme .stat-icon-wrapper {
 }
 
 /* Sleek Countdown clock with neon glow */
+.competition-countdowns {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
+  margin-bottom: 1.5rem;
+}
+
 .countdown-box {
   background: linear-gradient(135deg, rgba(13, 17, 28, 0.8) 0%, rgba(20, 26, 42, 0.8) 100%);
   padding: 2rem;
   margin-bottom: 1.5rem;
   border: 1px solid rgba(59, 130, 246, 0.15);
   box-shadow: 0 10px 40px rgba(59, 130, 246, 0.08);
+}
+
+.competition-countdown-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 500px);
+  align-items: center;
+  gap: 1.5rem;
+  padding: 1.25rem;
+  margin-bottom: 0;
+  min-width: 0;
+}
+
+.competition-countdown-row .countdown-header {
+  min-width: 0;
+  margin-bottom: 0;
+  padding: 0 1.5rem 0 0;
+  border-right: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 0;
+}
+
+body.light-theme .competition-countdown-row .countdown-header {
+  border-right-color: rgba(0, 0, 0, 0.05);
+}
+
+.competition-countdown-row .countdown-header,
+.competition-countdown-row .countdown-milestone {
+  flex-wrap: wrap;
+}
+
+.competition-countdown-row .countdown-display {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+}
+
+.competition-countdown-row .countdown-value {
+  font-size: clamp(1.5rem, 3vw, 2.25rem);
 }
 
 body.light-theme .countdown-box {
@@ -2281,6 +2327,10 @@ body.light-theme .stat-icon-wrapper {
   gap: 20px;
 }
 
+.dashboard-layout > * {
+  min-width: 0;
+}
+
 .countdown-box,
 body.light-theme .countdown-box {
   border-color: color-mix(in srgb, var(--color-accent) 28%, var(--color-border));
@@ -2518,6 +2568,17 @@ body.light-theme .modal-close-btn:hover {
   .planner-layout,
   .settings-layout {
     grid-template-columns: 1fr;
+  }
+
+  .competition-countdown-row {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .competition-countdown-row .countdown-header {
+    padding: 0 0 1rem;
+    border-right: 0;
+    border-bottom: 1px solid var(--color-border);
   }
 }
 

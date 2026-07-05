@@ -44,6 +44,19 @@ test('a competition with no future event remains as a completed row', () => {
   assert.equal(row.event, null);
 });
 
+test('competition countdowns put nearest events first and completed rows last', () => {
+  const competitions = [
+    { id: 'later', timeline: [{ label: 'Later', date: '2026-07-08T10:00:00Z' }] },
+    { id: 'done', timeline: [{ label: 'Past', date: '2026-07-01T10:00:00Z' }] },
+    { id: 'nearest', timeline: [{ label: 'Nearest', date: '2026-07-06T10:00:00Z' }] },
+    { id: 'tie', timeline: [{ label: 'Same time', date: '2026-07-08T10:00:00Z' }] }
+  ];
+
+  const rows = getCompetitionCountdowns(competitions, new Date('2026-07-05T10:00:00Z'));
+
+  assert.deepEqual(rows.map(row => row.comp.id), ['nearest', 'later', 'tie', 'done']);
+});
+
 test('countdown parts clamp elapsed targets and pad active values', () => {
   const now = new Date('2026-07-05T10:00:00Z');
   const active = getCountdownParts(new Date('2026-07-07T13:04:05Z'), now);

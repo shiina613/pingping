@@ -7,7 +7,7 @@ export function getCompetitionCountdowns(competitions, now = new Date()) {
       .sort((a, b) => new Date(a.date) - new Date(b.date))[0] || null;
 
     return { comp, event };
-  });
+  }).sort((a, b) => (a.event ? new Date(a.event.date).getTime() : Infinity) - (b.event ? new Date(b.event.date).getTime() : Infinity));
 }
 
 export function getCountdownParts(target, now = new Date()) {

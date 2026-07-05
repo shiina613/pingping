@@ -84,3 +84,29 @@ Expected: all tests pass with zero failures.
 Run: `git diff --check && git status --short`
 
 Expected: no whitespace errors; only planned files are modified or added.
+
+### Task 4: Order rows by urgency
+
+**Files:**
+- Modify: `src/countdown.js`
+- Modify: `tests/countdown.test.js`
+
+- [x] **Step 1: Add a failing ordering test**
+
+Pass competitions in non-chronological order and assert the result puts the nearest future event first, preserves input order for equal timestamps, and places completed competitions last.
+
+- [x] **Step 2: Verify the ordering test fails**
+
+Run: `node --test tests/countdown.test.js`
+
+Expected: FAIL because countdown rows still preserve source order.
+
+- [x] **Step 3: Sort the mapped rows**
+
+Sort active rows by event timestamp and use positive infinity for completed rows. Rely on stable JavaScript sorting to retain source order for ties.
+
+- [x] **Step 4: Verify the full suite passes**
+
+Run: `npm test`
+
+Expected: all tests pass with zero failures.

@@ -6,7 +6,7 @@ Show five horizontal countdown rows on the dashboard, one for each competition, 
 
 ## Behavior
 
-- Render competitions in the existing `COMPETITIONS` order.
+- Sort competitions by their next event time, nearest first. Preserve source order for ties and place completed competitions last.
 - For each competition, select the earliest timeline event strictly after the current time.
 - Show the competition name, selected event label and Vietnamese date, plus days, hours, minutes, and seconds.
 - Refresh all active countdowns once per second.

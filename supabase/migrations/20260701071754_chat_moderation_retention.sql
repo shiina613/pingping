@@ -1,22 +1,16 @@
 alter table public.members
   add column if not exists chat_muted_until timestamptz;
-
 alter table public.messages
   add column if not exists kind text not null default 'user';
-
 alter table public.messages
   drop constraint if exists messages_kind_check;
-
 alter table public.messages
   add constraint messages_kind_check check (kind in ('user', 'system'));
-
 alter table public.messages
   alter column sender_id drop not null;
-
 create index if not exists messages_sender_rate_idx
   on public.messages (sender_id, created_at desc)
   where kind = 'user';
-
 create table if not exists private.attachment_cleanup_queue (
   attachment_id uuid primary key references public.attachments(id) on delete cascade,
   bucket_id text not null default 'chat-files',
@@ -27,9 +21,7 @@ create table if not exists private.attachment_cleanup_queue (
   created_at timestamptz not null default now(),
   completed_at timestamptz
 );
-
 revoke all on private.attachment_cleanup_queue from public, anon, authenticated;
-
 create or replace function private.queue_chat_attachment(p_attachment_id uuid)
 returns boolean
 language plpgsql
@@ -53,7 +45,6 @@ begin
   return queued_rows > 0;
 end;
 $$;
-
 create or replace function private.prune_chat_room(p_room_id text)
 returns void
 language plpgsql
@@ -86,7 +77,6 @@ begin
   where m.id = r.id and r.position > 36;
 end;
 $$;
-
 create or replace function public.send_chat_message(
   p_member_id text,
   p_login_code text,
@@ -172,15 +162,12 @@ begin
   return query select 'sent'::text, v_message_id, null::timestamptz, false;
 end;
 $$;
-
 revoke execute on function private.queue_chat_attachment(uuid) from public, anon, authenticated;
 revoke execute on function private.prune_chat_room(text) from public, anon, authenticated;
 revoke execute on function public.send_chat_message(text, text, text, text, uuid) from public, anon, authenticated;
 grant execute on function public.send_chat_message(text, text, text, text, uuid) to anon;
-
 revoke insert on public.messages from anon, authenticated;
 drop policy if exists "anon_insert_messages" on public.messages;
-
 create or replace function private.notify_new_message()
 returns trigger
 language plpgsql
@@ -203,9 +190,7 @@ begin
   return new;
 end;
 $$;
-
 revoke execute on function private.notify_new_message() from public, anon, authenticated;
-
 create or replace function private.queue_orphaned_chat_attachments()
 returns integer
 language plpgsql
@@ -225,7 +210,6 @@ begin
   return queued_rows;
 end;
 $$;
-
 create or replace function public.claim_attachment_cleanup(p_limit integer default 100)
 returns table(attachment_id uuid, bucket_id text, storage_path text)
 language plpgsql
@@ -251,7 +235,6 @@ begin
   returning q.attachment_id, q.bucket_id, q.storage_path;
 end;
 $$;
-
 create or replace function public.complete_attachment_cleanup(p_attachment_id uuid)
 returns void
 language plpgsql
@@ -265,7 +248,6 @@ begin
   delete from public.attachments where id = p_attachment_id;
 end;
 $$;
-
 create or replace function public.fail_attachment_cleanup(p_attachment_id uuid, p_error text)
 returns void
 language sql
@@ -276,7 +258,6 @@ as $$
   set claimed_at = null, last_error = left(coalesce(p_error, 'Unknown cleanup error'), 500)
   where attachment_id = p_attachment_id and completed_at is null;
 $$;
-
 revoke execute on function private.queue_orphaned_chat_attachments() from public, anon, authenticated;
 revoke execute on function public.claim_attachment_cleanup(integer) from public, anon, authenticated;
 revoke execute on function public.complete_attachment_cleanup(uuid) from public, anon, authenticated;

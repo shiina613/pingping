@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { canPlayCell, getArenaRole, selectArenaMatch } from '../src/xo-arena.js';
+import { canPlayCell, getArenaRole, selectArenaMatch, shouldShowTestSimulation } from '../src/xo-arena.js';
 
 test('arena role distinguishes player, spectator, and host', () => {
   assert.equal(getArenaRole({ memberId: 'tung', hostId: 'tung', match: { player_x_id: 'hau', player_o_id: 'hung' } }), 'host');
@@ -23,4 +23,10 @@ test('arena selects the signed-in member active match before schedule fallback',
   ];
   assert.equal(selectArenaMatch(matches, 'hau')?.id, 'mine');
   assert.equal(selectArenaMatch(matches, 'tung')?.id, 'spectator');
+});
+
+test('test simulation control is host-only and test-only', () => {
+  assert.equal(shouldShowTestSimulation({ role: 'host', releaseMode: 'test' }), true);
+  assert.equal(shouldShowTestSimulation({ role: 'host', releaseMode: 'live' }), false);
+  assert.equal(shouldShowTestSimulation({ role: 'player', releaseMode: 'test' }), false);
 });

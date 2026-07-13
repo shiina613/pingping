@@ -17,6 +17,10 @@ export function canPlayCell({ online, pending, memberId, nextMemberId, occupied,
   return Boolean(online && !pending && memberId && memberId === nextMemberId && !occupied && gameStatus === 'active');
 }
 
+export function shouldShowTestSimulation({ role, releaseMode }) {
+  return role === 'host' && releaseMode === 'test';
+}
+
 export function selectArenaMatch(matches = [], memberId, selectedId) {
   const selected = matches.find(match => match.id === selectedId);
   if (selected) return selected;
@@ -134,6 +138,9 @@ export class XoArena {
     }
     if (action === 'live' && confirm('Mở X-O Challenger cho toàn bộ thành viên?')) {
       this.run(() => this.api.setReleaseMode('live'));
+    }
+    if (action === 'simulate-test' && confirm('Hoàn tất giải test bằng mô phỏng để mở live?')) {
+      this.run(() => this.api.simulateTestTournament());
     }
     if (['accept', 'reject', 'cancel-side'].includes(action)) {
       const betId = event.target.closest('[data-bet-id]')?.dataset.betId;
@@ -299,9 +306,10 @@ export class XoArena {
     host.hidden = role !== 'host';
     if (role !== 'host') return;
     const active = this.snapshot.tournament?.status === 'active';
+    const simulate = shouldShowTestSimulation({ role, releaseMode: this.snapshot.releaseMode });
     host.innerHTML = `
       <h3>Điều hành</h3>
-      <div class="xo-host-actions"><button type="button" data-xo-action="create" ${active ? 'disabled' : ''}>Tạo giải</button><button type="button" data-xo-action="cancel" ${active ? '' : 'disabled'}>Hủy giải</button><button type="button" data-xo-action="live">Mở live</button></div>
+      <div class="xo-host-actions"><button type="button" data-xo-action="create" ${active ? 'disabled' : ''}>Tạo giải</button><button type="button" data-xo-action="cancel" ${active ? '' : 'disabled'}>Hủy giải</button>${simulate ? '<button type="button" data-xo-action="simulate-test">Hoàn tất test</button>' : ''}<button type="button" data-xo-action="live">Mở live</button></div>
       <form id="xo-testers-form"><fieldset><legend>Tester</legend>${this.members.map(member => `<label><input type="checkbox" name="testers" value="${member.id}" ${member.id === 'tung' ? 'checked disabled' : ''}>${escapeHtml(member.name)}</label>`).join('')}</fieldset><button type="submit">Lưu tester</button></form>`;
   }
 

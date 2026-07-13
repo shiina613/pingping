@@ -84,6 +84,10 @@ export class XoApi {
     return this.mutate('set_testers', { p_tester_ids: memberIds });
   }
 
+  simulateTestTournament() {
+    return this.mutate('simulate_test_tournament', {});
+  }
+
   makeMove(gameId, row, col) {
     return this.mutate('make_move', { p_game_id: gameId, p_row: row, p_col: col });
   }

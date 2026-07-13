@@ -71,6 +71,21 @@ test('snapshot requires a session and sends member credentials', async () => {
   });
 });
 
+test('simulate test tournament sends host credentials and a request ID', async () => {
+  const client = createFakeClient([{ data: { status: 'completed' } }]);
+  const api = new XoApi(client, () => '00000000-0000-4000-8000-000000000301');
+  setSession(api);
+  assert.deepEqual(await api.simulateTestTournament(), { status: 'completed' });
+  assert.deepEqual(client.calls[0], {
+    name: 'xo_simulate_test_tournament',
+    args: {
+      p_member_id: 'tung',
+      p_login_code: 'PP-TUNG-2026',
+      p_request_id: '00000000-0000-4000-8000-000000000301'
+    }
+  });
+});
+
 test('RPC errors map stable codes to Vietnamese copy', async () => {
   const api = new XoApi(createFakeClient([{ error: { message: 'NOT_YOUR_TURN' } }]));
   setSession(api);

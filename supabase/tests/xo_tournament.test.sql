@@ -1,6 +1,6 @@
 begin;
 
-select plan(16);
+select plan(18);
 
 select throws_ok(
   $$ select public.xo_create_tournament('hau', 'PP-HAU-2026', gen_random_uuid()) $$,
@@ -34,12 +34,18 @@ select throws_ok(
   $$ select public.xo_set_release_mode('tung','PP-TUNG-2026',gen_random_uuid(),'live') $$,
   '22023', 'TEST_GATE_INCOMPLETE'
 );
+select lives_ok(
+  $$ select public.xo_simulate_test_tournament('tung','PP-TUNG-2026',gen_random_uuid()) $$,
+  'Tung can simulate the test tournament'
+);
+select is((select count(*) from public.xo_tournaments where scope = 'test' and status = 'completed'), 1::bigint, 'simulation completes one test tournament');
+select lives_ok(
+  $$ select public.xo_set_release_mode('tung','PP-TUNG-2026',gen_random_uuid(),'live') $$,
+  'completed simulation unlocks live mode'
+);
 select throws_ok(
   $$ select public.xo_cancel_tournament('hau','PP-HAU-2026',gen_random_uuid(),(select id from public.xo_tournaments limit 1),'no') $$,
   '42501', 'ONLY_TUNG_CAN_HOST'
-);
-select lives_ok(
-  $$ select public.xo_cancel_tournament('tung','PP-TUNG-2026',gen_random_uuid(),(select id from public.xo_tournaments limit 1),'test cleanup') $$
 );
 
 select * from finish();

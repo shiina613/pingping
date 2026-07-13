@@ -15,7 +15,9 @@ const XO_ERROR_MESSAGES = Object.freeze({
   GAME_NOT_ACTIVE: 'Ván đấu không còn hoạt động.',
   BETTING_LOCKED: 'Cược đã khóa sau nước đi đầu tiên.',
   INSUFFICIENT_BALANCE: 'Bạn không đủ điểm công dân.',
-  REQUEST_ID_REUSED: 'Yêu cầu đã được dùng cho thao tác khác.'
+  REQUEST_ID_REUSED: 'Yêu cầu đã được dùng cho thao tác khác.',
+  TEST_SIMULATION_ONLY: 'Chỉ có thể mô phỏng khi X-O đang ở chế độ test.',
+  TEST_SIMULATION_LIMIT: 'Không thể hoàn tất mô phỏng test tự động.'
 });
 
 export function createInitialBounds() {

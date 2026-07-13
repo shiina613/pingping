@@ -4,3 +4,5 @@ env.txt
 .vercel
 .env*
 .worktrees/
+.superpowers/
+test-results/

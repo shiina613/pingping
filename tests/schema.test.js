@@ -8,6 +8,8 @@ const migrationsDir = new URL('../supabase/migrations/', import.meta.url);
 const moderationMigration = readdirSync(migrationsDir).find(name => name.endsWith('_chat_moderation_retention.sql'));
 const moderationSql = moderationMigration ? readFileSync(new URL(moderationMigration, migrationsDir), 'utf8') : '';
 const allMigrationSql = readdirSync(migrationsDir).map(name => readFileSync(new URL(name, migrationsDir), 'utf8')).join('\n');
+const xoMigration = readdirSync(migrationsDir).find(name => name.endsWith('_xo_arena.sql'));
+const xoSql = xoMigration ? readFileSync(new URL(xoMigration, migrationsDir), 'utf8') : '';
 
 for (const table of ['members', 'allocations', 'tasks', 'messages', 'attachments']) {
   test(`schema creates ${table}`, () => {
@@ -89,4 +91,23 @@ test('chat replies expose a to-one computed relationship for PostgREST', () => {
   assert.match(allMigrationSql, /function public\.reply_to\(public\.messages\)/i);
   assert.match(allMigrationSql, /returns setof public\.messages rows 1/i);
   assert.match(allMigrationSql, /where message\.id = source\.reply_to_id/i);
+});
+
+test('X-O migration creates the authoritative release tables', () => {
+  assert.ok(xoMigration, 'X-O migration is missing');
+  for (const table of [
+    'xo_settings', 'xo_testers', 'xo_tournaments', 'xo_tournament_players',
+    'xo_matches', 'xo_games', 'xo_moves', 'xo_ratings', 'citizen_wallets',
+    'citizen_point_ledger', 'xo_pool_bets', 'xo_pool_totals', 'xo_side_bets',
+    'xo_command_log'
+  ]) {
+    assert.match(xoSql, new RegExp(`create table(?: if not exists)? public\\.${table}`, 'i'));
+  }
+});
+
+test('X-O wallets and bets are not directly exposed to anonymous clients', () => {
+  assert.match(xoSql, /revoke all on table public\.%I from public, anon, authenticated/i);
+  assert.doesNotMatch(xoSql, /grant select[^;]*citizen_wallets[^;]*to anon/i);
+  assert.doesNotMatch(xoSql, /grant select[^;]*xo_pool_bets[^;]*to anon/i);
+  assert.match(xoSql, /grant select on table public\.%I to anon/i);
 });

@@ -290,6 +290,290 @@ end $$;
 
 notify pgrst, 'reload schema';
 
+create or replace function private.xo_open_match(p_match_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_match public.xo_matches%rowtype;
+  v_first text;
+begin
+  select * into strict v_match from public.xo_matches where id = p_match_id for update;
+  v_first := case when random() < 0.5 then v_match.player_x_id else v_match.player_o_id end;
+  update public.xo_matches set status = 'pending', revision = revision + 1 where id = p_match_id;
+  insert into public.xo_games (match_id, game_number, first_member_id, next_member_id)
+  values (p_match_id, 1, v_first, v_first);
+end;
+$$;
+
+create or replace function private.xo_settle_match(p_match_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_match public.xo_matches%rowtype;
+  v_scope text;
+  v_winner_delta integer;
+  v_loser_delta integer;
+  v_loser_id text;
+begin
+  select * into strict v_match from public.xo_matches where id = p_match_id for update;
+  if v_match.settlement_status = 'settled' then return; end if;
+  if exists (select 1 from public.xo_pool_bets where match_id = p_match_id)
+    or exists (select 1 from public.xo_side_bets where match_id = p_match_id) then
+    raise exception using errcode = '55000', message = 'BETTING_ENGINE_NOT_READY';
+  end if;
+  select scope into v_scope from public.xo_tournaments where id = v_match.tournament_id;
+  if v_scope = 'live' then
+    v_winner_delta := case when v_match.stage = 'group' then 36 else 360 end;
+    v_loser_delta := case when v_match.stage = 'group' then -18 else -180 end;
+    v_loser_id := case when v_match.winner_id = v_match.player_x_id then v_match.player_o_id else v_match.player_x_id end;
+    update public.xo_ratings set rating = rating + v_winner_delta, wins = wins + 1, updated_at = now()
+    where member_id = v_match.winner_id;
+    update public.xo_ratings set rating = rating + v_loser_delta, losses = losses + 1, updated_at = now()
+    where member_id = v_loser_id;
+  end if;
+  update public.xo_matches set settlement_status = 'settled', revision = revision + 1 where id = p_match_id;
+end;
+$$;
+
+create or replace function private.xo_complete_match(p_match_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_match public.xo_matches%rowtype;
+  v_winner_id text;
+  v_loser_id text;
+  v_next record;
+  v_lucky_id text;
+  v_ranked text[];
+  v_match_id uuid;
+  v_semifinal_winners text[];
+begin
+  select * into strict v_match from public.xo_matches where id = p_match_id for update;
+  if v_match.status = 'completed' then return; end if;
+  v_winner_id := case when v_match.player_x_wins >= v_match.target_wins then v_match.player_x_id else v_match.player_o_id end;
+  v_loser_id := case when v_winner_id = v_match.player_x_id then v_match.player_o_id else v_match.player_x_id end;
+
+  update public.xo_matches
+  set status = 'completed', winner_id = v_winner_id, completed_at = now(), revision = revision + 1
+  where id = p_match_id;
+
+  if v_match.stage = 'group' then
+    update public.xo_tournament_players
+    set match_wins = match_wins + 1, game_wins = game_wins +
+      case when member_id = v_match.player_x_id then v_match.player_x_wins else v_match.player_o_wins end
+    where tournament_id = v_match.tournament_id and member_id = v_winner_id;
+    update public.xo_tournament_players
+    set match_losses = match_losses + 1, game_wins = game_wins +
+      case when member_id = v_match.player_x_id then v_match.player_x_wins else v_match.player_o_wins end
+    where tournament_id = v_match.tournament_id and member_id = v_loser_id;
+  end if;
+
+  perform private.xo_settle_match(p_match_id);
+
+  if v_match.stage = 'group' and not exists (
+    select 1 from public.xo_matches
+    where tournament_id = v_match.tournament_id and stage = 'group'
+      and round_number = v_match.round_number and status <> 'completed'
+  ) then
+    if v_match.round_number < 5 then
+      update public.xo_tournaments set current_round = v_match.round_number + 1 where id = v_match.tournament_id;
+      for v_next in
+        select id from public.xo_matches
+        where tournament_id = v_match.tournament_id and stage = 'group'
+          and round_number = v_match.round_number + 1 and status = 'scheduled'
+      loop
+        perform private.xo_open_match(v_next.id);
+      end loop;
+    else
+      select array_agg(member_id order by match_wins desc, game_wins desc, match_losses asc, member_id)
+      into v_ranked
+      from public.xo_tournament_players
+      where tournament_id = v_match.tournament_id and group_eligible;
+      select lucky_member_id into v_lucky_id from public.xo_tournaments where id = v_match.tournament_id;
+      update public.xo_tournaments set stage = 'playoff', current_round = 6 where id = v_match.tournament_id;
+
+      insert into public.xo_matches (
+        tournament_id, stage, round_number, bracket_slot, player_x_id, player_o_id, target_wins, status
+      ) values (
+        v_match.tournament_id, 'semifinal', 1, 1, v_ranked[1], v_lucky_id, 3, 'scheduled'
+      ) returning id into v_match_id;
+      insert into public.xo_pool_totals (match_id, pick_member_id) values (v_match_id, v_ranked[1]), (v_match_id, v_lucky_id);
+      perform private.xo_open_match(v_match_id);
+
+      insert into public.xo_matches (
+        tournament_id, stage, round_number, bracket_slot, player_x_id, player_o_id, target_wins, status
+      ) values (
+        v_match.tournament_id, 'semifinal', 1, 2, v_ranked[2], v_ranked[3], 3, 'scheduled'
+      ) returning id into v_match_id;
+      insert into public.xo_pool_totals (match_id, pick_member_id) values (v_match_id, v_ranked[2]), (v_match_id, v_ranked[3]);
+      perform private.xo_open_match(v_match_id);
+    end if;
+  elsif v_match.stage = 'semifinal' and not exists (
+    select 1 from public.xo_matches
+    where tournament_id = v_match.tournament_id and stage = 'semifinal' and status <> 'completed'
+  ) then
+    select array_agg(winner_id order by bracket_slot) into v_semifinal_winners
+    from public.xo_matches where tournament_id = v_match.tournament_id and stage = 'semifinal';
+    insert into public.xo_matches (
+      tournament_id, stage, round_number, bracket_slot, player_x_id, player_o_id, target_wins, status
+    ) values (
+      v_match.tournament_id, 'final', 2, 1, v_semifinal_winners[1], v_semifinal_winners[2], 3, 'scheduled'
+    ) returning id into v_match_id;
+    insert into public.xo_pool_totals (match_id, pick_member_id)
+    values (v_match_id, v_semifinal_winners[1]), (v_match_id, v_semifinal_winners[2]);
+    perform private.xo_open_match(v_match_id);
+    update public.xo_tournaments set current_round = 7 where id = v_match.tournament_id;
+  elsif v_match.stage = 'final' then
+    update public.xo_tournaments
+    set status = 'completed', stage = 'completed', champion_id = v_winner_id, completed_at = now()
+    where id = v_match.tournament_id;
+    update public.xo_tournament_players set final_placement = 1
+    where tournament_id = v_match.tournament_id and member_id = v_winner_id;
+  end if;
+end;
+$$;
+
+create or replace function public.xo_make_move(
+  p_member_id text,
+  p_login_code text,
+  p_request_id uuid,
+  p_game_id uuid,
+  p_row integer,
+  p_col integer
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_cached jsonb;
+  v_result jsonb;
+  v_game public.xo_games%rowtype;
+  v_match public.xo_matches%rowtype;
+  v_tournament public.xo_tournaments%rowtype;
+  v_mark text;
+  v_move_number integer;
+  v_width integer;
+  v_height integer;
+  v_dir record;
+  v_step integer;
+  v_line integer;
+  v_won boolean := false;
+  v_other_id text;
+  v_next_first text;
+  v_next_game integer;
+begin
+  perform private.xo_assert_member(p_member_id, p_login_code);
+  v_cached := private.xo_begin_command(
+    p_member_id, 'make_move', p_request_id,
+    jsonb_build_object('gameId', p_game_id, 'row', p_row, 'col', p_col)
+  );
+  if v_cached is not null then return v_cached; end if;
+
+  select * into v_game from public.xo_games where id = p_game_id for update;
+  if not found or v_game.status <> 'active' then
+    raise exception using errcode = '22023', message = 'GAME_NOT_ACTIVE';
+  end if;
+  select * into strict v_match from public.xo_matches where id = v_game.match_id for update;
+  select * into strict v_tournament from public.xo_tournaments where id = v_match.tournament_id;
+  if v_tournament.status <> 'active' or (
+    v_tournament.scope = 'test' and not exists (select 1 from public.xo_testers where member_id = p_member_id)
+  ) then
+    raise exception using errcode = '42501', message = 'FEATURE_NOT_AVAILABLE';
+  end if;
+  if p_member_id <> v_game.next_member_id then
+    raise exception using errcode = '22023', message = 'NOT_YOUR_TURN';
+  end if;
+  if p_row < v_game.min_row or p_row > v_game.max_row or p_col < v_game.min_col or p_col > v_game.max_col then
+    raise exception using errcode = '22023', message = 'INVALID_CELL';
+  end if;
+  if exists (select 1 from public.xo_moves where game_id = p_game_id and row = p_row and col = p_col) then
+    raise exception using errcode = '22023', message = 'OCCUPIED_CELL';
+  end if;
+
+  select coalesce(max(move_number), 0) + 1 into v_move_number from public.xo_moves where game_id = p_game_id;
+  v_mark := case when p_member_id = v_game.first_member_id then 'x' else 'o' end;
+  v_other_id := case when p_member_id = v_match.player_x_id then v_match.player_o_id else v_match.player_x_id end;
+  insert into public.xo_moves (game_id, move_number, member_id, mark, row, col)
+  values (p_game_id, v_move_number, p_member_id, v_mark, p_row, p_col);
+
+  v_height := v_game.max_row - v_game.min_row + 1;
+  v_width := v_game.max_col - v_game.min_col + 1;
+  if p_row = v_game.min_row then v_game.min_row := v_game.min_row - least(3, 36 - v_height); end if;
+  if p_row = v_game.max_row then v_game.max_row := v_game.max_row + least(3, 36 - v_height); end if;
+  if p_col = v_game.min_col then v_game.min_col := v_game.min_col - least(3, 36 - v_width); end if;
+  if p_col = v_game.max_col then v_game.max_col := v_game.max_col + least(3, 36 - v_width); end if;
+
+  for v_dir in select * from (values (1,0),(0,1),(1,1),(1,-1)) d(dr,dc) loop
+    v_line := 1;
+    for v_step in 1..35 loop
+      exit when not exists (select 1 from public.xo_moves where game_id = p_game_id and member_id = p_member_id and row = p_row + v_step*v_dir.dr and col = p_col + v_step*v_dir.dc);
+      v_line := v_line + 1;
+    end loop;
+    for v_step in 1..35 loop
+      exit when not exists (select 1 from public.xo_moves where game_id = p_game_id and member_id = p_member_id and row = p_row - v_step*v_dir.dr and col = p_col - v_step*v_dir.dc);
+      v_line := v_line + 1;
+    end loop;
+    if v_line >= 5 then v_won := true; exit; end if;
+  end loop;
+
+  if v_move_number = 1 then
+    update public.xo_matches
+    set status = 'active', started_at = coalesce(started_at, now()), betting_locked_at = now(), revision = revision + 1
+    where id = v_match.id;
+  end if;
+
+  if v_won then
+    update public.xo_games
+    set status = 'completed', winner_id = p_member_id, next_member_id = null,
+      min_row = v_game.min_row, max_row = v_game.max_row, min_col = v_game.min_col, max_col = v_game.max_col,
+      completed_at = now()
+    where id = p_game_id;
+    if p_member_id = v_match.player_x_id then
+      update public.xo_matches set player_x_wins = player_x_wins + 1, revision = revision + 1 where id = v_match.id
+      returning player_x_wins into v_match.player_x_wins;
+    else
+      update public.xo_matches set player_o_wins = player_o_wins + 1, revision = revision + 1 where id = v_match.id
+      returning player_o_wins into v_match.player_o_wins;
+    end if;
+    if greatest(v_match.player_x_wins, v_match.player_o_wins) >= v_match.target_wins then
+      perform private.xo_complete_match(v_match.id);
+    else
+      select coalesce(max(game_number), 0) + 1 into v_next_game from public.xo_games where match_id = v_match.id;
+      v_next_first := case when v_game.first_member_id = v_match.player_x_id then v_match.player_o_id else v_match.player_x_id end;
+      insert into public.xo_games (match_id, game_number, first_member_id, next_member_id)
+      values (v_match.id, v_next_game, v_next_first, v_next_first);
+    end if;
+  else
+    update public.xo_games
+    set next_member_id = v_other_id,
+      min_row = v_game.min_row, max_row = v_game.max_row, min_col = v_game.min_col, max_col = v_game.max_col
+    where id = p_game_id;
+  end if;
+
+  v_result := jsonb_build_object('gameId', p_game_id, 'moveNumber', v_move_number, 'winnerId', case when v_won then p_member_id else null end);
+  return private.xo_finish_command(p_member_id, 'make_move', p_request_id, v_result);
+end;
+$$;
+
+revoke all on function private.xo_open_match(uuid) from public, anon, authenticated;
+revoke all on function private.xo_settle_match(uuid) from public, anon, authenticated;
+revoke all on function private.xo_complete_match(uuid) from public, anon, authenticated;
+revoke all on function public.xo_make_move(text, text, uuid, uuid, integer, integer) from public, anon, authenticated;
+grant execute on function public.xo_make_move(text, text, uuid, uuid, integer, integer) to anon;
+
+notify pgrst, 'reload schema';
+
 create or replace function private.xo_begin_command(
   p_member_id text,
   p_command_name text,

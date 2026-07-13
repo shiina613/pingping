@@ -414,6 +414,7 @@ export class CollaborationController {
       const { login_code, ...member } = data;
       this.session = { member, code: login_code };
       localStorage.setItem('pp_session', JSON.stringify(this.session));
+      this.portal.onSessionChanged?.(this.session);
       document.getElementById('login-code').value = '';
       this.renderAccount();
       this.closeLogin();
@@ -434,6 +435,7 @@ export class CollaborationController {
     const { login_code, ...member } = data;
     this.session = { member, code: login_code };
     localStorage.setItem('pp_session', JSON.stringify(this.session));
+    this.portal.onSessionChanged?.(this.session);
     this.renderAccount();
   }
 
@@ -449,6 +451,7 @@ export class CollaborationController {
       if (error) throw error;
       this.session.code = code;
       localStorage.setItem('pp_session', JSON.stringify(this.session));
+      this.portal.onSessionChanged?.(this.session);
       this.toast('Đã đổi mã đăng nhập.', 'success');
     } catch (error) { this.toast(error.message, 'error'); }
   }
@@ -458,6 +461,7 @@ export class CollaborationController {
     this.muteTimer = null;
     this.session = null;
     localStorage.removeItem('pp_session');
+    this.portal.onSessionChanged?.(null);
     this.renderAccount();
     this.notifications = [];
     this.renderNotifications();

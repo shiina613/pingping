@@ -1,10 +1,18 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-for tab in dashboard competitions planner timeline kanban directory chat settings; do
+for tab in dashboard competitions planner timeline kanban directory chat xo settings; do
   grep -q "id=\"tab-$tab\"" index.html
   grep -q "data-tab=\"$tab\"" index.html
 done
+
+for id in xo-tournament-status xo-connectivity xo-schedule xo-match-score xo-wallet xo-pool-form xo-side-bet-form xo-host-controls xo-standings xo-bracket xo-leaderboard xo-board; do
+  grep -q "id=\"$id\"" index.html
+done
+grep -q 'XoArena' app.js
+grep -q '__PINGPING_TEST_CONFIG__' config.js
+! grep -q 'xoArenaEnabled' config.js
+! grep -q 'xoArenaTesterIds' config.js
 
 for id in login-modal login-code login-submit account-button logout-btn change-code-btn tab-chat chat-room-list chat-message-list chat-new-message-btn chat-compose-form chat-message-input chat-file-input chat-send-btn; do
   grep -q "id=\"$id\"" index.html

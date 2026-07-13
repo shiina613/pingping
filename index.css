@@ -2647,6 +2647,79 @@ body.light-theme .modal-close-btn:hover {
   }
 }
 
+/* X-O Challenger release arena */
+.xo-empty-state { padding: 48px 24px; text-align: center; color: var(--text-secondary); }
+.xo-arena-shell { display: grid; gap: 18px; }
+.xo-arena-shell[hidden], .xo-empty-state[hidden], .xo-host-controls[hidden], #xo-pool-form[hidden], #xo-side-bet-form[hidden] { display: none; }
+.xo-arena-header { display: flex; justify-content: space-between; align-items: end; gap: 18px; }
+.xo-arena-header h2 { font-size: clamp(1.7rem, 3vw, 2.5rem); line-height: 1.05; }
+.xo-kicker { color: var(--accent-cyan); font-size: .76rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+#xo-tournament-status { display: grid; gap: 3px; margin-top: 9px; color: var(--text-secondary); }
+.xo-connectivity { display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--border-glass-hover); border-radius: var(--radius-full); padding: 7px 11px; font-size: .82rem; font-weight: 700; white-space: nowrap; }
+.xo-connectivity::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.xo-connectivity.online { color: #047857; background: rgb(16 185 129 / 12%); }
+.xo-connectivity.offline { color: #be123c; background: rgb(244 63 94 / 12%); }
+.xo-layout { display: grid; grid-template-columns: minmax(190px, .72fr) minmax(420px, 1.7fr) minmax(220px, .85fr); gap: 14px; align-items: start; }
+.xo-layout .glass-card, .xo-lower-grid .glass-card { padding: 16px; }
+.xo-layout h3, .xo-lower-grid h3 { margin-bottom: 12px; font-size: .96rem; }
+.xo-schedule { display: grid; gap: 7px; max-height: 620px; overflow: auto; }
+.xo-schedule-item { display: grid; gap: 3px; width: 100%; padding: 10px; border: 1px solid var(--border-glass); border-radius: 10px; background: transparent; color: var(--text-primary); text-align: left; cursor: pointer; }
+.xo-schedule-item span, .xo-schedule-item small { color: var(--text-secondary); font-size: .72rem; }
+.xo-schedule-item.active { border-color: var(--accent-blue); background: rgb(59 130 246 / 10%); }
+.xo-match-card { min-width: 0; }
+.xo-match-score { min-height: 58px; display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px; }
+.xo-match-score h2 { margin-top: 3px; font-size: clamp(1rem, 2vw, 1.35rem); }
+.xo-match-score small { color: var(--text-secondary); text-transform: uppercase; }
+.xo-match-score b { color: var(--accent-cyan); }
+.xo-turn { padding: 7px 10px; border-radius: var(--radius-full); background: var(--bg-secondary); color: var(--text-secondary); font-size: .8rem; white-space: nowrap; }
+.xo-turn.mine { background: rgb(16 185 129 / 13%); color: #047857; font-weight: 800; }
+.xo-board-scroll { max-width: 100%; overflow: auto; padding: 2px; scrollbar-color: var(--accent-blue) transparent; }
+.xo-board { display: grid; grid-template-columns: repeat(var(--xo-cols, 9), 36px); width: max-content; border: 1px solid var(--border-glass-hover); background: var(--border-glass); }
+.xo-cell { width: 36px; height: 36px; border: 1px solid var(--border-glass); background: var(--bg-secondary); color: var(--text-primary); font: 800 1rem var(--font-display); cursor: pointer; }
+.xo-cell:not(:disabled):hover { background: rgb(59 130 246 / 14%); }
+.xo-cell:focus-visible { position: relative; z-index: 2; outline: 3px solid var(--accent-amber); outline-offset: -3px; }
+.xo-cell:disabled { cursor: not-allowed; opacity: .82; }
+.xo-cell.x { color: var(--accent-blue); }
+.xo-cell.o { color: var(--accent-rose); }
+.xo-board-empty { min-width: min(420px, 80vw); padding: 80px 20px; text-align: center; color: var(--text-secondary); }
+.xo-side-rail { display: grid; gap: 14px; }
+.xo-wallet { display: grid; gap: 4px; }
+.xo-wallet span, .xo-wallet small { color: var(--text-secondary); }
+.xo-wallet strong { font-size: 1.8rem; color: var(--accent-amber); }
+.xo-betting form, .xo-host-controls form { display: grid; gap: 9px; margin-top: 12px; }
+.xo-betting label, .xo-host-controls label { display: grid; gap: 5px; color: var(--text-secondary); font-size: .78rem; }
+.xo-betting input, .xo-betting select { min-width: 0; width: 100%; padding: 9px; border: 1px solid var(--border-glass-hover); border-radius: 8px; background: var(--bg-secondary); color: var(--text-primary); }
+.xo-betting button, .xo-host-controls button { min-height: 36px; padding: 8px 11px; border: 1px solid var(--border-glass-hover); border-radius: 8px; background: var(--accent-blue); color: #fff; font: inherit; font-weight: 750; cursor: pointer; white-space: nowrap; }
+.xo-betting button:disabled, .xo-host-controls button:disabled, .xo-offline .xo-betting button { opacity: .48; cursor: not-allowed; }
+#xo-bet-status { display: grid; gap: 5px; color: var(--text-secondary); font-size: .8rem; }
+#xo-bet-status span { display: flex; justify-content: space-between; gap: 8px; }
+.xo-host-actions { display: flex; flex-wrap: wrap; gap: 7px; }
+.xo-host-controls fieldset { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; border: 0; }
+.xo-host-controls legend { margin-bottom: 7px; font-weight: 700; }
+.xo-host-controls label { display: flex; align-items: center; gap: 6px; }
+.xo-lower-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.xo-ranking { display: grid; gap: 5px; list-style: none; }
+.xo-ranking li { display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; gap: 8px; padding: 7px 0; border-bottom: 1px solid var(--border-glass); }
+.xo-ranking li b { color: var(--text-secondary); }
+.xo-bracket { display: grid; gap: 8px; }
+.xo-bracket div { display: grid; gap: 3px; padding: 9px; border-left: 3px solid var(--accent-purple); background: rgb(139 92 246 / 8%); }
+.xo-bracket small { color: var(--text-secondary); text-transform: uppercase; }
+.xo-pending { cursor: progress; }
+
+@media (max-width: 1100px) {
+  .xo-layout { grid-template-columns: minmax(170px, .7fr) minmax(400px, 1.5fr); }
+  .xo-side-rail { grid-column: 1 / -1; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (max-width: 900px) {
+  .xo-layout, .xo-lower-grid, .xo-side-rail { grid-template-columns: minmax(0, 1fr); }
+  .xo-schedule { max-height: 240px; }
+  .xo-match-score { align-items: start; flex-direction: column; }
+  .xo-arena-header { align-items: start; }
+  .xo-board { grid-template-columns: repeat(var(--xo-cols, 9), 32px); }
+  .xo-cell { width: 32px; height: 32px; }
+}
+
 /* Collaboration, member session and chat */
 .header-actions {
   display: flex;

@@ -75,6 +75,10 @@
         </svg>
         Trò chuyện <span id="chat-tab-badge" class="tab-unread-badge" hidden>0</span>
       </button>
+      <button class="tab-btn" data-tab="xo" hidden>
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" d="M5 5l14 14M19 5L5 19"></path><circle cx="12" cy="12" r="9"></circle></svg>
+        X-O Challenger
+      </button>
       <button class="tab-btn" data-tab="settings">
         <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
           <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
@@ -373,7 +377,35 @@
       </div>
     </section>
 
-    <!-- 8. TAB: SETTINGS -->
+    <!-- 8. TAB: X-O CHALLENGER -->
+    <section id="tab-xo" class="tab-panel xo-arena" aria-labelledby="xo-heading">
+      <div class="xo-empty-state">Đăng nhập để kiểm tra quyền truy cập X-O Challenger.</div>
+      <div class="xo-arena-shell" hidden>
+        <header class="xo-arena-header">
+          <div><p class="xo-kicker">Giải nội bộ</p><h2 id="xo-heading">X-O Challenger</h2><div id="xo-tournament-status"></div></div>
+          <span id="xo-connectivity" class="xo-connectivity offline" aria-live="polite">Mất kết nối</span>
+        </header>
+        <div class="xo-layout">
+          <aside class="glass-card xo-schedule-card"><h3>Lịch thi đấu</h3><div id="xo-schedule" class="xo-schedule" data-testid="xo-schedule"></div></aside>
+          <main class="glass-card xo-match-card">
+            <div id="xo-match-score" class="xo-match-score" data-testid="xo-match-score"></div>
+            <div class="xo-board-scroll" data-testid="xo-board-scroll"><div id="xo-board" class="xo-board" role="grid" aria-label="Bàn cờ X-O"></div></div>
+          </main>
+          <aside class="xo-side-rail">
+            <section id="xo-wallet" class="glass-card xo-wallet" data-testid="xo-wallet"></section>
+            <section class="glass-card xo-betting"><h3>Cược điểm</h3><div id="xo-bet-status"></div><form id="xo-pool-form" data-testid="xo-pool-form"></form><form id="xo-side-bet-form" data-testid="xo-side-bet-form"></form></section>
+            <section id="xo-host-controls" class="glass-card xo-host-controls" data-testid="xo-host-controls" hidden></section>
+          </aside>
+        </div>
+        <div class="xo-lower-grid">
+          <section class="glass-card"><h3>Bảng xếp hạng</h3><ol id="xo-standings" class="xo-ranking" data-testid="xo-standings"></ol></section>
+          <section class="glass-card"><h3>Playoff</h3><div id="xo-bracket" class="xo-bracket" data-testid="xo-bracket"></div></section>
+          <section class="glass-card"><h3>Rating live</h3><ol id="xo-leaderboard" class="xo-ranking" data-testid="xo-leaderboard"></ol></section>
+        </div>
+      </div>
+    </section>
+
+    <!-- 9. TAB: SETTINGS -->
     <section id="tab-settings" class="tab-panel">
       <div class="glass-card settings-layout">
         <h3 class="section-title">Kết nối nhóm</h3>
@@ -532,7 +564,7 @@
     </div>
   </footer>
 
-  <script src="config.js?v=1"></script>
+  <script type="module" src="config.js?v=2"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/tsparticles-preset-stars@2/tsparticles.preset.stars.bundle.min.js"></script>

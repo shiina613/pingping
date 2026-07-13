@@ -2,6 +2,8 @@ import { DEFAULT_MEMBERS, COMPETITIONS, INITIAL_ALLOCATIONS, DEFAULT_KANBAN_TASK
 import { CollaborationController } from './collaboration-controller.js';
 import { buildCalendar, getTeamSizeWarning } from './collaboration.js';
 import { getCompetitionCountdowns, getCountdownParts } from './src/countdown.js';
+import { XoApi } from './src/xo-api.js';
+import { XoArena } from './src/xo-arena.js';
 
 class TeamPortal {
   constructor() {
@@ -178,6 +180,7 @@ class TeamPortal {
     });
     this.render();
     if (tabName === 'chat') this.collaboration?.loadMessages();
+    if (tabName === 'xo') this.xoArena?.refresh().catch(error => this.collaboration?.toast(error.message, 'error'));
     if (updateHash) window.history.pushState(null, '', `#${tabName}`);
   }
 
@@ -187,13 +190,24 @@ class TeamPortal {
       console.error('Thiếu cấu hình Supabase hoặc SDK không tải được.');
       return;
     }
-    this.collaboration = new CollaborationController(this, window.supabase.createClient(config.supabaseUrl, config.supabaseKey));
+    const client = window.supabase.createClient(config.supabaseUrl, config.supabaseKey);
+    this.collaboration = new CollaborationController(this, client);
+    this.xoArena = new XoArena(new XoApi(client), {
+      members: this.members,
+      toast: (message, type) => this.collaboration?.toast(message, type)
+    });
+    this.xoArena.connect();
     try {
       await this.collaboration.init();
+      this.onSessionChanged(this.collaboration.session);
     } catch (error) {
       console.error('Không thể khởi tạo cộng tác:', error);
       this.collaboration.setConnection(false, error.message);
     }
+  }
+
+  onSessionChanged(session) {
+    this.xoArena?.setSession(session);
   }
 
   // ==========================================================================

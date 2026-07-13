@@ -27,3 +27,8 @@ test('release test scripts pin Supabase CLI and Playwright', () => {
   assert.match(pkg.scripts['test:release'], /test:concurrency/);
   assert.match(pkg.scripts['test:release'], /test:e2e/);
 });
+
+test('X-O API client resolves its pure domain dependency', async () => {
+  const module = await import('../src/xo-api.js');
+  assert.equal(typeof module.XoApi, 'function');
+});

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { canPlayCell, getArenaRole, selectArenaMatch, shouldShowTestSimulation } from '../src/xo-arena.js';
+import { canPlayCell, getArenaRole, selectArenaMatch, shouldShowLiveAction, shouldShowTestSimulation } from '../src/xo-arena.js';
 
 test('arena role distinguishes player, spectator, and host', () => {
   assert.equal(getArenaRole({ memberId: 'tung', hostId: 'tung', match: { player_x_id: 'hau', player_o_id: 'hung' } }), 'host');
@@ -29,4 +29,10 @@ test('test simulation control is host-only and test-only', () => {
   assert.equal(shouldShowTestSimulation({ role: 'host', releaseMode: 'test' }), true);
   assert.equal(shouldShowTestSimulation({ role: 'host', releaseMode: 'live' }), false);
   assert.equal(shouldShowTestSimulation({ role: 'player', releaseMode: 'test' }), false);
+});
+
+test('live action disappears after release is already live', () => {
+  assert.equal(shouldShowLiveAction({ role: 'host', releaseMode: 'test' }), true);
+  assert.equal(shouldShowLiveAction({ role: 'host', releaseMode: 'live' }), false);
+  assert.equal(shouldShowLiveAction({ role: 'player', releaseMode: 'test' }), false);
 });

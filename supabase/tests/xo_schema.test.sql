@@ -1,6 +1,6 @@
 begin;
 
-select plan(23);
+select plan(28);
 
 select has_table('public', 'xo_settings', 'xo_settings');
 select has_table('public', 'xo_testers', 'xo_testers');
@@ -25,6 +25,11 @@ select policies_are('public', 'xo_pool_bets', array[]::text[]);
 select policies_are('public', 'xo_side_bets', array[]::text[]);
 select table_privs_are('public', 'citizen_wallets', 'anon', array[]::text[]);
 select table_privs_are('public', 'xo_moves', 'anon', array['SELECT']);
+select table_privs_are('public', 'members', 'anon', array['SELECT', 'INSERT', 'UPDATE', 'DELETE']);
+select table_privs_are('public', 'allocations', 'anon', array['SELECT', 'INSERT', 'UPDATE', 'DELETE']);
+select table_privs_are('public', 'tasks', 'anon', array['SELECT', 'INSERT', 'UPDATE', 'DELETE']);
+select table_privs_are('public', 'attachments', 'anon', array['SELECT', 'INSERT', 'UPDATE', 'DELETE']);
+select table_privs_are('public', 'messages', 'anon', array['SELECT', 'UPDATE', 'DELETE']);
 
 select * from finish();
 rollback;

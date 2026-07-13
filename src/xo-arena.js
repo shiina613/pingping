@@ -259,7 +259,7 @@ export class XoArena {
           occupied: Boolean(move),
           gameStatus: game.status
         });
-        cells.push(`<button type="button" class="xo-cell ${move?.mark || ''}" data-xo-row="${row}" data-xo-col="${col}" ${enabled ? '' : 'disabled'} aria-label="Hàng ${row}, cột ${col}${move ? `: ${move.mark.toUpperCase()}` : ''}">${move?.mark?.toUpperCase() || ''}</button>`);
+        cells.push(`<button type="button" class="xo-cell ${move?.mark || ''}" data-testid="xo-cell-${row}-${col}" data-xo-row="${row}" data-xo-col="${col}" ${enabled ? '' : 'disabled'} aria-label="Hàng ${row}, cột ${col}${move ? `: ${move.mark.toUpperCase()}` : ''}">${move?.mark?.toUpperCase() || ''}</button>`);
       }
     }
     board.style.setProperty('--xo-cols', cols);

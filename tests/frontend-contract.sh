@@ -11,6 +11,7 @@ for id in xo-tournament-status xo-connectivity xo-schedule xo-match-score xo-wal
 done
 grep -q 'XoArena' app.js
 grep -q '__PINGPING_TEST_CONFIG__' config.js
+grep -Fq '.tab-btn[hidden] { display: none; }' index.css
 ! grep -q 'xoArenaEnabled' config.js
 ! grep -q 'xoArenaTesterIds' config.js
 

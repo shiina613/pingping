@@ -2649,6 +2649,7 @@ body.light-theme .modal-close-btn:hover {
 
 /* X-O Challenger release arena */
 .xo-empty-state { padding: 48px 24px; text-align: center; color: var(--text-secondary); }
+.tab-btn[hidden] { display: none; }
 .xo-arena-shell { display: grid; gap: 18px; }
 .xo-arena-shell[hidden], .xo-empty-state[hidden], .xo-host-controls[hidden], #xo-pool-form[hidden], #xo-side-bet-form[hidden] { display: none; }
 .xo-arena-header { display: flex; justify-content: space-between; align-items: end; gap: 18px; }

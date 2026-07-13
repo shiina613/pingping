@@ -290,6 +290,205 @@ end $$;
 
 notify pgrst, 'reload schema';
 
+create or replace function public.xo_place_pool_bet(
+  p_member_id text,
+  p_login_code text,
+  p_request_id uuid,
+  p_match_id uuid,
+  p_pick_member_id text,
+  p_stake integer
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_cached jsonb;
+  v_result jsonb;
+  v_match public.xo_matches%rowtype;
+  v_tournament public.xo_tournaments%rowtype;
+  v_wallet public.citizen_wallets%rowtype;
+  v_bet_id uuid;
+begin
+  perform private.xo_assert_member(p_member_id, p_login_code);
+  if p_stake <= 0 then raise exception using errcode = '22023', message = 'INVALID_STAKE'; end if;
+  v_cached := private.xo_begin_command(p_member_id, 'place_pool_bet', p_request_id,
+    jsonb_build_object('matchId', p_match_id, 'pickMemberId', p_pick_member_id, 'stake', p_stake));
+  if v_cached is not null then return v_cached; end if;
+
+  select * into v_match from public.xo_matches where id = p_match_id for update;
+  if not found or v_match.status not in ('pending', 'active') then
+    raise exception using errcode = '22023', message = 'MATCH_NOT_OPEN';
+  end if;
+  select * into strict v_tournament from public.xo_tournaments where id = v_match.tournament_id;
+  if v_tournament.scope = 'test' and not exists (select 1 from public.xo_testers where member_id = p_member_id) then
+    raise exception using errcode = '42501', message = 'FEATURE_NOT_AVAILABLE';
+  end if;
+  if p_member_id in (v_match.player_x_id, v_match.player_o_id) then
+    raise exception using errcode = '42501', message = 'MATCH_PLAYERS_CANNOT_POOL_BET';
+  end if;
+  if p_pick_member_id not in (v_match.player_x_id, v_match.player_o_id) then
+    raise exception using errcode = '22023', message = 'INVALID_PICK';
+  end if;
+  if v_match.betting_locked_at is not null then
+    raise exception using errcode = '22023', message = 'BETTING_LOCKED';
+  end if;
+  if exists (select 1 from public.xo_pool_bets where match_id = p_match_id and member_id = p_member_id) then
+    raise exception using errcode = '22023', message = 'POOL_POSITION_EXISTS';
+  end if;
+
+  select * into v_wallet from public.citizen_wallets
+  where member_id = p_member_id and scope = v_tournament.scope for update;
+  if not found or v_wallet.balance < p_stake then
+    raise exception using errcode = '22023', message = 'INSUFFICIENT_BALANCE';
+  end if;
+  update public.citizen_wallets set balance = balance - p_stake, updated_at = now()
+  where member_id = p_member_id and scope = v_tournament.scope
+  returning balance into v_wallet.balance;
+  insert into public.xo_pool_bets (
+    tournament_id, match_id, member_id, pick_member_id, stake, request_id
+  ) values (v_match.tournament_id, p_match_id, p_member_id, p_pick_member_id, p_stake, p_request_id)
+  returning id into v_bet_id;
+  insert into public.citizen_point_ledger (
+    member_id, scope, amount, reason, tournament_id, match_id, bet_id, request_id, balance_after
+  ) values (
+    p_member_id, v_tournament.scope, -p_stake, 'pool_escrow', v_match.tournament_id,
+    p_match_id, v_bet_id, p_request_id, v_wallet.balance
+  );
+  update public.xo_pool_totals set total_stake = total_stake + p_stake, updated_at = now()
+  where match_id = p_match_id and pick_member_id = p_pick_member_id;
+  update public.xo_matches set revision = revision + 1 where id = p_match_id;
+  v_result := jsonb_build_object('betId', v_bet_id, 'stake', p_stake, 'balance', v_wallet.balance);
+  return private.xo_finish_command(p_member_id, 'place_pool_bet', p_request_id, v_result);
+end;
+$$;
+
+create or replace function public.xo_propose_side_bet(
+  p_member_id text,
+  p_login_code text,
+  p_request_id uuid,
+  p_match_id uuid,
+  p_stake integer
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_cached jsonb;
+  v_match public.xo_matches%rowtype;
+  v_tournament public.xo_tournaments%rowtype;
+  v_wallet public.citizen_wallets%rowtype;
+  v_opponent_id text;
+  v_bet_id uuid;
+  v_result jsonb;
+begin
+  perform private.xo_assert_member(p_member_id, p_login_code);
+  if p_stake <= 0 then raise exception using errcode = '22023', message = 'INVALID_STAKE'; end if;
+  v_cached := private.xo_begin_command(p_member_id, 'propose_side_bet', p_request_id,
+    jsonb_build_object('matchId', p_match_id, 'stake', p_stake));
+  if v_cached is not null then return v_cached; end if;
+  select * into v_match from public.xo_matches where id = p_match_id for update;
+  if not found or v_match.betting_locked_at is not null or v_match.status <> 'pending' then
+    raise exception using errcode = '22023', message = 'BETTING_LOCKED';
+  end if;
+  if p_member_id not in (v_match.player_x_id, v_match.player_o_id) then
+    raise exception using errcode = '42501', message = 'ONLY_MATCH_PLAYERS_CAN_SIDE_BET';
+  end if;
+  if exists (select 1 from public.xo_side_bets where match_id = p_match_id) then
+    raise exception using errcode = '22023', message = 'SIDE_BET_EXISTS';
+  end if;
+  select * into strict v_tournament from public.xo_tournaments where id = v_match.tournament_id;
+  v_opponent_id := case when p_member_id = v_match.player_x_id then v_match.player_o_id else v_match.player_x_id end;
+  select * into v_wallet from public.citizen_wallets where member_id = p_member_id and scope = v_tournament.scope for update;
+  if not found or v_wallet.balance < p_stake then raise exception using errcode = '22023', message = 'INSUFFICIENT_BALANCE'; end if;
+  update public.citizen_wallets set balance = balance - p_stake, updated_at = now()
+  where member_id = p_member_id and scope = v_tournament.scope returning balance into v_wallet.balance;
+  insert into public.xo_side_bets (tournament_id, match_id, proposer_id, opponent_id, stake, request_id)
+  values (v_match.tournament_id, p_match_id, p_member_id, v_opponent_id, p_stake, p_request_id)
+  returning id into v_bet_id;
+  insert into public.citizen_point_ledger (
+    member_id, scope, amount, reason, tournament_id, match_id, bet_id, request_id, balance_after
+  ) values (p_member_id, v_tournament.scope, -p_stake, 'side_escrow', v_match.tournament_id,
+    p_match_id, v_bet_id, p_request_id, v_wallet.balance);
+  update public.xo_matches set revision = revision + 1 where id = p_match_id;
+  v_result := jsonb_build_object('betId', v_bet_id, 'stake', p_stake, 'status', 'proposed');
+  return private.xo_finish_command(p_member_id, 'propose_side_bet', p_request_id, v_result);
+end;
+$$;
+
+create or replace function public.xo_respond_side_bet(
+  p_member_id text,
+  p_login_code text,
+  p_request_id uuid,
+  p_bet_id uuid,
+  p_action text
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_cached jsonb;
+  v_bet public.xo_side_bets%rowtype;
+  v_tournament public.xo_tournaments%rowtype;
+  v_wallet public.citizen_wallets%rowtype;
+  v_status text;
+  v_result jsonb;
+begin
+  perform private.xo_assert_member(p_member_id, p_login_code);
+  if p_action not in ('accept', 'reject', 'cancel') then raise exception using errcode = '22023', message = 'INVALID_SIDE_BET_ACTION'; end if;
+  v_cached := private.xo_begin_command(p_member_id, 'respond_side_bet', p_request_id,
+    jsonb_build_object('betId', p_bet_id, 'action', p_action));
+  if v_cached is not null then return v_cached; end if;
+  select * into v_bet from public.xo_side_bets where id = p_bet_id for update;
+  if not found or v_bet.status <> 'proposed' then raise exception using errcode = '22023', message = 'SIDE_BET_NOT_PENDING'; end if;
+  select * into strict v_tournament from public.xo_tournaments where id = v_bet.tournament_id;
+  if p_action = 'cancel' then
+    if p_member_id <> v_bet.proposer_id then raise exception using errcode = '42501', message = 'ONLY_PROPOSER_CAN_CANCEL'; end if;
+    v_status := 'cancelled';
+  else
+    if p_member_id <> v_bet.opponent_id then raise exception using errcode = '42501', message = 'ONLY_OPPONENT_CAN_RESPOND'; end if;
+    v_status := case when p_action = 'accept' then 'accepted' else 'rejected' end;
+  end if;
+
+  if v_status = 'accepted' then
+    select * into v_wallet from public.citizen_wallets where member_id = p_member_id and scope = v_tournament.scope for update;
+    if not found or v_wallet.balance < v_bet.stake then raise exception using errcode = '22023', message = 'INSUFFICIENT_BALANCE'; end if;
+    update public.citizen_wallets set balance = balance - v_bet.stake, updated_at = now()
+    where member_id = p_member_id and scope = v_tournament.scope returning balance into v_wallet.balance;
+    insert into public.citizen_point_ledger (
+      member_id, scope, amount, reason, tournament_id, match_id, bet_id, request_id, balance_after
+    ) values (p_member_id, v_tournament.scope, -v_bet.stake, 'side_escrow', v_bet.tournament_id,
+      v_bet.match_id, v_bet.id, p_request_id, v_wallet.balance);
+    update public.xo_side_bets set status = 'accepted', accepted_at = now() where id = p_bet_id;
+  else
+    update public.xo_side_bets set status = v_status, settled_at = now() where id = p_bet_id;
+    update public.citizen_wallets set balance = balance + v_bet.stake, updated_at = now()
+    where member_id = v_bet.proposer_id and scope = v_tournament.scope returning balance into v_wallet.balance;
+    insert into public.citizen_point_ledger (
+      member_id, scope, amount, reason, tournament_id, match_id, bet_id, request_id, balance_after
+    ) values (v_bet.proposer_id, v_tournament.scope, v_bet.stake, 'side_refund', v_bet.tournament_id,
+      v_bet.match_id, v_bet.id, p_request_id, v_wallet.balance);
+  end if;
+  update public.xo_matches set revision = revision + 1 where id = v_bet.match_id;
+  v_result := jsonb_build_object('betId', p_bet_id, 'status', v_status);
+  return private.xo_finish_command(p_member_id, 'respond_side_bet', p_request_id, v_result);
+end;
+$$;
+
+revoke all on function public.xo_place_pool_bet(text, text, uuid, uuid, text, integer) from public, anon, authenticated;
+revoke all on function public.xo_propose_side_bet(text, text, uuid, uuid, integer) from public, anon, authenticated;
+revoke all on function public.xo_respond_side_bet(text, text, uuid, uuid, text) from public, anon, authenticated;
+grant execute on function public.xo_place_pool_bet(text, text, uuid, uuid, text, integer) to anon;
+grant execute on function public.xo_propose_side_bet(text, text, uuid, uuid, integer) to anon;
+grant execute on function public.xo_respond_side_bet(text, text, uuid, uuid, text) to anon;
+
+notify pgrst, 'reload schema';
+
 create or replace function private.xo_open_match(p_match_id uuid)
 returns void
 language plpgsql
@@ -528,6 +727,7 @@ begin
   end loop;
 
   if v_move_number = 1 then
+    perform private.xo_refund_pending_side_bet(v_match.id);
     update public.xo_matches
     set status = 'active', started_at = coalesce(started_at, now()), betting_locked_at = now(), revision = revision + 1
     where id = v_match.id;
@@ -919,6 +1119,9 @@ as $$
 declare
   v_cached jsonb;
   v_result jsonb;
+  v_bet record;
+  v_scope text;
+  v_balance integer;
 begin
   perform private.xo_assert_member(p_member_id, p_login_code);
   if p_member_id <> 'tung' then
@@ -940,6 +1143,51 @@ begin
   ) then
     raise exception using errcode = '55000', message = 'SETTLED_TOURNAMENT_CANNOT_CANCEL';
   end if;
+
+  select scope into v_scope from public.xo_tournaments where id = p_tournament_id;
+  perform 1 from public.xo_matches where tournament_id = p_tournament_id order by id for update;
+
+  for v_bet in
+    select * from public.xo_pool_bets
+    where tournament_id = p_tournament_id and status = 'open' order by id for update
+  loop
+    update public.xo_pool_bets set status = 'refunded', payout = v_bet.stake, settled_at = now()
+    where id = v_bet.id and status = 'open';
+    if found then
+      update public.citizen_wallets set balance = balance + v_bet.stake, updated_at = now()
+      where member_id = v_bet.member_id and scope = v_scope returning balance into v_balance;
+      insert into public.citizen_point_ledger (
+        member_id, scope, amount, reason, tournament_id, match_id, bet_id, request_id, balance_after
+      ) values (
+        v_bet.member_id, v_scope, v_bet.stake, 'pool_refund', p_tournament_id,
+        v_bet.match_id, v_bet.id, p_request_id, v_balance
+      );
+    end if;
+  end loop;
+  update public.xo_pool_totals set total_stake = 0, updated_at = now()
+  where match_id in (select id from public.xo_matches where tournament_id = p_tournament_id);
+
+  for v_bet in
+    select * from public.xo_side_bets
+    where tournament_id = p_tournament_id and status in ('proposed', 'accepted') order by id for update
+  loop
+    update public.xo_side_bets set status = 'refunded', payout = case when v_bet.status = 'accepted' then v_bet.stake * 2 else v_bet.stake end,
+      settled_at = now() where id = v_bet.id and status = v_bet.status;
+    if found then
+      update public.citizen_wallets set balance = balance + v_bet.stake, updated_at = now()
+      where member_id = v_bet.proposer_id and scope = v_scope returning balance into v_balance;
+      insert into public.citizen_point_ledger (
+        member_id, scope, amount, reason, tournament_id, match_id, bet_id, request_id, balance_after
+      ) values (v_bet.proposer_id, v_scope, v_bet.stake, 'side_refund', p_tournament_id, v_bet.match_id, v_bet.id, p_request_id, v_balance);
+      if v_bet.status = 'accepted' then
+        update public.citizen_wallets set balance = balance + v_bet.stake, updated_at = now()
+        where member_id = v_bet.opponent_id and scope = v_scope returning balance into v_balance;
+        insert into public.citizen_point_ledger (
+          member_id, scope, amount, reason, tournament_id, match_id, bet_id, request_id, balance_after
+        ) values (v_bet.opponent_id, v_scope, v_bet.stake, 'side_refund', p_tournament_id, v_bet.match_id, v_bet.id, p_request_id, v_balance);
+      end if;
+    end if;
+  end loop;
 
   update public.xo_games g set status = 'cancelled', next_member_id = null, completed_at = now()
   from public.xo_matches m
@@ -971,4 +1219,136 @@ grant execute on function public.xo_set_release_mode(text, text, uuid, text) to 
 grant execute on function public.xo_create_tournament(text, text, uuid) to anon;
 grant execute on function public.xo_cancel_tournament(text, text, uuid, uuid, text) to anon;
 
+notify pgrst, 'reload schema';
+
+create or replace function private.xo_settle_match(p_match_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_match public.xo_matches%rowtype;
+  v_scope text;
+  v_total bigint;
+  v_winning_total bigint;
+  v_assigned bigint;
+  v_remaining bigint;
+  v_index integer := 0;
+  v_bet record;
+  v_payout integer;
+  v_balance integer;
+  v_side public.xo_side_bets%rowtype;
+  v_loser_id text;
+  v_winner_delta integer;
+  v_loser_delta integer;
+begin
+  select * into strict v_match from public.xo_matches where id = p_match_id for update;
+  if v_match.settlement_status = 'settled' then return; end if;
+  if v_match.settlement_status <> 'pending' then
+    raise exception using errcode = '55000', message = 'MATCH_ALREADY_SETTLING';
+  end if;
+  update public.xo_matches set settlement_status = 'settling' where id = p_match_id;
+  select scope into v_scope from public.xo_tournaments where id = v_match.tournament_id;
+
+  select coalesce(sum(stake), 0), coalesce(sum(stake) filter (where pick_member_id = v_match.winner_id), 0)
+  into v_total, v_winning_total from public.xo_pool_bets where match_id = p_match_id and status = 'open';
+
+  if v_total > 0 then
+    if v_winning_total = 0 or v_winning_total = v_total then
+      for v_bet in select * from public.xo_pool_bets where match_id = p_match_id and status = 'open' order by id loop
+        v_payout := v_bet.stake;
+        update public.xo_pool_bets set status = 'refunded', payout = v_payout, settled_at = now() where id = v_bet.id;
+        update public.citizen_wallets set balance = balance + v_payout, updated_at = now()
+        where member_id = v_bet.member_id and scope = v_scope returning balance into v_balance;
+        insert into public.citizen_point_ledger (member_id, scope, amount, reason, tournament_id, match_id, bet_id, balance_after)
+        values (v_bet.member_id, v_scope, v_payout, 'pool_refund', v_match.tournament_id, p_match_id, v_bet.id, v_balance);
+      end loop;
+    else
+      select coalesce(sum((stake::bigint * v_total / v_winning_total)::bigint), 0)
+      into v_assigned from public.xo_pool_bets
+      where match_id = p_match_id and status = 'open' and pick_member_id = v_match.winner_id;
+      v_remaining := v_total - v_assigned;
+      for v_bet in
+        select *, (stake::bigint * v_total / v_winning_total)::integer as base_payout,
+          (stake::bigint * v_total % v_winning_total) as remainder
+        from public.xo_pool_bets
+        where match_id = p_match_id and status = 'open' and pick_member_id = v_match.winner_id
+        order by remainder desc, id
+      loop
+        v_index := v_index + 1;
+        v_payout := v_bet.base_payout + case when v_index <= v_remaining then 1 else 0 end;
+        update public.xo_pool_bets set status = 'won', payout = v_payout, settled_at = now() where id = v_bet.id;
+        update public.citizen_wallets set balance = balance + v_payout, updated_at = now()
+        where member_id = v_bet.member_id and scope = v_scope returning balance into v_balance;
+        insert into public.citizen_point_ledger (member_id, scope, amount, reason, tournament_id, match_id, bet_id, balance_after)
+        values (v_bet.member_id, v_scope, v_payout, 'pool_payout', v_match.tournament_id, p_match_id, v_bet.id, v_balance);
+      end loop;
+      update public.xo_pool_bets set status = 'lost', payout = 0, settled_at = now()
+      where match_id = p_match_id and status = 'open';
+    end if;
+  end if;
+
+  select * into v_side from public.xo_side_bets where match_id = p_match_id for update;
+  if found and v_side.status = 'accepted' then
+    v_payout := v_side.stake * 2;
+    update public.xo_side_bets set status = 'settled', winner_id = v_match.winner_id,
+      payout = v_payout, settled_at = now() where id = v_side.id;
+    update public.citizen_wallets set balance = balance + v_payout, updated_at = now()
+    where member_id = v_match.winner_id and scope = v_scope returning balance into v_balance;
+    insert into public.citizen_point_ledger (member_id, scope, amount, reason, tournament_id, match_id, bet_id, balance_after)
+    values (v_match.winner_id, v_scope, v_payout, 'side_payout', v_match.tournament_id, p_match_id, v_side.id, v_balance);
+  elsif found and v_side.status = 'proposed' then
+    update public.xo_side_bets set status = 'cancelled', payout = v_side.stake, settled_at = now() where id = v_side.id;
+    update public.citizen_wallets set balance = balance + v_side.stake, updated_at = now()
+    where member_id = v_side.proposer_id and scope = v_scope returning balance into v_balance;
+    insert into public.citizen_point_ledger (member_id, scope, amount, reason, tournament_id, match_id, bet_id, balance_after)
+    values (v_side.proposer_id, v_scope, v_side.stake, 'side_refund', v_match.tournament_id, p_match_id, v_side.id, v_balance);
+  end if;
+
+  if v_scope = 'live' then
+    v_winner_delta := case when v_match.stage = 'group' then 36 else 360 end;
+    v_loser_delta := case when v_match.stage = 'group' then -18 else -180 end;
+    v_loser_id := case when v_match.winner_id = v_match.player_x_id then v_match.player_o_id else v_match.player_x_id end;
+    update public.xo_ratings set rating = rating + v_winner_delta, wins = wins + 1, updated_at = now() where member_id = v_match.winner_id;
+    update public.xo_ratings set rating = rating + v_loser_delta, losses = losses + 1, updated_at = now() where member_id = v_loser_id;
+  end if;
+  update public.xo_matches set settlement_status = 'settled', revision = revision + 1 where id = p_match_id;
+end;
+$$;
+
+revoke all on function private.xo_settle_match(uuid) from public, anon, authenticated;
+notify pgrst, 'reload schema';
+
+create or replace function private.xo_refund_pending_side_bet(p_match_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_bet public.xo_side_bets%rowtype;
+  v_scope text;
+  v_balance integer;
+begin
+  select * into v_bet from public.xo_side_bets
+  where match_id = p_match_id and status = 'proposed' for update;
+  if not found then return; end if;
+  select scope into v_scope from public.xo_tournaments where id = v_bet.tournament_id;
+  update public.xo_side_bets set status = 'cancelled', payout = v_bet.stake, settled_at = now()
+  where id = v_bet.id and status = 'proposed';
+  if not found then return; end if;
+  update public.citizen_wallets set balance = balance + v_bet.stake, updated_at = now()
+  where member_id = v_bet.proposer_id and scope = v_scope returning balance into v_balance;
+  insert into public.citizen_point_ledger (
+    member_id, scope, amount, reason, tournament_id, match_id, bet_id, balance_after
+  ) values (
+    v_bet.proposer_id, v_scope, v_bet.stake, 'side_refund', v_bet.tournament_id,
+    p_match_id, v_bet.id, v_balance
+  );
+  update public.xo_matches set revision = revision + 1 where id = p_match_id;
+end;
+$$;
+
+revoke all on function private.xo_refund_pending_side_bet(uuid) from public, anon, authenticated;
 notify pgrst, 'reload schema';

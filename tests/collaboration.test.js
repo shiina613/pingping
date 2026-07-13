@@ -125,6 +125,21 @@ test('message self-join uses a PostgREST computed relationship', () => {
   assert.doesNotMatch(source, /reply_to:messages!/);
 });
 
+test('chat avoids repeated base64 avatars and hydrates senders from portal members', async () => {
+  const module = await import('../collaboration-controller.js');
+  assert.equal(typeof module.hydrateMessageSenders, 'function');
+  const messages = [{ id: 'm1', sender: { id: 'tung', name: 'Tùng' } }];
+  const hydrated = module.hydrateMessageSenders(messages, [
+    { id: 'tung', name: 'Tùng', avatar: 'data:image/png;base64,abc', color: '#fff' }
+  ]);
+  assert.equal(hydrated[0].sender.avatar, 'data:image/png;base64,abc');
+  assert.equal(messages[0].sender.avatar, undefined);
+
+  const source = readFileSync(new URL('../collaboration-controller.js', import.meta.url), 'utf8');
+  const selectDeclaration = source.slice(source.indexOf('const MESSAGE_SELECT'), source.indexOf(';', source.indexOf('const MESSAGE_SELECT')));
+  assert.doesNotMatch(selectDeclaration, /avatar/);
+});
+
 test('chat avatars render image data as a contained image', () => {
   const markup = avatarMarkup({ name: 'Tùng', avatar: 'data:image/png;base64,abc' }, 'chat-message-avatar');
   assert.match(markup, /<img src="data:image\/png;base64,abc"/);

@@ -22,7 +22,7 @@ const ROOM_NAMES = Object.freeze({
   viettel: 'Viettel AI Race'
 });
 
-const MESSAGE_SELECT = 'id,room_id,text,kind,created_at,sender:members!messages_sender_id_fkey(id,name,avatar,color,chat_muted_until),attachment:attachments(id,name,mime_type,size_bytes,public_url),reply_to(id,text,kind,sender:members!messages_sender_id_fkey(name)),reactions:message_reactions(emoji,member_id)';
+const MESSAGE_SELECT = 'id,room_id,text,kind,created_at,sender:members!messages_sender_id_fkey(id,name,color,chat_muted_until),attachment:attachments(id,name,mime_type,size_bytes,public_url),reply_to(id,text,kind,sender:members!messages_sender_id_fkey(name)),reactions:message_reactions(emoji,member_id)';
 
 export function escapeHtml(value) {
   return String(value ?? '')
@@ -67,6 +67,14 @@ export function attachmentMarkup(attachment) {
 
 export function chronologicalMessages(rows = []) {
   return [...rows].reverse();
+}
+
+export function hydrateMessageSenders(messages = [], members = []) {
+  const membersById = new Map(members.map(member => [member.id, member]));
+  return messages.map(message => ({
+    ...message,
+    sender: message.sender?.id ? { ...message.sender, ...membersById.get(message.sender.id) } : message.sender
+  }));
 }
 
 function minutesBetween(earlier, later) {
@@ -502,11 +510,7 @@ export class CollaborationController {
       this.renderMuteState();
     }
     snapshot.members = snapshot.members.map(member => ({ ...member, display_name: effectiveMemberName(member) }));
-    const membersById = new Map(snapshot.members.map(member => [member.id, member]));
-    this.renderedMessages = this.renderedMessages.map(message => ({
-      ...message,
-      sender: message.sender?.id ? { ...message.sender, ...membersById.get(message.sender.id) } : message.sender
-    }));
+    this.renderedMessages = hydrateMessageSenders(this.renderedMessages, snapshot.members);
     this.portal.members = snapshot.members;
     this.portal.allocations = snapshot.allocations;
     this.portal.kanbanTasks = snapshot.kanbanTasks;
@@ -695,7 +699,7 @@ export class CollaborationController {
       list.innerHTML = '<div class="chat-empty">Chưa có tin nhắn. Hãy bắt đầu cuộc trò chuyện.</div>';
       return;
     }
-    const messages = decorateMessages(chronologicalMessages(data));
+    const messages = decorateMessages(chronologicalMessages(hydrateMessageSenders(data, this.portal?.members)));
     this.renderedMessageIds = new Set(messages.map(message => message.id));
     this.renderedMessages = messages;
     list.innerHTML = messages.map(message => this.messageMarkup(message)).join('');
@@ -708,7 +712,7 @@ export class CollaborationController {
     const { data, error } = await this.client.from('messages')
       .select(MESSAGE_SELECT).eq('id', messageId).eq('room_id', roomId).maybeSingle();
     if (error) throw error;
-    return data;
+    return data ? hydrateMessageSenders([data], this.portal?.members)[0] : data;
   }
 
   async appendRealtimeMessage(realtimeRow) {

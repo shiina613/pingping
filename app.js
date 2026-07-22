@@ -48,78 +48,142 @@ class TeamPortal {
   }
 
   setupMeteorEngine() {
-    let container = document.getElementById('meteor-container');
-    if (!container) {
-      container = document.createElement('div');
-      container.id = 'meteor-container';
-      container.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;pointer-events:none;z-index:0;overflow:hidden;';
-      document.body.appendChild(container);
+    let canvas = document.getElementById('meteor-canvas');
+    if (!canvas) {
+      canvas = document.createElement('canvas');
+      canvas.id = 'meteor-canvas';
+      canvas.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;pointer-events:none;z-index:0;';
+      document.body.appendChild(canvas);
     }
+
+    const ctx = canvas.getContext('2d');
+    let width = (canvas.width = window.innerWidth);
+    let height = (canvas.height = window.innerHeight);
+
+    window.addEventListener('resize', () => {
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
+    });
+
+    const meteors = [];
 
     const spawnMeteor = () => {
       if (document.hidden) return;
 
-      const meteor = document.createElement('div');
-      meteor.className = 'dynamic-meteor';
+      const angleDeg = 36 + Math.random() * 8; // 36deg to 44deg sweep
+      const angleRad = (angleDeg * Math.PI) / 180;
+      const speed = 14 + Math.random() * 9;
+      const length = 140 + Math.random() * 160;
 
-      const startX = Math.random() * (window.innerWidth * 0.7) + (window.innerWidth * 0.15);
-      const startY = Math.random() * (window.innerHeight * 0.35);
-      const angle = -35 + (Math.random() * 10 - 5);
-      const width = 130 + Math.random() * 150;
-      const duration = 0.7 + Math.random() * 0.6;
-      const distance = 400 + Math.random() * 350;
+      // Start from upper right sky region
+      const startX = Math.random() * (width * 0.95) + width * 0.15;
+      const startY = Math.random() * (height * 0.4) - 60;
 
-      meteor.style.cssText = `
-        position: absolute;
-        top: ${startY}px;
-        left: ${startX}px;
-        width: ${width}px;
-        height: 2px;
-        background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(251, 191, 36, 0.9) 60%, rgba(255, 255, 255, 1) 100%);
-        border-radius: 999px;
-        box-shadow: 0 0 10px rgba(251, 191, 36, 0.9), 0 0 18px rgba(244, 63, 94, 0.7);
-        transform-origin: left center;
-        --meteor-angle: ${angle}deg;
-        --meteor-distance: ${distance}px;
-        animation: meteorFly ${duration}s cubic-bezier(0.25, 1, 0.5, 1) forwards;
-      `;
-
-      container.appendChild(meteor);
-      setTimeout(() => meteor.remove(), duration * 1000 + 100);
+      meteors.push({
+        x: startX,
+        y: startY,
+        dx: -Math.cos(angleRad) * speed,
+        dy: Math.sin(angleRad) * speed,
+        length: length,
+        life: 0,
+        maxLife: 42 + Math.floor(Math.random() * 25),
+        width: 1.6 + Math.random() * 1.4,
+        color: Math.random() > 0.35 ? '#fbbf24' : '#fb7185',
+      });
     };
 
-    // 1. Regular frequent meteors every 3.5s to 6.5s
-    const scheduleNextSingle = () => {
-      const delay = 3500 + Math.random() * 3000;
+    // 1. Regular single shooting stars every 2.5s to 5.5s
+    const scheduleSingleMeteors = () => {
+      const delay = 2500 + Math.random() * 3000;
       setTimeout(() => {
         spawnMeteor();
-        scheduleNextSingle();
+        scheduleSingleMeteors();
       }, delay);
     };
-    scheduleNextSingle();
+    scheduleSingleMeteors();
 
-    // 2. Random light meteor shower every 16s to 32s
-    const triggerMeteorShower = () => {
-      const count = 6 + Math.floor(Math.random() * 6);
+    // 2. Random light meteor shower every 15s to 28s
+    const triggerShower = () => {
+      const count = 7 + Math.floor(Math.random() * 8); // 7 to 14 meteors
       for (let i = 0; i < count; i++) {
         setTimeout(() => {
           spawnMeteor();
-        }, i * (160 + Math.random() * 200));
+        }, i * (120 + Math.random() * 160));
       }
     };
 
-    const scheduleNextShower = () => {
-      const delay = 16000 + Math.random() * 16000;
+    const scheduleShowers = () => {
+      const delay = 15000 + Math.random() * 13000;
       setTimeout(() => {
-        triggerMeteorShower();
-        scheduleNextShower();
+        triggerShower();
+        scheduleShowers();
       }, delay);
     };
 
+    // Initial shower after 2.5 seconds
     setTimeout(() => {
-      triggerMeteorShower();
-      scheduleNextShower();
-    }, 3000);
+      triggerShower();
+      scheduleShowers();
+    }, 2500);
+
+    // 60FPS Silky Canvas Render Loop
+    const animLoop = () => {
+      ctx.clearRect(0, 0, width, height);
+
+      for (let i = meteors.length - 1; i >= 0; i--) {
+        const m = meteors[i];
+        m.x += m.dx;
+        m.y += m.dy;
+        m.life++;
+
+        const progress = m.life / m.maxLife;
+        let alpha = 1;
+        if (progress < 0.15) {
+          alpha = progress / 0.15;
+        } else if (progress > 0.7) {
+          alpha = (1 - progress) / 0.3;
+        }
+
+        const normX = m.dx / Math.hypot(m.dx, m.dy);
+        const normY = m.dy / Math.hypot(m.dx, m.dy);
+
+        const tailX = m.x - normX * m.length * (1 - progress * 0.2);
+        const tailY = m.y - normY * m.length * (1 - progress * 0.2);
+
+        // Luminous streak gradient
+        const grad = ctx.createLinearGradient(tailX, tailY, m.x, m.y);
+        grad.addColorStop(0, 'rgba(255, 255, 255, 0)');
+        grad.addColorStop(0.65, m.color);
+        grad.addColorStop(1, '#ffffff');
+
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
+        ctx.beginPath();
+        ctx.moveTo(tailX, tailY);
+        ctx.lineTo(m.x, m.y);
+        ctx.strokeStyle = grad;
+        ctx.lineWidth = m.width;
+        ctx.lineCap = 'round';
+        ctx.stroke();
+
+        // Glowing nucleus head
+        ctx.beginPath();
+        ctx.arc(m.x, m.y, m.width * 1.2, 0, Math.PI * 2);
+        ctx.fillStyle = '#ffffff';
+        ctx.shadowColor = m.color;
+        ctx.shadowBlur = 8;
+        ctx.fill();
+        ctx.restore();
+
+        if (m.life >= m.maxLife || m.x < -150 || m.y > height + 150) {
+          meteors.splice(i, 1);
+        }
+      }
+
+      requestAnimationFrame(animLoop);
+    };
+
+    animLoop();
   }
 
   loadData(key, fallback) {

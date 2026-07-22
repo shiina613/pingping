@@ -40,7 +40,7 @@ Các thông điệp mang tính vượt thời gian: Lời chúc, lời quan tâm
 - 💥 Bengz
 - 😄 hihihaha
 - 👻 pekkboo
-- 🌾 Ước gì mình là người Thanh Hóa
+- ☘️ Ước gì mình là người Thanh Hóa
 
 ---
 

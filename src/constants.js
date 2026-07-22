@@ -166,7 +166,7 @@ export const DEFAULT_STARLIGHT_MESSAGES = {
     '💥 Bengz',
     '😄 hihihaha',
     '👻 pekkboo',
-    '🌾 Ước gì mình là người Thanh Hóa'
+    '☘️ Ước gì mình là người Thanh Hóa'
   ],
   sometimes: [
     '🌟 Keep shining!',

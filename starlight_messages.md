@@ -35,8 +35,8 @@ Các thông điệp mang tính vượt thời gian: Lời chúc, lời quan tâm
 - 💥 Kệ con mẹ tao
 - 🔥 Kệ con mẹ nó
 - 🕺 Nhảy cùng Zinzin
-- 🌌 Life is an adventure
-- 🧘 Defeat is psychological
+- 🌌 Life is either a daring adventure or nothing.
+- 🧘 until death all defeat is psychological
 - 💥 Bengz
 - 😄 hihihaha
 - 👻 pekkboo

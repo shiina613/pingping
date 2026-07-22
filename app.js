@@ -1378,6 +1378,7 @@ class TeamPortal {
         <g id="constellation-lines-group">${linesHTML}</g>
         <g id="constellation-nodes-group">${nodesHTML}</g>
       </svg>
+      <div id="constellation-popover" class="constellation-popover-card" style="display: none; opacity: 0;"></div>
     `;
   }
 
@@ -1449,7 +1450,10 @@ class TeamPortal {
     if (popover) {
       popover.style.opacity = '0';
       setTimeout(() => {
-        if (popover && popover.style.opacity === '0') popover.style.display = 'none';
+        if (popover && popover.style.opacity === '0') {
+          popover.style.display = 'none';
+          popover.innerHTML = '';
+        }
       }, 200);
     }
     document.querySelectorAll('.constellation-line.active').forEach(l => l.classList.remove('active'));

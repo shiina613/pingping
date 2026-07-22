@@ -24,3 +24,4 @@ Bạn có thể tự do thêm, bớt hoặc chỉnh sửa các thông điệp th
 - 💧 Shiina ơi, nhớ uống nước nhé!
 - 🏆 Vượt qua mọi thử thách 2026!
 - 🌌 Ngắm sao và tiếp tục tiến bước...
+- 💖 Địt mẹ mày <3

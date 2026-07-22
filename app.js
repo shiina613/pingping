@@ -346,6 +346,15 @@ class TeamPortal {
         }
       }
 
+      // Auto-format icon prefix if missing
+      const trimmedText = text.trim();
+      const hasEmojiPrefix = /^[\p{Extended_Pictographic}\u{1F300}-\u{1FAFF}]/u.test(trimmedText);
+      if (!hasEmojiPrefix) {
+        const defaultIcons = ['✨', '🌟', '💖', '🔥', '🚀', '💫', '⚡', '🔮'];
+        const autoIcon = defaultIcons[Math.floor(Math.random() * defaultIcons.length)];
+        text = `${autoIcon} ${trimmedText}`;
+      }
+
       const startX = Math.random() * (width * 0.65) + width * 0.15;
       const startY = Math.random() * (height * 0.55) + height * 0.15;
 

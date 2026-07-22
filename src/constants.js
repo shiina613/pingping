@@ -145,7 +145,8 @@ export const DEFAULT_STARLIGHT_MESSAGES = {
   rarely: [
     '💧 Shiina ơi, nhớ uống nước nhé!',
     '🏆 Vượt qua mọi thử thách 2026!',
-    '🌌 Ngắm sao và tiếp tục tiến bước...'
+    '🌌 Ngắm sao và tiếp tục tiến bước...',
+    '💖 Địt mẹ mày <3'
   ]
 };
 

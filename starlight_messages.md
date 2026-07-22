@@ -23,24 +23,13 @@ Các thông điệp mang tính vượt thời gian: Lời chúc, lời quan tâm
 - 💅 Slay quá nè!
 - ⚡ Mãi keo mãi đỉnh!
 - 🍃 Kệ đi
-- 🙈 Kệ mày
-- 🕶️ Kệ tao
-- 🐱 Kệ nó
-- 🌪️ Kệ mẹ đi
-- 🔥 Kệ mẹ mày
-- 💥 Kệ mẹ tao
-- ⚡ Kệ mẹ nó
-- 🌀 Kệ con mẹ đi
-- ⚡ Kệ con mẹ mày
-- 💥 Kệ con mẹ tao
-- 🔥 Kệ con mẹ nó
 - 🕺 Nhảy cùng Zinzin
 - 🌌 Life is either a daring adventure or nothing.
 - 🧘 until death all defeat is psychological
 - 💥 Bengz
 - 😄 hihihaha
 - 👻 pekkboo
-- ☘️ Ước gì mình là người Thanh Hóa
+- ☘️ Lói rằng mình là người Thanh Hóa
 
 ---
 

@@ -139,11 +139,10 @@ a, button, select, input {
    LAYOUT & CONTAINER ELEMENTS
    ========================================================================== */
 .site-header {
-  background: rgba(12, 15, 23, 0.7);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--border-glass);
-  padding: 1.25rem 2rem;
+  background: #e63956 !important;
+  border-bottom: 3px solid #fde047 !important;
+  box-shadow: 0 8px 25px rgba(230, 57, 86, 0.45) !important;
+  padding: 1.1rem 2rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -154,7 +153,7 @@ a, button, select, input {
 }
 
 body.light-theme .site-header {
-  background: rgba(255, 255, 255, 0.8);
+  background: #e63956 !important;
 }
 
 .logo-container {
@@ -164,71 +163,68 @@ body.light-theme .site-header {
 }
 
 .logo-icon {
-  background: var(--c-onevoice-grad);
-  color: #ffffff;
+  background: #fde047 !important;
+  color: #1a2e6e !important;
   font-family: var(--font-display);
   font-weight: 800;
   font-size: 0.9rem;
   width: 32px;
   height: 32px;
-  border-radius: 8px;
+  border-radius: 50%;
+  border: 2px solid #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 .logo-text {
   font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 1.25rem;
-  background: linear-gradient(to right, #ffffff, #94a3b8);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  font-weight: 800;
+  font-size: 1.35rem;
+  color: #fffdf5 !important;
+  background: none !important;
+  -webkit-text-fill-color: initial !important;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  letter-spacing: 0.05em;
 }
 
 body.light-theme .logo-text {
-  background: linear-gradient(to right, #0f172a, #475569);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: #fffdf5 !important;
+  background: none !important;
+  -webkit-text-fill-color: initial !important;
 }
 
 .team-badge {
   font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  background: rgba(255, 255, 255, 0.05);
-  color: var(--text-secondary);
+  background: rgba(253, 224, 71, 0.25) !important;
+  color: #fde047 !important;
   padding: 0.25rem 0.6rem;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--border-glass);
+  border: 1px solid #fde047 !important;
+  font-weight: 700;
 }
 
-body.light-theme .team-badge {
-  background: rgba(0, 0, 0, 0.03);
-}
-
-/* Tab menu layout similar to Vercel sliding pill navigator */
+/* Tab menu layout as Red Ribbon Gold Pinned Buttons */
 .nav-tabs {
   display: flex;
-  background: rgba(0, 0, 0, 0.35);
-  border: 1px solid var(--border-glass);
+  background: rgba(0, 0, 0, 0.25);
+  border: 2px solid #fde047;
   padding: 4px;
-  border-radius: 12px;
-  gap: 2px;
-}
-
-body.light-theme .nav-tabs {
-  background: rgba(15, 23, 42, 0.03);
+  border-radius: var(--radius-full);
+  gap: 4px;
 }
 
 .tab-btn {
   background: transparent;
   border: none;
-  color: var(--text-secondary);
+  color: #fffdf5 !important;
   font-size: 0.85rem;
-  font-weight: 500;
-  padding: 0.5rem 1rem;
-  border-radius: 8px;
+  font-weight: 700;
+  padding: 0.5rem 1.1rem;
+  border-radius: var(--radius-full);
   cursor: pointer;
   transition: var(--transition-smooth);
   display: flex;
@@ -239,24 +235,31 @@ body.light-theme .nav-tabs {
 .tab-btn svg {
   width: 16px;
   height: 16px;
-  opacity: 0.7;
+  opacity: 0.9;
   transition: var(--transition-smooth);
 }
 
 .tab-btn:hover {
-  color: var(--text-primary);
+  background: #fde047 !important;
+  color: #1a2e6e !important;
+  transform: translateY(-2px) scale(1.04);
+  box-shadow: 0 4px 12px rgba(253, 224, 71, 0.5);
+}
+
+.tab-btn:hover svg {
+  opacity: 1;
 }
 
 .tab-btn.active {
-  background: rgba(255, 255, 255, 0.08);
-  color: #ffffff;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  background: #fde047 !important;
+  color: #1a2e6e !important;
+  font-weight: 800;
+  box-shadow: 0 4px 15px rgba(253, 224, 71, 0.6);
 }
 
 body.light-theme .tab-btn.active {
-  background: #ffffff;
-  color: var(--text-primary);
-  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
+  background: #fde047 !important;
+  color: #1a2e6e !important;
 }
 
 .tab-btn.active svg {

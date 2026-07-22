@@ -278,21 +278,20 @@ body.light-theme .tab-btn.active {
    CARDS & CONTAINERS
    ========================================================================== */
 .glass-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border-glass);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-twilight);
+  background: var(--bg-parchment) !important;
+  color: var(--text-parchment-dark) !important;
+  border: 3px solid #fde047 !important;
+  border-radius: var(--radius-lg) !important;
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.4), inset 0 0 20px rgba(251, 146, 60, 0.15) !important;
   padding: 1.75rem;
-  backdrop-filter: blur(15px);
-  -webkit-backdrop-filter: blur(15px);
   transition: var(--transition-smooth);
   position: relative;
   overflow: hidden;
 }
 
 .glass-card:hover {
-  border-color: var(--border-glass-hover);
-  box-shadow: var(--shadow-glow);
+  border-color: #e63956 !important;
+  box-shadow: 0 16px 40px rgba(253, 224, 71, 0.4), inset 0 0 25px rgba(230, 57, 86, 0.2) !important;
   transform: translateY(-4px) scale(1.01);
 }
 
@@ -301,15 +300,17 @@ body.light-theme .tab-btn.active {
   font-weight: 800;
   font-size: 1.5rem;
   margin-bottom: 1.5rem;
-  background: var(--c-twilight-grad);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: #991b1b !important;
+  background: none !important;
+  -webkit-text-fill-color: initial !important;
+  border-bottom: 2px dashed #f97316;
+  padding-bottom: 0.5rem;
 }
 
 body.light-theme .gradient-title {
-  background: linear-gradient(135deg, #0f172a 0%, #475569 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: #991b1b !important;
+  background: none !important;
+  -webkit-text-fill-color: initial !important;
 }
 
 .tab-panel {
@@ -352,27 +353,37 @@ body.light-theme .gradient-title {
   display: flex;
   align-items: center;
   gap: 1.25rem;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid var(--border-glass);
-  border-radius: var(--radius-md);
+  background: #fffdf5 !important;
+  color: #292524 !important;
+  border: 3px solid #e63956 !important;
+  border-radius: var(--radius-md) !important;
   padding: 1.25rem;
   position: relative;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3) !important;
+  transition: var(--transition-smooth) !important;
+}
+
+.stat-card:hover {
+  transform: translateY(-4px) rotate(-1deg) scale(1.03) !important;
+  border-color: #fde047 !important;
+  box-shadow: 0 12px 30px rgba(253, 224, 71, 0.4) !important;
 }
 
 body.light-theme .stat-card {
-  background: rgba(0, 0, 0, 0.01);
+  background: #fffdf5 !important;
 }
 
 .stat-icon-wrapper {
   width: 48px;
   height: 48px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid var(--border-glass);
+  border-radius: 50% !important;
+  background: #fde047 !important;
+  border: 2px solid #e63956 !important;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--accent-blue);
+  color: #1a2e6e !important;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
 }
 
 body.light-theme .stat-icon-wrapper {
@@ -382,11 +393,18 @@ body.light-theme .stat-icon-wrapper {
 .stat-value {
   font-family: var(--font-display);
   font-weight: 800;
-  font-size: 1.5rem;
+  font-size: 1.6rem;
   line-height: 1.2;
+  color: #991b1b !important;
 }
 
 .stat-label {
+  font-size: 0.8rem;
+  color: #57534e !important;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 700;
+}
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;

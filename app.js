@@ -1308,7 +1308,7 @@ class TeamPortal {
 
   renderDirectory() {
     if (!this.directoryViewMode) {
-      this.directoryViewMode = window.innerWidth < 768 ? 'grid' : 'constellation';
+      this.directoryViewMode = 'constellation';
     }
 
     const toggleContainer = document.getElementById('directory-view-toggle');
@@ -1340,35 +1340,47 @@ class TeamPortal {
     const container = document.getElementById('constellation-view-container');
     if (!container) return;
 
-    const members = getConstellationMembers(this.members);
+    const rawMembers = getConstellationMembers(this.members);
+    const padding = 0.075;
+    const xs = rawMembers.map(member => member.x);
+    const ys = rawMembers.map(member => member.y);
+    const minX = Math.min(...xs);
+    const maxX = Math.max(...xs);
+    const minY = Math.min(...ys);
+    const maxY = Math.max(...ys);
+    const members = rawMembers.map(member => ({
+      ...member,
+      x: 1000 * padding + ((member.x - minX) / (maxX - minX)) * 1000 * (1 - padding * 2),
+      y: 500 * padding + ((member.y - minY) / (maxY - minY)) * 500 * (1 - padding * 2),
+    }));
     
     // Draw SVG Constellation Lines
-    const linesHTML = CONSTELLATION_LINES.map(([fromId, toId]) => {
+    const linesHTML = CONSTELLATION_LINES.map(([fromId, toId], idx) => {
       const fromNode = members.find(m => m.id === fromId);
       const toNode = members.find(m => m.id === toId);
       if (!fromNode || !toNode) return '';
-      return `<line id="c-line-${fromId}-${toId}" class="constellation-line" x1="${fromNode.x}" y1="${fromNode.y}" x2="${toNode.x}" y2="${toNode.y}" />`;
+      const lineDelay = ((idx * 1.73) % 7.5).toFixed(2);
+      return `<line id="c-line-${fromId}-${toId}" class="constellation-line" x1="${fromNode.x}" y1="${fromNode.y}" x2="${toNode.x}" y2="${toNode.y}" style="animation-delay: -${lineDelay}s;" />`;
     }).join('');
 
-    // Draw SVG Star Nodes (Pure sparkling 4-point star flares with NO inline text labels)
+    // Draw SVG Star Nodes (Natural fading/twinkling stars at 1.36x scale)
     const nodesHTML = members.map((m, idx) => {
-      const isPolaris = m.isPolaris;
-      const starColor = isPolaris ? '#fbbf24' : '#e0f2fe';
-      const points = isPolaris
-        ? '0,-15 3.5,-3.5 15,0 3.5,3.5 0,15 -3.5,3.5 -15,0 -3.5,-3.5'
-        : '0,-9 2.2,-2.2 9,0 2.2,2.2 0,9 -2.2,2.2 -9,0 -2.2,-2.2';
-      
-      const animDelay = ((idx * 0.73) % 2.8).toFixed(2);
+      const starColor = '#e0f2fe';
+      const points = '0,-9 2.2,-2.2 9,0 2.2,2.2 0,9 -2.2,2.2 -9,0 -2.2,-2.2';
+      const animDelay = ((idx * 1.83 + 0.5) % 5.2).toFixed(2);
+      const animDuration = (4.5 + ((idx * 1.3) % 2.8)).toFixed(2);
 
       return `
-        <g class="star-node" id="star-node-${m.id}" transform="translate(${m.x}, ${m.y})" style="animation-delay: -${animDelay}s;"
+        <g class="star-node" id="star-node-${m.id}" transform="translate(${m.x}, ${m.y})"
            onmouseenter="portal.showStarPopover(event, '${m.id}')"
            onmouseleave="portal.hideStarPopover(event, '${m.id}')">
-          
-          ${isPolaris ? `<circle class="polaris-aura" r="28" fill="rgba(251, 191, 36, 0.22)" />` : ''}
-          <circle class="star-halo" r="${isPolaris ? 16 : 10}" fill="${starColor}" opacity="0.3" />
-          <polygon class="star-flare ${isPolaris ? 'polaris-flare' : ''}" points="${points}" fill="#ffffff" filter="drop-shadow(0 0 6px ${starColor})" />
-          <circle class="star-core" r="${isPolaris ? 3.2 : 2}" fill="#ffffff" />
+          <!-- Invisible larger hover target area -->
+          <circle r="18" fill="transparent" />
+          <g class="star-anim" style="animation-delay: -${animDelay}s; animation-duration: ${animDuration}s;">
+            <circle class="star-halo" r="8" fill="${starColor}" opacity="0.14" />
+            <polygon class="star-flare" points="${points}" fill="#ffffff" filter="drop-shadow(0 0 3px ${starColor})" />
+            <circle class="star-core" r="2" fill="#ffffff" />
+          </g>
         </g>
       `;
     }).join('');
@@ -1378,16 +1390,19 @@ class TeamPortal {
         <g id="constellation-lines-group">${linesHTML}</g>
         <g id="constellation-nodes-group">${nodesHTML}</g>
       </svg>
-      <div id="constellation-popover" class="constellation-popover-card" style="display: none; opacity: 0;"></div>
+      <div id="constellation-popover" class="constellation-popover-card"></div>
     `;
   }
 
   showStarPopover(event, memberId) {
+    if (this.popoverHideTimer) {
+      clearTimeout(this.popoverHideTimer);
+      this.popoverHideTimer = null;
+    }
     const popover = document.getElementById('constellation-popover');
     const member = this.members.find(m => m.id === memberId);
     if (!popover || !member) return;
 
-    const isPolaris = memberId === 'tung';
     const avatarHTML = this.renderAvatarMarkup(member, 'member-avatar-lg');
     const skillsHTML = (member.skills || '').split(',').map(s => `<span class="skill-tag">${escapeHtml(s.trim())}</span>`).join('');
 
@@ -1395,7 +1410,7 @@ class TeamPortal {
       <div style="text-align: center;">
         ${avatarHTML}
         <h4 style="margin-top: 0.75rem; margin-bottom: 0.25rem; font-size: 1.1rem; color: #ffffff;">
-          ${escapeHtml(member.name || '')} ${isPolaris ? '<span style="font-size:0.75rem; background:linear-gradient(135deg,#fbbf24,#f59e0b); color:#000; padding:0.15rem 0.5rem; border-radius:0.5rem; margin-left:0.25rem; font-weight:700;">Sao Bắc Cực</span>' : ''}
+          ${escapeHtml(member.name || '')}
         </h4>
         <span class="member-role" style="font-size:0.8rem; color:#94a3b8; display:block; margin-bottom:0.75rem;">${escapeHtml(member.role || '')}</span>
         
@@ -1432,29 +1447,23 @@ class TeamPortal {
 
       popover.style.left = `${left}px`;
       popover.style.top = `${top}px`;
-      popover.classList.add('visible');
+      requestAnimationFrame(() => {
+        popover.classList.add('visible');
+      });
     }
-
-    // Highlight connecting lines
-    CONSTELLATION_LINES.forEach(([fromId, toId]) => {
-      if (fromId === memberId || toId === memberId) {
-        const line = document.getElementById(`c-line-${fromId}-${toId}`);
-        if (line) line.classList.add('active');
-      }
-    });
   }
 
   hideStarPopover(event, memberId) {
     const popover = document.getElementById('constellation-popover');
     if (popover) {
       popover.classList.remove('visible');
-      setTimeout(() => {
+      if (this.popoverHideTimer) clearTimeout(this.popoverHideTimer);
+      this.popoverHideTimer = setTimeout(() => {
         if (popover && !popover.classList.contains('visible')) {
           popover.innerHTML = '';
         }
-      }, 200);
+      }, 350);
     }
-    document.querySelectorAll('.constellation-line.active').forEach(l => l.classList.remove('active'));
   }
 
   renderDirectoryGrid() {

@@ -3,6 +3,9 @@
 .vercel
 .env*
 node_modules
+dist
+.superpowers
+mcp_config.json
 code.md
 note.md
 docs

@@ -118,10 +118,9 @@ Add View Mode Toggle buttons and `#constellation-view-container` alongside `#tea
 <div class="directory-header-bar" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 1rem;">
   <div>
     <h3 class="section-title" style="margin-bottom: 0.25rem;">Thành viên nhóm</h3>
-    <p style="font-size: 0.75rem; color: var(--text-secondary); margin: 0;">Chòm sao Tiểu Hùng Thất Tinh (Ursa Minor) · 7 thành viên sẵn sàng gán vai trò.</p>
   </div>
   <div class="view-mode-toggle" id="directory-view-toggle">
-    <button class="toggle-btn active" data-mode="constellation" title="Chế độ Chòm sao">✨ Chòm sao</button>
+    <button class="toggle-btn active" data-mode="constellation" title="Chế độ Chòm sao">✨</button>
     <button class="toggle-btn" data-mode="grid" title="Chế độ Danh sách">🎴 Danh sách</button>
   </div>
 </div>

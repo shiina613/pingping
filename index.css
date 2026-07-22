@@ -2414,7 +2414,9 @@ body.light-theme .team-badge {
 
 .nav-tabs,
 body.light-theme .nav-tabs {
+  flex: 1 1 auto;
   min-width: 0;
+  container-type: inline-size;
   padding: 4px;
   gap: 4px;
   background: var(--color-surface-subtle) !important;
@@ -2452,6 +2454,17 @@ body.light-theme .tab-btn.active {
   box-shadow: 0 0 20px rgba(244, 63, 94, 0.5), 0 4px 15px rgba(245, 158, 11, 0.4) !important;
   font-weight: 700;
   transform: translateY(-1px) rotate(-0.5deg);
+}
+
+@container (max-width: 1160px) {
+  .tab-btn {
+    justify-content: center;
+    padding-inline: 10px;
+  }
+
+  .tab-label {
+    display: none;
+  }
 }
 
 .countdown-milestone,

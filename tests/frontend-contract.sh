@@ -84,3 +84,9 @@ grep -q ':focus-visible' index.css
 ! grep -q 'fonts.googleapis.com' index.css
 ! grep -q 'gradient-title' index.html
 grep -A8 '@media (max-width: 900px)' index.css | tail -n 8 >/dev/null
+
+test "$(grep -o 'class="tab-label"' index.html | wc -l)" -eq 9
+grep -q 'aria-label="Bảng điều khiển" title="Bảng điều khiển"' index.html
+grep -q 'container-type: inline-size' index.css
+grep -q '@container (max-width:' index.css
+grep -q '\.tab-label' index.css

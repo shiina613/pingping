@@ -2,6 +2,18 @@
 
 Portal nội bộ dành cho nhóm 7 thành viên cùng theo dõi và phối hợp tham gia 3 cuộc thi AI & Tech năm 2026. Ứng dụng tập trung thông tin cuộc thi, đội hình, lịch trình, công việc và trao đổi realtime trong một giao diện duy nhất.
 
+## Cập nhật nổi bật
+
+Đợt cập nhật hiện tại nâng cấp toàn bộ portal, không chỉ bổ sung tính năng thách đấu X-O:
+
+- **Dữ liệu cuộc thi:** tập trung portal vào 3 cuộc thi đang hoạt động, đồng bộ lại phòng chat, đội hình, Kanban và thông báo liên quan.
+- **Cộng tác realtime:** giữ trạng thái online ổn định, tách trạng thái đang nhập, làm mới giao diện ngay khi đăng nhập/đăng xuất và đồng bộ dữ liệu giữa các thành viên.
+- **Chat:** hỗ trợ dán ảnh trực tiếp từ clipboard, trả lời, reaction, mention, preview media/liên kết và nhóm tin nhắn theo người gửi.
+- **Hiệu năng và lưu trữ:** thêm index truy vấn tin nhắn, giới hạn lịch sử từng phòng và cron tự động dọn dữ liệu chat cũ.
+- **Giao diện:** theme bầu trời sao, hiệu ứng chuyển động nhẹ hơn và thanh điều hướng responsive.
+- **Sòng X-O:** bàn cờ caro mở rộng, thách đấu BO1, cược, rating, ví điểm Công dân, điểm danh hằng ngày và bảng xếp hạng realtime.
+- **Chất lượng:** bổ sung unit test, schema test và frontend contract test cho các luồng mới.
+
 ## Tính năng
 
 - **Dashboard:** tổng quan cuộc thi, đội hình, khối lượng công việc, hạn chót và các mốc sắp tới.

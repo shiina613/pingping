@@ -2367,14 +2367,15 @@ body.light-theme .team-badge {
   border: none !important;
   background: var(--c-twilight-grad) !important;
   color: #ffffff !important;
-  font-family: var(--font-graffiti) !important;
-  text-transform: none;
-  letter-spacing: 0.03em;
-  font-size: 0.75rem;
+  font-family: var(--font-body) !important;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 0.7rem;
+  font-weight: 700;
   padding: 0.25rem 0.75rem;
-  border-radius: 6px;
-  transform: rotate(-2.5deg);
-  box-shadow: 3px 3px 0px rgba(0, 0, 0, 0.25) !important;
+  border-radius: var(--radius-sm);
+  transform: rotate(-1.5deg);
+  box-shadow: 2px 2px 8px rgba(244, 63, 94, 0.25) !important;
   transition: var(--transition-smooth);
 }
 
@@ -2419,20 +2420,19 @@ body.light-theme .tab-btn:hover {
 body.light-theme .tab-btn.active {
   background: var(--c-twilight-grad) !important;
   color: #ffffff !important;
-  box-shadow: 0 0 16px rgba(244, 63, 94, 0.45), 0 4px 15px rgba(245, 158, 11, 0.4) !important;
+  box-shadow: 0 0 16px rgba(244, 63, 94, 0.35), 0 4px 15px rgba(245, 158, 11, 0.3) !important;
   font-weight: 700;
-  transform: translateY(-1px) rotate(-0.5deg);
 }
 
 .countdown-milestone,
 .q-tag,
 .comp-tag,
 .filter-chip.active {
-  font-family: var(--font-graffiti) !important;
+  font-family: var(--font-body) !important;
+  font-weight: 600;
   letter-spacing: 0.02em;
   font-size: 0.72rem !important;
-  box-shadow: 2px 2px 0px rgba(0, 0, 0, 0.15) !important;
-  transform: rotate(-1deg);
+  border-radius: var(--radius-full);
   transition: var(--transition-smooth);
 }
 

@@ -295,9 +295,26 @@
 
     <!-- 5. TAB: TEAM DIRECTORY -->
     <section id="tab-directory" class="tab-panel">
-      <div class="team-grid" id="team-directory-grid">
-        <!-- Dynamically rendered by app.js -->
+      <div class="directory-header-bar" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 1rem;">
+        <div>
+          <h3 class="section-title" style="margin-bottom: 0.25rem;">Thành viên nhóm</h3>
+          <p style="font-size: 0.75rem; color: var(--text-secondary, #94a3b8); margin: 0;">Chòm sao Tiểu Hùng Thất Tinh (Ursa Minor) · 7 thành viên sẵn sàng gán vai trò.</p>
+        </div>
+        <div class="view-mode-toggle" id="directory-view-toggle">
+          <button class="toggle-btn active" data-mode="constellation" title="Chế độ Chòm sao">✨ Chòm sao</button>
+          <button class="toggle-btn" data-mode="grid" title="Chế độ Danh sách">🎴 Danh sách</button>
+        </div>
       </div>
+
+      <div id="constellation-view-container" class="constellation-map-wrap">
+        <!-- Interactive SVG Map rendered by app.js -->
+      </div>
+
+      <div class="team-grid" id="team-directory-grid" style="display: none;">
+        <!-- Dynamically rendered grid by app.js -->
+      </div>
+
+      <div id="constellation-popover" class="constellation-popover-card" style="display: none; opacity: 0;"></div>
     </section>
 
     <!-- 6. TAB: KANBAN PROGRESS BOARD -->

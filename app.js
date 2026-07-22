@@ -1350,21 +1350,25 @@ class TeamPortal {
       return `<line id="c-line-${fromId}-${toId}" class="constellation-line" x1="${fromNode.x}" y1="${fromNode.y}" x2="${toNode.x}" y2="${toNode.y}" />`;
     }).join('');
 
-    // Draw SVG Star Nodes
+    // Draw SVG Star Nodes (Natural 4-point twinkling star flares)
     const nodesHTML = members.map(m => {
       const isPolaris = m.isPolaris;
       const starColor = isPolaris ? '#fbbf24' : (m.color || '#38bdf8');
+      const points = isPolaris
+        ? '0,-15 3.5,-3.5 15,0 3.5,3.5 0,15 -3.5,3.5 -15,0 -3.5,-3.5'
+        : '0,-9 2.2,-2.2 9,0 2.2,2.2 0,9 -2.2,2.2 -9,0 -2.2,-2.2';
       
       return `
         <g class="star-node" id="star-node-${m.id}" transform="translate(${m.x}, ${m.y})" 
            onmouseenter="portal.showStarPopover(event, '${m.id}')"
            onmouseleave="portal.hideStarPopover(event, '${m.id}')">
           
-          ${isPolaris ? `<circle class="polaris-aura" r="32" fill="rgba(251, 191, 36, 0.22)" />` : ''}
-          <circle class="star-halo" r="${isPolaris ? 20 : 14}" fill="${starColor}" opacity="0.35" />
-          <circle class="star-core" r="${isPolaris ? 9 : 6.5}" fill="#ffffff" stroke="${starColor}" stroke-width="2" />
+          ${isPolaris ? `<circle class="polaris-aura" r="30" fill="rgba(251, 191, 36, 0.22)" />` : ''}
+          <circle class="star-halo" r="${isPolaris ? 18 : 12}" fill="${starColor}" opacity="0.3" />
+          <polygon class="star-flare ${isPolaris ? 'polaris-flare' : ''}" points="${points}" fill="#ffffff" filter="drop-shadow(0 0 6px ${starColor})" />
+          <circle class="star-core" r="${isPolaris ? 3.5 : 2.5}" fill="#ffffff" />
           
-          <text y="${isPolaris ? 30 : 24}" text-anchor="middle" fill="#f8fafc" font-size="12" font-weight="600" style="pointer-events: none;">
+          <text class="star-node-label" y="${isPolaris ? 32 : 23}" text-anchor="middle" style="pointer-events: none;">
             ${escapeHtml(m.name || '')} ${isPolaris ? '⭐' : ''}
           </text>
         </g>

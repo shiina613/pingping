@@ -1,5 +1,6 @@
 import './config.js';
 import { DEFAULT_MEMBERS, COMPETITIONS, INITIAL_ALLOCATIONS, DEFAULT_KANBAN_TASKS, DEFAULT_STARLIGHT_MESSAGES } from './src/constants.js';
+import { CONSTELLATION_NODES, CONSTELLATION_LINES, getConstellationMembers } from './src/constellation-data.js';
 import { CollaborationController, escapeHtml } from './collaboration-controller.js';
 import { buildCalendar, getTeamSizeWarning } from './collaboration.js';
 import { getCompetitionCountdowns, getCountdownParts } from './src/countdown.js';
@@ -1306,18 +1307,166 @@ class TeamPortal {
   // ==========================================================================
 
   renderDirectory() {
+    if (!this.directoryViewMode) {
+      this.directoryViewMode = window.innerWidth < 768 ? 'grid' : 'constellation';
+    }
+
+    const toggleContainer = document.getElementById('directory-view-toggle');
+    if (toggleContainer) {
+      toggleContainer.querySelectorAll('.toggle-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.mode === this.directoryViewMode);
+        btn.onclick = () => {
+          this.directoryViewMode = btn.dataset.mode;
+          this.renderDirectory();
+        };
+      });
+    }
+
+    const constWrap = document.getElementById('constellation-view-container');
+    const gridWrap = document.getElementById('team-directory-grid');
+
+    if (this.directoryViewMode === 'constellation') {
+      if (constWrap) constWrap.style.display = 'block';
+      if (gridWrap) gridWrap.style.display = 'none';
+      this.renderConstellationView();
+    } else {
+      if (constWrap) constWrap.style.display = 'none';
+      if (gridWrap) gridWrap.style.display = 'grid';
+      this.renderDirectoryGrid();
+    }
+  }
+
+  renderConstellationView() {
+    const container = document.getElementById('constellation-view-container');
+    if (!container) return;
+
+    const members = getConstellationMembers(this.members);
+    
+    // Draw SVG Constellation Lines
+    const linesHTML = CONSTELLATION_LINES.map(([fromId, toId]) => {
+      const fromNode = members.find(m => m.id === fromId);
+      const toNode = members.find(m => m.id === toId);
+      if (!fromNode || !toNode) return '';
+      return `<line id="c-line-${fromId}-${toId}" class="constellation-line" x1="${fromNode.x}" y1="${fromNode.y}" x2="${toNode.x}" y2="${toNode.y}" />`;
+    }).join('');
+
+    // Draw SVG Star Nodes
+    const nodesHTML = members.map(m => {
+      const isPolaris = m.isPolaris;
+      const starColor = isPolaris ? '#fbbf24' : (m.color || '#38bdf8');
+      
+      return `
+        <g class="star-node" id="star-node-${m.id}" transform="translate(${m.x}, ${m.y})" 
+           onmouseenter="portal.showStarPopover(event, '${m.id}')"
+           onmouseleave="portal.hideStarPopover(event, '${m.id}')">
+          
+          ${isPolaris ? `<circle class="polaris-aura" r="32" fill="rgba(251, 191, 36, 0.22)" />` : ''}
+          <circle class="star-halo" r="${isPolaris ? 20 : 14}" fill="${starColor}" opacity="0.35" />
+          <circle class="star-core" r="${isPolaris ? 9 : 6.5}" fill="#ffffff" stroke="${starColor}" stroke-width="2" />
+          
+          <text y="${isPolaris ? 30 : 24}" text-anchor="middle" fill="#f8fafc" font-size="12" font-weight="600" style="pointer-events: none;">
+            ${escapeHtml(m.name || '')} ${isPolaris ? '⭐' : ''}
+          </text>
+        </g>
+      `;
+    }).join('');
+
+    container.innerHTML = `
+      <svg class="constellation-svg" viewBox="0 0 1000 500" preserveAspectRatio="xMidYMid meet">
+        <g id="constellation-lines-group">${linesHTML}</g>
+        <g id="constellation-nodes-group">${nodesHTML}</g>
+      </svg>
+    `;
+  }
+
+  showStarPopover(event, memberId) {
+    const popover = document.getElementById('constellation-popover');
+    const member = this.members.find(m => m.id === memberId);
+    if (!popover || !member) return;
+
+    const isPolaris = memberId === 'tung';
+    const avatarHTML = this.renderAvatarMarkup(member, 'member-avatar-lg');
+    const skillsHTML = (member.skills || '').split(',').map(s => `<span class="skill-tag">${escapeHtml(s.trim())}</span>`).join('');
+
+    popover.innerHTML = `
+      <div style="text-align: center;">
+        ${avatarHTML}
+        <h4 style="margin-top: 0.75rem; margin-bottom: 0.25rem; font-size: 1.1rem; color: #ffffff;">
+          ${escapeHtml(member.name || '')} ${isPolaris ? '<span style="font-size:0.75rem; background:linear-gradient(135deg,#fbbf24,#f59e0b); color:#000; padding:0.15rem 0.5rem; border-radius:0.5rem; margin-left:0.25rem; font-weight:700;">Sao Bắc Cực</span>' : ''}
+        </h4>
+        <span class="member-role" style="font-size:0.8rem; color:#94a3b8; display:block; margin-bottom:0.75rem;">${escapeHtml(member.role || '')}</span>
+        
+        <div class="member-skills-section" style="margin-bottom: 0.85rem;">
+          <div class="skills-list-wrap" style="justify-content:center;">${skillsHTML}</div>
+        </div>
+
+        <button class="btn-secondary member-btn-edit" style="width:100%; font-size:0.8rem; justify-content:center;" onclick="portal.openEditModal('${member.id}')">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width: 14px; height: 14px;">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
+          </svg>
+          Sửa hồ sơ & Ảnh
+        </button>
+      </div>
+    `;
+
+    // Position popover card relative to container
+    const container = document.getElementById('constellation-view-container');
+    if (!container) return;
+
+    const rect = container.getBoundingClientRect();
+    const nodeElem = document.getElementById(`star-node-${memberId}`);
+    
+    if (nodeElem) {
+      const nodeRect = nodeElem.getBoundingClientRect();
+      let left = nodeRect.left - rect.left + 20;
+      let top = nodeRect.top - rect.top - 20;
+      
+      // Boundary safety checks
+      if (left + 300 > rect.width) left = nodeRect.left - rect.left - 300;
+      if (left < 10) left = 10;
+      if (top + 280 > rect.height) top = rect.height - 290;
+      if (top < 10) top = 10;
+
+      popover.style.left = `${left}px`;
+      popover.style.top = `${top}px`;
+      popover.style.display = 'block';
+      popover.style.opacity = '1';
+    }
+
+    // Highlight connecting lines
+    CONSTELLATION_LINES.forEach(([fromId, toId]) => {
+      if (fromId === memberId || toId === memberId) {
+        const line = document.getElementById(`c-line-${fromId}-${toId}`);
+        if (line) line.classList.add('active');
+      }
+    });
+  }
+
+  hideStarPopover(event, memberId) {
+    const popover = document.getElementById('constellation-popover');
+    if (popover) {
+      popover.style.opacity = '0';
+      setTimeout(() => {
+        if (popover && popover.style.opacity === '0') popover.style.display = 'none';
+      }, 200);
+    }
+    document.querySelectorAll('.constellation-line.active').forEach(l => l.classList.remove('active'));
+  }
+
+  renderDirectoryGrid() {
     const container = document.getElementById('team-directory-grid');
+    if (!container) return;
     container.innerHTML = '';
 
     this.members.forEach(member => {
       const avatarHTML = this.renderAvatarMarkup(member, 'member-avatar-lg');
-      const skillsHTML = member.skills.split(',').map(s => `<span class="skill-tag">${s.trim()}</span>`).join('');
+      const skillsHTML = (member.skills || '').split(',').map(s => `<span class="skill-tag">${escapeHtml(s.trim())}</span>`).join('');
 
       const cardHTML = `
         <div class="glass-card member-card">
           ${avatarHTML}
-          <h3 class="member-name" style="margin-top: 1rem;">${member.name}</h3>
-          <span class="member-role">${member.role}</span>
+          <h3 class="member-name" style="margin-top: 1rem;">${escapeHtml(member.name || '')}</h3>
+          <span class="member-role">${escapeHtml(member.role || '')}</span>
           
           <div class="member-skills-section">
             <div class="skills-title">Kỹ năng chuyên môn</div>
@@ -1337,6 +1486,7 @@ class TeamPortal {
       container.insertAdjacentHTML('beforeend', cardHTML);
     });
   }
+
 
   renderKanbanBoard() {
     const select = document.getElementById('kanban-comp-select');

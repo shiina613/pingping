@@ -1,6 +1,6 @@
 # 🌌 Danh sách & Phân bậc Thông điệp Sao đêm (Starlight Messages)
 
-Bạn có thể tự do thêm, bớt hoặc chỉnh sửa các thông điệp theo 3 cấp độ tần suất xuất hiện dưới đây:
+Các thông điệp mang tính vượt thời gian: Lời chúc, lời quan tâm, hỏi han, động viên và trêu đùa vui vẻ cho cả Team.
 
 ---
 
@@ -18,27 +18,33 @@ Bạn có thể tự do thêm, bớt hoặc chỉnh sửa các thông điệp th
 - 🌈 Don't worry, everything will be fine!
 - ✨ Cố lên PingPing Team!
 - 💻 Code bằng cả trái tim
-- ⚡ Team 7 Thành viên cùng tiến bước
+- ⚡ Cùng nhau tiến bước!
+- 🌟 Hôm nay là một ngày tuyệt vời
 
 ---
 
 ## 🟡 Sometimes (Thỉnh thoảng ~30%)
 - 🌟 Keep shining bright!
-- 💫 Mỗi dòng code là một ngôi sao
-- 🌙 Nhớ nghỉ ngơi đủ nhé
-- 🥛 Uống nước đi nào
-- 🏆 Viettel AI Race 2026 đang chờ
-- 🔥 Thực chiến AI - Vươn tầm xa
-- 🎙️ OneVoice - Kết nối ước mơ
-- 🎯 Tập trung từng mốc nhỏ
+- 💫 Mỗi dòng code là một vì sao
+- 🌙 Nhớ ngủ sớm giữ sức khỏe nhé
+- 🥛 Uống ngụm nước rồi làm tiếp nào
+- 🎯 Mọi nỗ lực rồi sẽ đáp lời
+- 🔥 Cháy hết mình cùng đam mê
+- 🕊️ Giữ tâm trí bình thản nhé
+- ☕ Làm ly trà/cà phê cho tỉnh táo nào
+- 🎈 Cứ thong thả, rồi mọi việc sẽ xong
+- ☀️ Cười lên một cái cho đời tươi trẻ!
 
 ---
 
 ## 🔴 Rarely (Hiếm khi ~10%)
-- 💧 Uống đủ nước nhé!
-- 🏆 Vượt qua mọi thử thách 2026!
-- 🌌 Ngắm sao và tiếp tục tiến bước...
+- 💧 Uống đủ 2 lít nước hôm nay chưa?
+- 🏆 Mọi thử thách rồi cũng sẽ qua!
+- 🌌 Ngắm sao 3 giây rồi lại quẩy tiếp...
 - 💖 Địt mẹ mày <3
 - 🛸 AI không thay thế bạn, người dùng AI mới thay thế!
-- 🔮 Đêm nay debug full pass thành công!
-- ☕ Cà phê 0h30, sao đêm rực rỡ
+- 🔮 Đêm nay nguyện ước bug tự nhiên biến mất!
+- ☕ Cà phê đêm muộn, sao đêm lấp lánh
+- 🍟 Thèm ăn vặt quá, ai bao không?
+- 🐛 Bug ơi bug à, làm ơn đừng xuất hiện nữa!
+- 🚀 Ship code thành công không lỗi prod!

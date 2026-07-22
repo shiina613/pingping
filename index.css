@@ -2366,25 +2366,25 @@ body.light-theme .site-header {
 }
 
 .logo-icon {
-  width: 36px;
-  height: 36px;
+  width: 38px;
+  height: 38px;
   border-radius: 50%;
   background: var(--c-twilight-grad) !important;
   color: #ffffff !important;
   font-family: var(--font-graffiti) !important;
-  font-size: 1.05rem !important;
+  font-size: 1.15rem !important;
   letter-spacing: -0.05em;
   display: flex;
   align-items: center;
   justify-content: center;
   transform: rotate(-5deg);
-  box-shadow: 0 4px 15px rgba(244, 63, 94, 0.4), inset 0 0 8px rgba(255, 255, 255, 0.3) !important;
-  border: 2px solid rgba(255, 255, 255, 0.4) !important;
+  box-shadow: 0 0 20px rgba(244, 63, 94, 0.5), inset 0 0 8px rgba(255, 255, 255, 0.4) !important;
+  border: 2px solid rgba(255, 255, 255, 0.5) !important;
   transition: var(--transition-smooth);
 }
 
 .logo-icon:hover {
-  transform: rotate(0deg) scale(1.1);
+  transform: rotate(0deg) scale(1.15);
 }
 
 .logo-text,
@@ -2394,29 +2394,27 @@ body.light-theme .logo-text {
   -webkit-text-fill-color: var(--color-text) !important;
   font-family: var(--font-display);
   font-weight: 800;
-  font-size: 1.25rem;
+  font-size: 1.3rem;
   letter-spacing: -0.02em;
 }
 
 .team-badge,
 body.light-theme .team-badge {
-  border: none !important;
+  border: 2px solid rgba(255, 255, 255, 0.3) !important;
   background: var(--c-twilight-grad) !important;
   color: #ffffff !important;
-  font-family: var(--font-body) !important;
-  text-transform: uppercase;
+  font-family: var(--font-graffiti) !important;
   letter-spacing: 0.05em;
-  font-size: 0.7rem;
-  font-weight: 700;
-  padding: 0.25rem 0.75rem;
-  border-radius: var(--radius-sm);
-  transform: rotate(-1.5deg);
-  box-shadow: 2px 2px 8px rgba(244, 63, 94, 0.25) !important;
+  font-size: 0.78rem;
+  padding: 0.3rem 0.8rem;
+  border-radius: 6px;
+  transform: rotate(-3deg);
+  box-shadow: 3px 3px 0px rgba(0, 0, 0, 0.3), 0 0 12px rgba(244, 63, 94, 0.3) !important;
   transition: var(--transition-smooth);
 }
 
 .team-badge:hover {
-  transform: rotate(0deg) scale(1.05);
+  transform: rotate(0deg) scale(1.08);
 }
 
 .nav-tabs,
@@ -2456,8 +2454,9 @@ body.light-theme .tab-btn:hover {
 body.light-theme .tab-btn.active {
   background: var(--c-twilight-grad) !important;
   color: #ffffff !important;
-  box-shadow: 0 0 16px rgba(244, 63, 94, 0.35), 0 4px 15px rgba(245, 158, 11, 0.3) !important;
+  box-shadow: 0 0 20px rgba(244, 63, 94, 0.5), 0 4px 15px rgba(245, 158, 11, 0.4) !important;
   font-weight: 700;
+  transform: translateY(-1px) rotate(-0.5deg);
 }
 
 .countdown-milestone,
@@ -2465,11 +2464,34 @@ body.light-theme .tab-btn.active {
 .comp-tag,
 .filter-chip.active {
   font-family: var(--font-body) !important;
-  font-weight: 600;
-  letter-spacing: 0.02em;
+  font-weight: 700;
+  letter-spacing: 0.03em;
   font-size: 0.72rem !important;
   border-radius: var(--radius-full);
+  box-shadow: 2px 2px 0px rgba(0, 0, 0, 0.15) !important;
   transition: var(--transition-smooth);
+}
+
+/* Spray Marker Underline for Section Titles */
+.section-title,
+.gradient-title {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.section-title::after,
+.gradient-title::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  background: var(--c-twilight-grad);
+  border-radius: 999px;
+  opacity: 0.7;
+  filter: drop-shadow(0 0 6px rgba(244, 63, 94, 0.5));
 }
 
 .glass-card,

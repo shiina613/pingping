@@ -1139,8 +1139,6 @@ class TeamPortal {
       });
     });
 
-    allEvents.sort((a, b) => new Date(a.event.date) - new Date(b.event.date));
-
     if (allEvents.length === 0) {
       eventsContainer.innerHTML = '<div style="padding: 2rem; text-align: center; color: var(--text-secondary);">Không tìm thấy mốc thời gian phù hợp.</div>';
       return;
@@ -1148,9 +1146,17 @@ class TeamPortal {
 
     const now = new Date();
 
-    allEvents.forEach(item => {
+    // Sort: Upcoming events at top (nearest first), Past events at bottom (most recent past first)
+    const upcomingEvents = allEvents
+      .filter(item => new Date(item.event.date) >= now)
+      .sort((a, b) => new Date(a.event.date) - new Date(b.event.date));
+
+    const pastEvents = allEvents
+      .filter(item => new Date(item.event.date) < now)
+      .sort((a, b) => new Date(b.event.date) - new Date(a.event.date));
+
+    const renderCard = (item, isPast) => {
       const eventDate = new Date(item.event.date);
-      const isPast = eventDate < now;
 
       const formattedFullDate = eventDate.toLocaleDateString('vi-VN', {
         weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
@@ -1158,7 +1164,7 @@ class TeamPortal {
 
       const todayClass = Math.abs(eventDate - now) < (1000 * 60 * 60 * 24) ? 'today' : '';
 
-      const cardHTML = `
+      return `
         <div class="timeline-event-card ${todayClass}" style="color: ${isPast ? 'var(--text-muted)' : 'inherit'}; opacity: ${isPast ? '0.6' : '1'};">
           <div class="timeline-event-header">
             <span class="timeline-event-date">${formattedFullDate}</span>
@@ -1175,8 +1181,28 @@ class TeamPortal {
           </div>
         </div>
       `;
-      eventsContainer.insertAdjacentHTML('beforeend', cardHTML);
-    });
+    };
+
+    if (upcomingEvents.length > 0) {
+      upcomingEvents.forEach(item => {
+        eventsContainer.insertAdjacentHTML('beforeend', renderCard(item, false));
+      });
+    }
+
+    if (pastEvents.length > 0) {
+      const dividerHTML = `
+        <div class="timeline-past-divider" style="display: flex; align-items: center; gap: 12px; margin: 2rem 0 1rem; color: var(--text-muted); font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">
+          <span style="flex: 1; height: 1px; background: var(--border-glass);"></span>
+          <span>📁 Mốc thời gian đã trôi qua (${pastEvents.length})</span>
+          <span style="flex: 1; height: 1px; background: var(--border-glass);"></span>
+        </div>
+      `;
+      eventsContainer.insertAdjacentHTML('beforeend', dividerHTML);
+
+      pastEvents.forEach(item => {
+        eventsContainer.insertAdjacentHTML('beforeend', renderCard(item, true));
+      });
+    }
   }
 
   // ==========================================================================

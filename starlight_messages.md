@@ -1,6 +1,6 @@
 # 🌌 Danh sách & Phân bậc Thông điệp Sao đêm (Starlight Messages)
 
-Các thông điệp mang tính vượt thời gian: Lời chúc, lời quan tâm, hỏi han, động viên, trêu đùa vui vẻ và phong cách Gen Z cho cả Team.
+Thông điệp ngắn gọn, súc tích, ngầu và phong cách.
 
 ---
 
@@ -12,16 +12,14 @@ Các thông điệp mang tính vượt thời gian: Lời chúc, lời quan tâm
 - ✨ Hưng
 - ✨ Hậu
 - ✨ Tùng Anh
-- 🍀 Good luck!
-- 💪 You got this!
-- ☕ Take it easy & chill~
-- 🌈 Don't worry, everything will be fine!
-- ✨ Ping Ping
-- 💻 Code bằng cả trái tim
+- 🍀 Good luck
+- 💪 Keep going
+- ☕ Chill
 - ⚡ Just go
-- 🌟 Have a good day bae
-- 💅 Slay quá vậy nè!
-- ⚡ Mãi keo mãi đỉnh!
+- 🌟 Have a good day
+- 💻 Code hard
+- 💅 Slay
+- ⚡ Mãi keo
 - 🍃 Kệ đi
 - 🙈 Kệ mày
 - 🕶️ Kệ tao
@@ -35,8 +33,8 @@ Các thông điệp mang tính vượt thời gian: Lời chúc, lời quan tâm
 - 💥 Kệ con mẹ tao
 - 🔥 Kệ con mẹ nó
 - 🕺 Nhảy cùng Zinzin
-- 🌌 Life is either a daring adventure or nothing.
-- 🧘 Until death all defeat is psychological
+- 🌌 Life is an adventure
+- 🧘 Defeat is psychological
 - 💥 Bengz
 - 😄 hihihaha
 - 👻 pekkboo
@@ -44,21 +42,18 @@ Các thông điệp mang tính vượt thời gian: Lời chúc, lời quan tâm
 ---
 
 ## 🟡 Sometimes (Thỉnh thoảng ~30%)
-- 🌟 Keep shining bright!
-- 💫 Mỗi dòng code là một vì sao
-- 🌙 Nhớ ngủ sớm giữ sức khỏe nhé
-- 🥛 Uống ngụm nước rồi làm tiếp nào
-- 🎯 Mọi nỗ lực rồi sẽ đáp lời
-- 🔥 Cháy hết mình cùng đam mê
-- 🕊️ Giữ tâm trí bình thản nhé
-- ☕ Làm ly trà/cà phê cho tỉnh táo nào
-- 🎈 Cứ thong thả, rồi mọi việc sẽ xong
-- ☀️ Cười lên một cái cho đời tươi trẻ!
-- 🫠 Chầm kẽm luôn á trời
-- 🗿 Flex đến breath-taking
-- 😎 Ghê chưa ghê chưa!
-- 🥑 Hẻm biết nữa, kệ ik
-- 🎵 Chỉ là một phút giây thôi mà ~~
+- 🌟 Shine on
+- 💫 Star code
+- 🌙 Ngủ sớm đi
+- 🥛 Uống nước
+- 🎯 Keep focus
+- 🔥 Fire up
+- ☕ Trà / Cà phê?
+- 🫠 Chầm kẽm
+- 🗿 Flexing
+- 😎 Ghê chưa
+- 🥑 Kệ ik
+- 🎵 Một phút giây thôi ~~
 
 ---
 

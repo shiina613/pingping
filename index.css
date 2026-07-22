@@ -4,50 +4,52 @@
 :root {
   /* Fonts */
   --font-display: 'Fredoka', 'Outfit', 'Inter', sans-serif;
-  --font-body: 'Inter', sans-serif;
+  --font-body: 'Outfit', 'Inter', sans-serif;
 
-  /* Twilight Starlight Palette */
-  --bg-primary: #19142d;
-  --bg-secondary: #231b3c;
-  --bg-card: rgba(35, 27, 55, 0.65);
-  --bg-glass: rgba(45, 33, 70, 0.45);
-  --border-glass: rgba(255, 180, 200, 0.18);
-  --border-glass-hover: rgba(255, 180, 200, 0.40);
-  
-  --text-primary: #fff8f6;
+  /* HackMIT Royal Blue & Psychedelic Palette */
+  --bg-primary: #1a2e6e;
+  --bg-secondary: #142354;
+  --bg-card: #fffdf5;
+  --bg-parchment: #fffdf5;
+  --bg-glass: rgba(26, 46, 110, 0.85);
+
+  --border-gold: #fde047;
+  --border-ribbon: #e63956;
+  --border-glass: rgba(253, 224, 71, 0.35);
+  --border-glass-hover: rgba(230, 57, 86, 0.70);
+
+  --text-primary: #fffdf5;
   --text-secondary: #cbd5e1;
-  --text-muted: #94a3b8;
+  --text-gold: #fde047;
+  --text-parchment-red: #991b1b;
+  --text-parchment-dark: #292524;
 
-  /* Accents */
-  --accent-gold: #fba147;
-  --accent-magenta: #e040fb;
-  --accent-cyan: #38bdf8;
-  --accent-emerald: #34d399;
-  --accent-rose: #f43f5e;
-  --accent-amber: #f59e0b;
-  --accent-purple: #a855f7;
-  --accent-blue: #38bdf8;
+  --ribbon-coral: #e63956;
+  --ribbon-peach: #f97316;
+  --ribbon-mint: #2dd4bf;
+  --ribbon-yellow: #fde047;
+  --ribbon-lavender: #c084fc;
 
   /* Gradients */
-  --c-twilight-grad: linear-gradient(135deg, #e040fb 0%, #fba147 100%);
-  --c-starlight-grad: linear-gradient(135deg, #38bdf8 0%, #e040fb 100%);
-  --c-sky-grad: linear-gradient(180deg, #1c1635 0%, #4a2040 60%, #2c1a36 100%);
+  --c-twilight-grad: linear-gradient(135deg, #e63956 0%, #f97316 40%, #fde047 100%);
+  --c-starlight-grad: linear-gradient(135deg, #2dd4bf 0%, #c084fc 100%);
+  --c-sky-grad: linear-gradient(180deg, #1a2e6e 0%, #111e48 100%);
 
-  --c-onevoice-grad: linear-gradient(135deg, #38bdf8 0%, #e040fb 100%);
-  --c-thucchien-grad: linear-gradient(135deg, #e040fb 0%, #fba147 100%);
-  --c-viettel-grad: linear-gradient(135deg, #f43f5e 0%, #fba147 100%);
+  --c-onevoice-grad: linear-gradient(135deg, #e63956 0%, #f97316 100%);
+  --c-thucchien-grad: linear-gradient(135deg, #f97316 0%, #fde047 100%);
+  --c-viettel-grad: linear-gradient(135deg, #2dd4bf 0%, #c084fc 100%);
 
-  --c-onevoice-glow: rgba(56, 189, 248, 0.35);
-  --c-thucchien-glow: rgba(224, 64, 251, 0.35);
-  --c-viettel-glow: rgba(244, 63, 94, 0.35);
+  --c-onevoice-glow: rgba(230, 57, 86, 0.4);
+  --c-thucchien-glow: rgba(249, 115, 22, 0.4);
+  --c-viettel-glow: rgba(45, 212, 191, 0.4);
 
   /* UI Specs */
   --radius-sm: 10px;
-  --radius-md: 16px;
-  --radius-lg: 24px;
+  --radius-md: 18px;
+  --radius-lg: 26px;
   --radius-full: 9999px;
-  --shadow-twilight: 0 10px 30px rgba(0, 0, 0, 0.35);
-  --shadow-glow: 0 10px 30px rgba(224, 64, 251, 0.25);
+  --shadow-hackmit: 0 12px 35px rgba(0, 0, 0, 0.45);
+  --shadow-glow: 0 10px 30px rgba(230, 57, 86, 0.35);
   --transition-smooth: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
@@ -78,34 +80,33 @@ body.light-theme {
 
 body {
   font-family: var(--font-body);
-  background: var(--c-sky-grad);
-  background-attachment: fixed;
+  background: #1a2e6e;
   color: var(--text-primary);
   min-height: 100vh;
   display: flex;
   flex-direction: column;
   overflow-x: hidden;
   transition: var(--transition-smooth);
+  position: relative;
 }
 
 body.light-theme {
-  background-image: 
-    radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.04) 0px, transparent 40%),
-    radial-gradient(at 100% 100%, rgba(16, 185, 129, 0.04) 0px, transparent 40%);
+  background: #f8fafc;
+  color: #0f172a;
 }
 
 /* ==========================================================================
-   TWILIGHT STARLIGHT ANIMATIONS & BACKGROUND
+   HACKMIT PSYCHEDELIC RIBBON GLOW & ANIMATIONS
    ========================================================================== */
 
 @keyframes twinkle {
-  0%, 100% { opacity: 0.35; transform: scale(0.85); }
-  50% { opacity: 0.95; transform: scale(1.15); }
+  0%, 100% { opacity: 0.4; transform: scale(0.9); }
+  50% { opacity: 1; transform: scale(1.15); }
 }
 
 @keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-6px); }
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-8px) rotate(1deg); }
 }
 
 body::before {
@@ -118,15 +119,15 @@ body::before {
   pointer-events: none;
   z-index: 0;
   background-image: 
-    radial-gradient(2px 2px at 20px 30px, #ffffff, rgba(0,0,0,0)),
-    radial-gradient(2px 2px at 40px 70px, #fba147, rgba(0,0,0,0)),
-    radial-gradient(1.5px 1.5px at 90px 40px, #e040fb, rgba(0,0,0,0)),
+    radial-gradient(circle at 10% 20%, rgba(230, 57, 86, 0.35) 0%, transparent 40%),
+    radial-gradient(circle at 90% 30%, rgba(253, 224, 71, 0.28) 0%, transparent 45%),
+    radial-gradient(circle at 50% 80%, rgba(45, 212, 191, 0.25) 0%, transparent 50%),
+    radial-gradient(circle at 80% 85%, rgba(192, 132, 252, 0.30) 0%, transparent 40%),
+    radial-gradient(2px 2px at 20px 30px, #fde047, rgba(0,0,0,0)),
     radial-gradient(2px 2px at 160px 120px, #ffffff, rgba(0,0,0,0)),
-    radial-gradient(1.5px 1.5px at 230px 190px, #38bdf8, rgba(0,0,0,0)),
-    radial-gradient(2px 2px at 300px 60px, #fba147, rgba(0,0,0,0)),
-    radial-gradient(1.5px 1.5px at 370px 150px, #ffffff, rgba(0,0,0,0));
+    radial-gradient(2px 2px at 300px 60px, #2dd4bf, rgba(0,0,0,0));
   background-repeat: repeat;
-  background-size: 400px 300px;
+  background-size: 100vw 100vh, 100vw 100vh, 100vw 100vh, 100vw 100vh, 400px 300px, 400px 300px, 400px 300px;
   animation: twinkle 4s ease-in-out infinite alternate;
 }
 

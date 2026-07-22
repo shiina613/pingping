@@ -1,5 +1,5 @@
 import './config.js';
-import { DEFAULT_MEMBERS, COMPETITIONS, INITIAL_ALLOCATIONS, DEFAULT_KANBAN_TASKS } from './src/constants.js';
+import { DEFAULT_MEMBERS, COMPETITIONS, INITIAL_ALLOCATIONS, DEFAULT_KANBAN_TASKS, DEFAULT_STARLIGHT_MESSAGES } from './src/constants.js';
 import { CollaborationController, escapeHtml } from './collaboration-controller.js';
 import { buildCalendar, getTeamSizeWarning } from './collaboration.js';
 import { getCompetitionCountdowns, getCountdownParts } from './src/countdown.js';
@@ -10,6 +10,7 @@ class TeamPortal {
     this.members = this.loadData('pp_members', DEFAULT_MEMBERS);
     this.allocations = this.loadData('pp_allocations', INITIAL_ALLOCATIONS);
     this.kanbanTasks = this.loadData('pp_kanban_tasks', DEFAULT_KANBAN_TASKS);
+    this.starlightMessages = this.loadData('pp_starlight_messages', DEFAULT_STARLIGHT_MESSAGES);
     this.theme = this.loadData('pp_theme', document.documentElement.dataset.theme || 'dark');
     this.theme = 'dark';
 
@@ -321,26 +322,13 @@ class TeamPortal {
     };
 
     // Starlight Messages Pool & Scheduler
-    const STARLIGHT_QUOTES = [
-      '✨ Cố lên PingPing Team!',
-      '🚀 Viettel AI Race 2026',
-      '💻 Code bằng cả trái tim',
-      '🌟 Keep shining bright!',
-      '🔥 Thực chiến AI - Vươn tầm xa',
-      '🎙️ OneVoice - Kết nối ước mơ',
-      '💫 Mỗi dòng code là một ngôi sao',
-      '⚡ Tự hào Team 7 Thành viên',
-      '💧 Shiina ơi, nhớ uống nước nhé!',
-      '🏆 Vượt qua mọi thử thách 2026',
-      '🌌 Ngắm sao và tiếp tục tiến bước',
-    ];
-
     const quotes = [];
 
     const spawnStarlightQuote = () => {
       if (document.hidden) return;
 
-      const text = STARLIGHT_QUOTES[Math.floor(Math.random() * STARLIGHT_QUOTES.length)];
+      const pool = this.starlightMessages && this.starlightMessages.length > 0 ? this.starlightMessages : DEFAULT_STARLIGHT_MESSAGES;
+      const text = pool[Math.floor(Math.random() * pool.length)];
       const startX = Math.random() * (width * 0.65) + width * 0.15;
       const startY = Math.random() * (height * 0.55) + height * 0.15;
 

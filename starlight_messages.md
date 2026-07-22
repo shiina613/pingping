@@ -24,9 +24,11 @@ Các thông điệp mang tính vượt thời gian: Lời chúc, lời quan tâm
 - 🙈 Kệ mày
 - 🕶️ Kệ tao
 - 🐱 Kệ nó
+- 🌪️ Kệ mẹ đi
 - 🔥 Kệ mẹ mày
 - 💥 Kệ mẹ tao
 - ⚡ Kệ mẹ nó
+- 🌀 Kệ con mẹ đi
 - ⚡ Kệ con mẹ mày
 - 💥 Kệ con mẹ tao
 - 🔥 Kệ con mẹ nó
@@ -54,7 +56,7 @@ Các thông điệp mang tính vượt thời gian: Lời chúc, lời quan tâm
 ---
 
 ## 🔴 Rarely (Hiếm khi ~10%)
-- 💧 Uống đủ nước nhé!
+- 💧 Uống đủ 2 lít nước hôm nay chưa?
 - 🏆 Mọi thử thách rồi cũng sẽ qua!
 - 🌌 Ngắm sao 3 giây rồi lại quẩy tiếp...
 - 💖 Địt mẹ mày <3

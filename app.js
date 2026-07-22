@@ -286,8 +286,87 @@ class TeamPortal {
         }
       }
 
+      // 3. Render Starlight Ambient Messages
+      for (let i = quotes.length - 1; i >= 0; i--) {
+        const q = quotes[i];
+        q.y += q.dy;
+        q.life++;
+
+        const progress = q.life / q.maxLife;
+        let alpha = 0;
+        if (progress < 0.2) {
+          alpha = progress / 0.2;
+        } else if (progress > 0.75) {
+          alpha = (1 - progress) / 0.25;
+        } else {
+          alpha = 1;
+        }
+        alpha *= 0.55; // Ambient translucent glow
+
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
+        ctx.font = '600 13px "Be Vietnam Pro", "Outfit", sans-serif';
+        ctx.shadowColor = q.color;
+        ctx.shadowBlur = 10;
+        ctx.fillStyle = q.color;
+        ctx.fillText(q.text, q.x, q.y);
+        ctx.restore();
+
+        if (q.life >= q.maxLife) {
+          quotes.splice(i, 1);
+        }
+      }
+
       requestAnimationFrame(animLoop);
     };
+
+    // Starlight Messages Pool & Scheduler
+    const STARLIGHT_QUOTES = [
+      '✨ Cố lên PingPing Team!',
+      '🚀 Viettel AI Race 2026',
+      '💻 Code bằng cả trái tim',
+      '🌟 Keep shining bright!',
+      '🔥 Thực chiến AI - Vươn tầm xa',
+      '🎙️ OneVoice - Kết nối ước mơ',
+      '💫 Mỗi dòng code là một ngôi sao',
+      '⚡ Tự hào Team 7 Thành viên',
+      '💧 Shiina ơi, nhớ uống nước nhé!',
+      '🏆 Vượt qua mọi thử thách 2026',
+      '🌌 Ngắm sao và tiếp tục tiến bước',
+    ];
+
+    const quotes = [];
+
+    const spawnStarlightQuote = () => {
+      if (document.hidden) return;
+
+      const text = STARLIGHT_QUOTES[Math.floor(Math.random() * STARLIGHT_QUOTES.length)];
+      const startX = Math.random() * (width * 0.65) + width * 0.15;
+      const startY = Math.random() * (height * 0.55) + height * 0.15;
+
+      quotes.push({
+        text: text,
+        x: startX,
+        y: startY,
+        dy: -0.22 - Math.random() * 0.15,
+        life: 0,
+        maxLife: 260 + Math.floor(Math.random() * 100),
+        color: Math.random() > 0.4 ? '#fbbf24' : Math.random() > 0.5 ? '#ffffff' : '#fb7185',
+      });
+    };
+
+    const scheduleQuotes = () => {
+      const delay = 10000 + Math.random() * 10000;
+      setTimeout(() => {
+        spawnStarlightQuote();
+        scheduleQuotes();
+      }, delay);
+    };
+
+    setTimeout(() => {
+      spawnStarlightQuote();
+      scheduleQuotes();
+    }, 3500);
 
     animLoop();
   }

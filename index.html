@@ -1,18 +1,18 @@
 <!DOCTYPE html>
-<html lang="vi" data-theme="light">
+<html lang="vi" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#f3f5f8">
-  <title>PingPing Team Portal - Quản lý 5 Cuộc thi AI & Tech 2026</title>
+  <meta name="theme-color" content="#100b1d">
+  <title>PingPing Team Portal - Quản lý 3 Cuộc thi AI & Tech 2026</title>
   <script>
     (() => {
       try {
         const saved = JSON.parse(localStorage.getItem('pp_theme'));
         const theme = saved || 'light';
-        document.documentElement.dataset.theme = theme;
+        document.documentElement.dataset.theme = 'dark';
       } catch (_) {
-        document.documentElement.dataset.theme = 'light';
+        document.documentElement.dataset.theme = 'dark';
       }
     })();
   </script>
@@ -75,6 +75,10 @@
         </svg>
         Trò chuyện <span id="chat-tab-badge" class="tab-unread-badge" hidden>0</span>
       </button>
+      <button class="tab-btn" data-tab="xo" hidden>
+        <span aria-hidden="true">🎲</span>
+        Sòng X-O
+      </button>
       <button class="tab-btn" data-tab="settings">
         <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
           <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
@@ -99,7 +103,7 @@
         <span id="account-avatar">?</span>
         <span id="account-label">Đăng nhập</span>
       </button>
-      <button class="theme-toggle-btn" id="theme-toggle" title="Đổi chế độ sáng hoặc tối" aria-label="Chuyển sang chế độ tối" aria-pressed="false">
+      <button class="theme-toggle-btn" id="theme-toggle" title="Đổi chế độ sáng hoặc tối" aria-label="Chuyển sang chế độ tối" aria-pressed="false" style="display: none !important;">
         <svg id="theme-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width: 20px; height: 20px;">
           <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m0-12.728l.707.707m12.728 12.728l.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z"></path>
         </svg>
@@ -124,7 +128,7 @@
             </svg>
           </div>
           <div>
-            <div class="stat-number" id="stat-active-comp">5 / 5</div>
+            <div class="stat-number" id="stat-active-comp">3 / 3</div>
             <div class="stat-label">Cuộc thi tham gia</div>
           </div>
         </div>
@@ -332,8 +336,6 @@
             <button class="chat-room active" data-room="general"><span>💬 Trò chuyện chung</span><span class="room-unread-badge" hidden>0</span></button>
             <button class="chat-room" data-room="onevoice"><span>OneVoice</span><span class="room-unread-badge" hidden>0</span></button>
             <button class="chat-room" data-room="thucchien"><span>AI Thực Chiến</span><span class="room-unread-badge" hidden>0</span></button>
-            <button class="chat-room" data-room="aichallenge"><span>Vietnam AI Innovation</span><span class="room-unread-badge" hidden>0</span></button>
-            <button class="chat-room" data-room="buildhub"><span>Build@HUB</span><span class="room-unread-badge" hidden>0</span></button>
             <button class="chat-room" data-room="viettel"><span>Viettel AI Race</span><span class="room-unread-badge" hidden>0</span></button>
           </div>
         </aside>
@@ -373,7 +375,90 @@
       </div>
     </section>
 
-    <!-- 8. TAB: SETTINGS -->
+    <!-- 8. TAB: X-O CASINO -->
+    <section id="tab-xo" class="tab-panel" hidden>
+      <div class="xo-arena" id="xo-arena-root">
+        <header class="xo-hero glass-card">
+          <div>
+            <span class="stat-label">Bản thử nghiệm, chưa release chính thức</span>
+            <h2>🎲 Sòng X-O</h2>
+            <p>Chọn đối thủ, mở kèo và đấu BO1 nối 5. Thắng +36 rating, thua -18 rating.</p>
+          </div>
+          <div class="xo-actions">
+            <button class="btn-secondary" id="xo-refresh-btn" type="button">Làm mới sòng</button>
+          </div>
+        </header>
+
+        <section class="glass-card citizen-checkin-card">
+          <div>
+            <span class="stat-label">Điểm danh công dân hôm nay</span>
+            <div id="xo-wallet" class="xo-wallet">Chưa đăng nhập</div>
+            <small id="citizen-checkin-status" class="citizen-checkin-status">Đang tải trạng thái...</small>
+          </div>
+          <button id="citizen-checkin-button" class="btn-primary citizen-checkin-button" type="button" disabled>Điểm danh</button>
+        </section>
+
+        <section class="glass-card xo-challenge-card">
+          <div>
+            <h3 class="section-title">Mở kèo mới</h3>
+            <p>Đối thủ sẽ ký quỹ cùng số điểm khi nhận kèo.</p>
+          </div>
+          <form id="xo-challenge-form" class="xo-challenge-form">
+            <label class="sr-only" for="xo-opponent">Đối thủ</label>
+            <select class="form-control" id="xo-opponent" required></select>
+            <label class="sr-only" for="xo-wager">Tiền cược</label>
+            <input class="form-control" id="xo-wager" type="number" min="1" step="1" value="6" required aria-label="Tiền cược">
+            <button class="btn-primary" type="submit">Mở kèo</button>
+          </form>
+        </section>
+
+        <div class="xo-grid">
+          <section class="glass-card xo-board-card">
+            <div class="xo-section-heading">
+              <h3 class="section-title" id="xo-match-title">Chưa chọn kèo</h3>
+              <span id="xo-board-status">Đang chờ hai tay chơi</span>
+            </div>
+            <p id="xo-spectator-status" class="xo-spectator-status" hidden></p>
+            <div class="xo-board-scroll">
+              <div id="xo-board" class="xo-board" aria-label="Bàn X-O nối 5"></div>
+            </div>
+          </section>
+
+          <aside class="xo-side">
+            <section class="glass-card">
+              <h3 class="section-title">Cược khán giả</h3>
+              <form id="xo-bet-form" class="xo-bet-form" hidden>
+                <select class="form-control" id="xo-bet-pick" aria-label="Chọn người thắng"></select>
+                <input class="form-control" id="xo-bet-stake" type="number" min="1" step="1" value="3" aria-label="Điểm cược">
+                <button class="btn-primary" type="submit">Đặt cược</button>
+              </form>
+              <div id="xo-bets" class="xo-list">Cược khóa sau nước đi đầu tiên.</div>
+            </section>
+          </aside>
+        </div>
+
+        <div class="xo-grid xo-grid-lower">
+          <section class="glass-card">
+            <h3 class="section-title">Kèo đang mở</h3>
+            <div id="xo-open-matches" class="xo-list"></div>
+          </section>
+          <section class="glass-card">
+            <h3 class="section-title">Trận gần đây</h3>
+            <div id="xo-recent-matches" class="xo-list"></div>
+          </section>
+          <section class="glass-card">
+            <h3 class="section-title">BXH X-O</h3>
+            <div id="xo-leaderboard" class="xo-list"></div>
+          </section>
+          <section class="glass-card">
+            <h3 class="section-title">BXH điểm công dân</h3>
+            <div id="citizen-points-leaderboard" class="xo-list"></div>
+          </section>
+        </div>
+      </div>
+    </section>
+
+    <!-- 9. TAB: SETTINGS -->
     <section id="tab-settings" class="tab-panel">
       <div class="glass-card settings-layout">
         <h3 class="section-title">Kết nối nhóm</h3>
@@ -516,6 +601,29 @@
     </div>
   </div>
 
+  <button id="about-update-button" class="about-update-button" type="button" hidden>About new update</button>
+  <div class="modal-overlay about-update-modal" id="about-update-modal" role="dialog" aria-modal="true" aria-labelledby="about-update-title" hidden>
+    <div class="modal-content">
+      <button class="modal-close-btn" id="about-update-close" type="button" aria-label="Đóng">×</button>
+      <h2 id="about-update-title" class="section-title">About new update</h2>
+      <p><strong>Bản thử nghiệm, chưa release chính thức.</strong></p>
+      <p>Update này thêm Sòng X-O: chọn một thành viên, mở kèo điểm và đấu BO1 nối 5 ngay khi đối thủ nhận lời.</p>
+      <p>X-O bắt đầu với board 9x9. Khi đánh ở rìa, vùng chơi mở rộng thêm 3 ô đúng phía đó và tối đa là 36x36.</p>
+      <p>Hai người chơi ký quỹ bằng nhau; người thắng ăn trọn kèo. Khán giả có thể cược pool trước nước đi đầu tiên. Rating vẫn +36 cho người thắng và -18 cho người thua.</p>
+    </div>
+  </div>
+
+  <div class="modal-overlay checkin-penalty-modal" id="checkin-penalty-modal" role="alertdialog" aria-modal="true" aria-labelledby="checkin-penalty-title" hidden>
+    <div class="modal-content checkin-penalty-content">
+      <div class="checkin-penalty-emoji" aria-hidden="true">🚨</div>
+      <h2 id="checkin-penalty-title">Mày đã bị trừ 360 điểm</h2>
+      <p>F12 không thắng được database đâu bạn ơi 😌</p>
+      <button id="checkin-penalty-close" class="btn-primary" type="button">Tôi chừa 🥲</button>
+    </div>
+  </div>
+
+  <div id="xo-threat-flash" class="xo-threat-flash" role="status" aria-live="assertive" aria-atomic="true" hidden></div>
+
   <!-- ==========================================================================
        FOOTER
        ========================================================================== */ -->
@@ -524,15 +632,12 @@
       <div class="footer-links">
         <a href="https://luma.com/g1rwi7ag?brid=YWdncwGD4tzxqhiTNvLEc1Pm5LcW" target="_blank" class="footer-link">OneVoice</a>
         <a href="https://thucchien.ai/" target="_blank" class="footer-link">AI Thực Chiến</a>
-        <a href="https://luma.com/qpph089h?brid=YWdncwEr_jkdtikNCTtkyVKaFA1K&tk=JkEXcF" target="_blank" class="footer-link">Vietnam AI Innovation</a>
-        <a href="https://hubnetworkhs.com/build-hub" target="_blank" class="footer-link">Build@HUB</a>
         <a href="https://competition.viettel.vn/" target="_blank" class="footer-link">Viettel AI Race</a>
       </div>
       <p>© 2026 PingPing Team. Tất cả thông tin cuộc thi được tổng hợp tự động phục vụ phối hợp nội bộ.</p>
     </div>
   </footer>
 
-  <script src="config.js?v=1"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/tsparticles-preset-stars@2/tsparticles.preset.stars.bundle.min.js"></script>

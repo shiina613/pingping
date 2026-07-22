@@ -10,7 +10,8 @@ class TeamPortal {
     this.members = this.loadData('pp_members', DEFAULT_MEMBERS);
     this.allocations = this.loadData('pp_allocations', INITIAL_ALLOCATIONS);
     this.kanbanTasks = this.loadData('pp_kanban_tasks', DEFAULT_KANBAN_TASKS);
-    this.theme = this.loadData('pp_theme', document.documentElement.dataset.theme || 'light');
+    this.theme = this.loadData('pp_theme', document.documentElement.dataset.theme || 'dark');
+    this.theme = 'dark';
 
     this.activeKanbanComp = 'onevoice';
     this.xoState = createEmptyBoard();

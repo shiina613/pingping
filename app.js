@@ -1350,7 +1350,7 @@ class TeamPortal {
       return `<line id="c-line-${fromId}-${toId}" class="constellation-line" x1="${fromNode.x}" y1="${fromNode.y}" x2="${toNode.x}" y2="${toNode.y}" />`;
     }).join('');
 
-    // Draw SVG Star Nodes (Natural 4-point twinkling star flares embedded seamlessly)
+    // Draw SVG Star Nodes (Pure natural 4-point twinkling star flares)
     const nodesHTML = members.map(m => {
       const isPolaris = m.isPolaris;
       const starColor = isPolaris ? '#fbbf24' : '#e0f2fe';
@@ -1366,10 +1366,6 @@ class TeamPortal {
           ${isPolaris ? `<circle class="polaris-aura" r="24" fill="rgba(251, 191, 36, 0.18)" />` : ''}
           <polygon class="star-flare ${isPolaris ? 'polaris-flare' : ''}" points="${points}" fill="#ffffff" filter="drop-shadow(0 0 5px ${starColor})" />
           <circle class="star-core" r="${isPolaris ? 3 : 2}" fill="#ffffff" />
-          
-          <text class="star-node-label" y="${isPolaris ? 28 : 22}" text-anchor="middle" style="pointer-events: none;">
-            ${escapeHtml(m.name || '')} ${isPolaris ? '⭐' : ''}
-          </text>
         </g>
       `;
     }).join('');

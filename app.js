@@ -1432,8 +1432,7 @@ class TeamPortal {
 
       popover.style.left = `${left}px`;
       popover.style.top = `${top}px`;
-      popover.style.display = 'block';
-      popover.style.opacity = '1';
+      popover.classList.add('visible');
     }
 
     // Highlight connecting lines
@@ -1448,10 +1447,9 @@ class TeamPortal {
   hideStarPopover(event, memberId) {
     const popover = document.getElementById('constellation-popover');
     if (popover) {
-      popover.style.opacity = '0';
+      popover.classList.remove('visible');
       setTimeout(() => {
-        if (popover && popover.style.opacity === '0') {
-          popover.style.display = 'none';
+        if (popover && !popover.classList.contains('visible')) {
           popover.innerHTML = '';
         }
       }, 200);

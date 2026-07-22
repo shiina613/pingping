@@ -131,13 +131,6 @@ export const DEFAULT_KANBAN_TASKS = {
 
 export const DEFAULT_STARLIGHT_MESSAGES = {
   usually: [
-    '✨ Shiina',
-    '✨ Tuấn Trần',
-    '✨ Thạch',
-    '✨ Duy Anh',
-    '✨ Hưng',
-    '✨ Hậu',
-    '✨ Tùng Anh',
     '🍀 Good luck!',
     '💪 You got this!',
     '☕ Take it easy & chill~',

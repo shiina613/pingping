@@ -3277,36 +3277,29 @@ body.media-lightbox-open { overflow: hidden; }
   100% { r: 30px; opacity: 0.6; filter: drop-shadow(0 0 18px #fbbf24); }
 }
 
-/* Member Name Label - Hidden by default until hovered */
-.star-node-label {
-  font-family: inherit;
-  font-size: 11.5px;
-  font-weight: 600;
-  fill: #f8fafc;
-  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.95), 0 0 10px rgba(56, 189, 248, 0.7);
-  opacity: 0;
-  transform: translateY(4px);
-  transition: opacity 0.25s ease, transform 0.25s ease;
-  pointer-events: none;
-}
-
-.star-node:hover .star-node-label {
-  opacity: 1;
-  transform: translateY(0);
-}
-
 .constellation-popover-card {
   position: absolute;
   z-index: 100;
   width: 290px;
-  background: rgba(15, 23, 42, 0.94);
+  background: rgba(15, 23, 42, 0.95);
   border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 1.25rem;
   padding: 1.25rem;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), 0 0 24px rgba(56, 189, 248, 0.22);
-  backdrop-filter: blur(16px);
-  pointer-events: auto;
+  display: none !important;
+  opacity: 0 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  pointer-events: none;
   transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.constellation-popover-card.visible {
+  display: block !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
 }
 
 .view-mode-toggle {

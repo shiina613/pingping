@@ -146,6 +146,8 @@ export const DEFAULT_STARLIGHT_MESSAGES = {
     '💻 Code bằng cả trái tim',
     '⚡ Just go',
     '🌟 Have a good day bae',
+    '💅 Slay quá vậy nè!',
+    '⚡ Mãi keo mãi đỉnh!',
     '🍃 Kệ đi',
     '🙈 Kệ mày',
     '🕶️ Kệ tao',
@@ -175,10 +177,14 @@ export const DEFAULT_STARLIGHT_MESSAGES = {
     '🕊️ Giữ tâm trí bình thản nhé',
     '☕ Làm ly trà/cà phê cho tỉnh táo nào',
     '🎈 Cứ thong thả, rồi mọi việc sẽ xong',
-    '☀️ Cười lên một cái cho đời tươi trẻ!'
+    '☀️ Cười lên một cái cho đời tươi trẻ!',
+    '🫠 Chầm kẽm luôn á trời',
+    '🗿 Flex đến breath-taking',
+    '😎 Ghê chưa ghê chưa!',
+    '🥑 Hẻm biết nữa, kệ ik'
   ],
   rarely: [
-    '💧 Uống đủ nước nhé!',
+    '💧 Uống đủ 2 lít nước hôm nay chưa?',
     '🏆 Mọi thử thách rồi cũng sẽ qua!',
     '🌌 Ngắm sao 3 giây rồi lại quẩy tiếp...',
     '💖 Địt mẹ mày <3',
@@ -186,7 +192,11 @@ export const DEFAULT_STARLIGHT_MESSAGES = {
     '☕ Cà phê đêm muộn, sao đêm lấp lánh',
     '🏊 Đi bơi không?',
     '🐛 Bug ơi bug à, làm ơn đừng xuất hiện nữa!',
-    '🔥 Hãy test code trên production nhé'
+    '🔥 Hãy test code trên production nhé',
+    '💀 Thấy mà ức cái chế luôn',
+    '🤡 Hề hước ghê chưa nè!',
+    '🤯 Ôi sững sờ luôn á!',
+    '🛸 Bay acc luôn rùi!'
   ]
 };
 

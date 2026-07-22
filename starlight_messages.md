@@ -1,6 +1,6 @@
 # 🌌 Danh sách & Phân bậc Thông điệp Sao đêm (Starlight Messages)
 
-Các thông điệp mang tính vượt thời gian: Lời chúc, lời quan tâm, hỏi han, động viên và trêu đùa vui vẻ cho cả Team.
+Các thông điệp mang tính vượt thời gian: Lời chúc, lời quan tâm, hỏi han, động viên, trêu đùa vui vẻ và phong cách Gen Z cho cả Team.
 
 ---
 
@@ -20,6 +20,8 @@ Các thông điệp mang tính vượt thời gian: Lời chúc, lời quan tâm
 - 💻 Code bằng cả trái tim
 - ⚡ Just go
 - 🌟 Have a good day bae
+- 💅 Slay quá vậy nè!
+- ⚡ Mãi keo mãi đỉnh!
 - 🍃 Kệ đi
 - 🙈 Kệ mày
 - 🕶️ Kệ tao
@@ -52,6 +54,10 @@ Các thông điệp mang tính vượt thời gian: Lời chúc, lời quan tâm
 - ☕ Làm ly trà/cà phê cho tỉnh táo nào
 - 🎈 Cứ thong thả, rồi mọi việc sẽ xong
 - ☀️ Cười lên một cái cho đời tươi trẻ!
+- 🫠 Chầm kẽm luôn á trời
+- 🗿 Flex đến breath-taking
+- 😎 Ghê chưa ghê chưa!
+- 🥑 Hẻm biết nữa, kệ ik
 
 ---
 
@@ -65,3 +71,7 @@ Các thông điệp mang tính vượt thời gian: Lời chúc, lời quan tâm
 - 🏊 Đi bơi không?
 - 🐛 Bug ơi bug à, làm ơn đừng xuất hiện nữa!
 - 🔥 Hãy test code trên production nhé
+- 💀 Thấy mà ức cái chế luôn
+- 🤡 Hề hước ghê chưa nè!
+- 🤯 Ôi sững sờ luôn á!
+- 🛸 Bay acc luôn rùi!

@@ -90,3 +90,4 @@ grep -q 'aria-label="Bảng điều khiển" title="Bảng điều khiển"' ind
 grep -q 'container-type: inline-size' index.css
 grep -q '@container (max-width:' index.css
 grep -q '\.tab-label' index.css
+grep -q 'flex: 1 1 0' index.css

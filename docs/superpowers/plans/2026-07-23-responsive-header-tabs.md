@@ -56,6 +56,7 @@ Wrap each visible label in `<span class="tab-label">…</span>`, add matching `a
 
 @container (max-width: 720px) {
   .tab-btn {
+    flex: 1 1 0;
     justify-content: center;
     padding-inline: 10px;
   }
@@ -74,7 +75,7 @@ Expected: 75 tests pass, frontend contract exits successfully, and Vite builds `
 
 - [ ] **Step 5: Verify responsive behavior**
 
-Serve the production build and confirm at representative widths that labels are present when the nav container exceeds 720px, labels are hidden below 720px, every icon remains visible/reachable, and horizontal overflow remains available on narrow mobile screens.
+Serve the production build and confirm at representative widths that labels are present when the nav container exceeds the compact threshold, labels are hidden below it, every icon is evenly distributed and remains visible/reachable, and horizontal overflow remains available on narrow mobile screens.
 
 - [ ] **Step 6: Commit and deploy**
 

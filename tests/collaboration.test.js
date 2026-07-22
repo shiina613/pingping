@@ -272,11 +272,39 @@ test('optimistic plain-text sends preserve the submitted text', () => {
 
 test('chat controller handles mute state, retention deletes, and tab titles', () => {
   const source = readFileSync(new URL('../collaboration-controller.js', import.meta.url), 'utf8');
-  assert.match(source, /sender:members[^']*chat_muted_until/);
+  assert.match(source, /const MESSAGE_SELECT = '[^']*sender_id/);
+  assert.doesNotMatch(source, /sender:members/);
   assert.match(source, /event: 'DELETE'[\s\S]*removeRealtimeMessage/);
   assert.match(source, /document\.title = notificationDocumentTitle\(summary\.total\)/);
   assert.match(source, /formatMuteCountdown/);
   assert.match(source, /renderMuteState/);
+});
+
+test('chat presence stays online separately from typing state', () => {
+  const source = readFileSync(new URL('../collaboration-controller.js', import.meta.url), 'utf8');
+  assert.match(source, /trackPresence\(typingRoom = null\)/);
+  assert.match(source, /online: true/);
+  assert.match(source, /typingAt\s*=\s*Date\.now\(\)/);
+  assert.doesNotMatch(source, /channel\.track\(\{\}\)/);
+});
+
+test('chat composer accepts pasted image files', () => {
+  const source = readFileSync(new URL('../collaboration-controller.js', import.meta.url), 'utf8');
+  assert.match(source, /addEventListener\('paste', event => this\.handlePasteAttachment\(event\)\)/);
+  assert.match(source, /new DataTransfer\(\)/);
+  assert.match(source, /clipboardData\?\.files/);
+});
+
+test('login state changes refresh portal feature flags', () => {
+  const source = readFileSync(new URL('../collaboration-controller.js', import.meta.url), 'utf8');
+  const loginSource = source.slice(source.indexOf('async login(rawCode)'), source.indexOf('async restoreSession()'));
+  const restoreSource = source.slice(source.indexOf('async restoreSession()'), source.indexOf('async changeCode()'));
+  const logoutStart = source.indexOf('logout(showToast = true)');
+  const logoutSource = source.slice(logoutStart, source.indexOf('\n  renderAccount()', logoutStart));
+  assert.match(loginSource, /this\.portal\.render\(\)/);
+  assert.match(loginSource, /this\.portal\.currentTab === 'xo'[\s\S]*this\.portal\.loadXoCasino\(\)/);
+  assert.match(restoreSource, /this\.portal\.render\(\)/);
+  assert.match(logoutSource, /this\.portal\.render\(\)/);
 });
 
 test('clearing a selected file revokes its temporary object URL', () => {

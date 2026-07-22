@@ -1,56 +1,96 @@
 # PingPing Portal
 
-**PingPing Portal** là hệ thống quản lý toàn diện dành cho chuỗi 5 Cuộc thi AI & Tech năm 2026. Nền tảng được xây dựng với mục tiêu cung cấp một không gian làm việc tập trung, tích hợp đầy đủ các công cụ cần thiết giúp các thành viên Ban tổ chức dễ dàng theo dõi, điều phối và cộng tác trong suốt quá trình diễn ra sự kiện.
+Portal nội bộ dành cho nhóm 7 thành viên cùng theo dõi và phối hợp tham gia 3 cuộc thi AI & Tech năm 2026. Ứng dụng tập trung thông tin cuộc thi, đội hình, lịch trình, công việc và trao đổi realtime trong một giao diện duy nhất.
 
-## 🌟 Tính năng Nổi bật
+## Tính năng
 
-### 1. Quản trị & Điều hành (Core Features)
-- **Bảng điều khiển (Dashboard)**: Cung cấp cái nhìn tổng quan về tiến độ, số liệu thống kê và các hoạt động quan trọng đang diễn ra.
-- **Quản lý Cuộc thi (Competitions)**: Theo dõi thông tin chi tiết, trạng thái và tiến độ của từng cuộc thi trong chuỗi sự kiện.
-- **Lập kế hoạch (Planner)**: Lên lịch trình, quản lý task và điều phối công việc hiệu quả giữa các bộ phận.
+- **Dashboard:** tổng quan cuộc thi, đội hình, khối lượng công việc, hạn chót và các mốc sắp tới.
+- **Cuộc thi & lịch trình:** thông tin từng cuộc thi, chủ đề, giải thưởng, liên kết đăng ký và bộ đếm ngược.
+- **Phân chia đội hình:** gán thành viên vào từng nhóm và cảnh báo khi số lượng không đúng điều lệ.
+- **Kanban:** tạo, cập nhật, phân công và theo dõi trạng thái công việc.
+- **Thành viên:** danh bạ, kỹ năng, trạng thái online và chỉnh sửa hồ sơ cá nhân.
+- **Chat realtime:** phòng chat, trả lời tin nhắn, reaction, mention, xem trước liên kết và gửi ảnh/video/tệp đính kèm.
+- **Thông báo:** badge chưa đọc, trung tâm thông báo và thông báo trình duyệt.
+- **Sòng X-O:** thách đấu cờ caro, bảng xếp hạng, điểm Công dân, điểm danh hằng ngày và đặt cược trong nhóm.
+- **Đăng nhập bằng mã thành viên:** mỗi thành viên dùng mã riêng và có thể đổi mã sau khi đăng nhập.
 
-### 2. Tương tác & Cộng tác Thời gian thực (Realtime & Collaboration)
-- **Cộng tác Thời gian thực (Realtime Collaboration)**: Hỗ trợ làm việc chung trên cùng một luồng công việc, đồng bộ trạng thái ngay lập tức.
-- **Hệ thống Chat kiểu Messenger (Messenger-Style Chat)**: Nền tảng trò chuyện mượt mà, hỗ trợ render tin nhắn từng phần (Incremental Rendering) và xem trước file đính kèm/media (Media Preview).
-- **Quản lý & Lưu trữ Chat (Chat Moderation & Retention)**: Hỗ trợ kiểm duyệt nội dung, lưu trữ và tự động dọn dẹp các tệp đính kèm theo chính sách của hệ thống.
-- **Thông báo Thông minh (Relevant Notifications)**: Gửi thông báo chính xác và kịp thời cho các hoạt động và thay đổi quan trọng thông qua hệ thống index được tối ưu hóa.
+## Công nghệ
 
-## 🚀 Công nghệ Sử dụng
+- HTML, CSS và JavaScript ES modules
+- [Vite](https://vite.dev/) cho development server và production build
+- [Supabase](https://supabase.com/) cho PostgreSQL, Realtime, Storage và Edge Functions
+- Node.js Test Runner và Bash cho kiểm thử
 
-Nền tảng được xây dựng dựa trên kiến trúc hiện đại, tập trung vào hiệu năng và khả năng mở rộng:
+## Yêu cầu
 
-- **Frontend**: HTML5, CSS3, JavaScript (Vite)
-- **Backend & Cơ sở dữ liệu**: Supabase (PostgreSQL, Supabase Realtime, Supabase Storage, Edge Functions)
-- **Testing**: Node.js Test Runner, Bash scripts cho kiểm thử contract frontend
+- Node.js `20.19+` hoặc `22.12+`
+- npm
+- Một project Supabase nếu cần chạy đầy đủ tính năng cộng tác realtime
 
-## 🛠 Hướng dẫn Cài đặt & Chạy Dự án
+## Chạy local
 
-### Yêu cầu cấu hình
-- Node.js (phiên bản mới nhất được khuyến nghị)
-- Môi trường npm hoặc yarn
-
-### Cài đặt
-1. Clone repository về máy.
-2. Cài đặt các gói phụ thuộc (dependencies):
-   ```bash
-   npm install
-   ```
-
-### Chạy môi trường Development
-Khởi chạy máy chủ phát triển (Vite):
 ```bash
-npx vite
-```
-Hệ thống sẽ chạy trên localhost tại cổng do Vite cung cấp (thường là http://localhost:5173/).
-
-### Chạy Test
-Dự án bao gồm các bộ kiểm thử tự động cho cả code JS và giao diện:
-```bash
-npm run test
+git clone https://github.com/shiina613/pingping.git
+cd pingping
+npm install
+npm run dev
 ```
 
-## 🔐 Cơ chế Đăng nhập
-Mỗi thành viên trong ban tổ chức được cấp một mã đăng nhập (Login Code) riêng biệt. Hệ thống ghi nhận mã gốc dạng văn bản thô (raw) trong lần đầu thiết lập. Sau khi đăng nhập thành công vào hệ thống, người dùng có quyền chủ động đổi mã truy cập để tăng cường bảo mật cho cá nhân.
+Vite sẽ in địa chỉ local trong terminal, mặc định là `http://localhost:5173`.
 
----
-*PingPing Portal - Xây dựng nền tảng vững chắc cho sự thành công của sự kiện AI & Tech 2026.*
+## Cấu hình Supabase
+
+Frontend đọc cấu hình từ [`config.js`](./config.js):
+
+```js
+window.PINGPING_CONFIG = Object.freeze({
+  supabaseUrl: 'https://your-project.supabase.co',
+  supabaseKey: 'your-publishable-key',
+  xoArenaEnabled: true,
+  xoArenaTesterIds: []
+});
+```
+
+- `supabaseUrl`: URL của project Supabase.
+- `supabaseKey`: publishable/anon key dùng ở frontend; không đặt service-role key tại đây.
+- `xoArenaEnabled`: bật hoặc tắt tab Sòng X-O.
+- `xoArenaTesterIds`: giới hạn Sòng X-O cho các ID thành viên chỉ định; để mảng rỗng cho phép mọi thành viên.
+
+Các bảng, policy, RPC và lịch dọn dẹp chat nằm trong [`supabase/migrations`](./supabase/migrations). Với Supabase CLI đã liên kết project:
+
+```bash
+npx supabase db push
+npx supabase functions deploy cleanup-chat-attachments
+```
+
+## Lệnh thường dùng
+
+```bash
+npm run dev       # chạy development server
+npm test          # chạy toàn bộ test
+npm run build     # tạo production build trong dist/
+npm run preview   # xem thử production build
+```
+
+## Cấu trúc chính
+
+```text
+.
+├── index.html                    # giao diện và các tab chính
+├── index.css                     # theme và responsive styles
+├── app.js                        # điều phối giao diện và trạng thái portal
+├── collaboration-controller.js   # đăng nhập, realtime, chat và thông báo
+├── collaboration.js              # helper/validation cho cộng tác
+├── config.js                     # cấu hình Supabase và feature flags
+├── src/                          # dữ liệu, countdown, Supabase client và logic X-O
+├── supabase/                     # migrations và Edge Functions
+└── tests/                        # unit, schema và frontend contract tests
+```
+
+## Lưu ý bảo mật
+
+Ứng dụng hiện phục vụ một nhóm nội bộ và xác thực bằng mã thành viên. Khi triển khai cho phạm vi rộng hơn, nên chuyển sang Supabase Auth, siết Row Level Security theo từng người dùng và quản lý secrets của Edge Functions ở phía server.
+
+## License
+
+Repository chưa khai báo giấy phép mã nguồn mở.

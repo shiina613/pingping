@@ -71,7 +71,7 @@ class TeamPortal {
 
     // Dynamic Twinkling Stars Pool
     const stars = [];
-    const maxStars = 95;
+    const maxStars = 61;
 
     const createStar = () => ({
       x: Math.random() * width,
@@ -82,7 +82,7 @@ class TeamPortal {
       state: 'fadeIn',
       fadeInSpeed: 0.012 + Math.random() * 0.02, // 2.5x faster fade in
       fadeOutSpeed: 0.010 + Math.random() * 0.018, // 2.5x faster fade out
-      holdTime: 14 + Math.floor(Math.random() * 35), // Snappier hold time
+      holdTime: 36 + Math.floor(Math.random() * 35), // Snappier hold time
       holdTimer: 0,
       isEveningStar: Math.random() < 0.15, // 15% bright flare star (Ngôi Sao Hôm)
       color: Math.random() > 0.35 ? '#ffffff' : Math.random() > 0.5 ? '#fde68a' : '#fda4af',

@@ -11,6 +11,6 @@ test('browser entry constants resolve their collaboration dependencies', async (
 test('browser entry imports every module binding it uses', () => {
   const source = readFileSync(new URL('../app.js', import.meta.url), 'utf8');
 
-  assert.match(source, /import \{ CollaborationController \} from '\.\/collaboration-controller\.js';/);
+  assert.match(source, /import \{ CollaborationController, escapeHtml \} from '\.\/collaboration-controller\.js';/);
   assert.match(source, /import \{ buildCalendar, getTeamSizeWarning \} from '\.\/collaboration\.js';/);
 });

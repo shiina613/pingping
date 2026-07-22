@@ -1,0 +1,1 @@
+-- Retired tournament-release migration. Its schema is replaced by Sòng X-O.

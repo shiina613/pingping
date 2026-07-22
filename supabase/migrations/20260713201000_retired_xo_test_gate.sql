@@ -1,0 +1,1 @@
+-- Retired tournament test-gate migration. Feature visibility stays in config.js.

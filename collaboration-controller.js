@@ -12,17 +12,18 @@ import {
   validateMessage,
   validateUpload
 } from './collaboration.js';
+import { COMPETITIONS } from './src/constants.js';
+
+const COMPETITION_IDS = new Set(COMPETITIONS.map(competition => competition.id));
 
 const ROOM_NAMES = Object.freeze({
   general: 'Trò chuyện chung',
   onevoice: 'OneVoice',
   thucchien: 'AI Thực Chiến',
-  aichallenge: 'Vietnam AI Innovation',
-  buildhub: 'Build@HUB',
   viettel: 'Viettel AI Race'
 });
 
-const MESSAGE_SELECT = 'id,room_id,text,kind,created_at,sender:members!messages_sender_id_fkey(id,name,avatar,color,chat_muted_until),attachment:attachments(id,name,mime_type,size_bytes,public_url),reply_to(id,text,kind,sender:members!messages_sender_id_fkey(name)),reactions:message_reactions(emoji,member_id)';
+const MESSAGE_SELECT = 'id,room_id,sender_id,text,kind,created_at,attachment:attachments(id,name,mime_type,size_bytes,public_url),reply_to(id,text,kind,sender_id),reactions:message_reactions(emoji,member_id)';
 
 export function escapeHtml(value) {
   return String(value ?? '')
@@ -155,6 +156,19 @@ export class CollaborationController {
     try { return JSON.parse(localStorage.getItem('pp_session')) || null; } catch { return null; }
   }
 
+  hydrateMessageSender(message) {
+    if (!message) return message;
+    const memberById = id => this.portal?.members?.find(member => member.id === id) || null;
+    return {
+      ...message,
+      sender: memberById(message?.sender_id) || message?.sender || null,
+      reply_to: message?.reply_to ? {
+        ...message.reply_to,
+        sender: memberById(message.reply_to.sender_id) || message.reply_to.sender || null
+      } : message?.reply_to
+    };
+  }
+
   async init() {
     this.bindAuthUI();
     this.bindChatUI();
@@ -204,6 +218,7 @@ export class CollaborationController {
       event.preventDefault();
       this.sendMessage();
     });
+    document.getElementById('chat-message-input')?.addEventListener('paste', event => this.handlePasteAttachment(event));
     document.getElementById('chat-message-input')?.addEventListener('focus', () => this.markRoomNotificationsRead(this.activeRoom));
     document.getElementById('chat-message-input')?.addEventListener('input', event => {
       this.autoResizeComposer(event.currentTarget);
@@ -416,6 +431,8 @@ export class CollaborationController {
       localStorage.setItem('pp_session', JSON.stringify(this.session));
       document.getElementById('login-code').value = '';
       this.renderAccount();
+      this.portal.render();
+      if (this.portal.currentTab === 'xo') await this.portal.loadXoCasino();
       this.closeLogin();
       this.toast(`Xin chào ${member.name}!`, 'success');
       await this.loadNotifications();
@@ -435,6 +452,7 @@ export class CollaborationController {
     this.session = { member, code: login_code };
     localStorage.setItem('pp_session', JSON.stringify(this.session));
     this.renderAccount();
+    this.portal.render();
   }
 
   async changeCode() {
@@ -461,6 +479,7 @@ export class CollaborationController {
     this.renderAccount();
     this.notifications = [];
     this.renderNotifications();
+    this.portal.render();
     this.closeLogin();
     if (showToast) this.toast('Đã đăng xuất.', 'success');
   }
@@ -489,6 +508,8 @@ export class CollaborationController {
     const error = membersResult.error || allocationsResult.error || tasksResult.error;
     if (error) return this.setConnection(false, error.message);
     const snapshot = mapRemoteSnapshot({ members: membersResult.data, allocations: allocationsResult.data, tasks: tasksResult.data });
+    snapshot.allocations = Object.fromEntries(Object.entries(snapshot.allocations).filter(([id]) => COMPETITION_IDS.has(id)));
+    snapshot.kanbanTasks = Object.fromEntries(Object.entries(snapshot.kanbanTasks).filter(([id]) => COMPETITION_IDS.has(id)));
     const currentMember = membersResult.data.find(member => member.id === this.session?.member?.id);
     if (currentMember && this.session) {
       const { login_code, ...member } = currentMember;
@@ -523,7 +544,7 @@ export class CollaborationController {
 
   async saveAllocations() {
     if (!this.requireLogin()) throw new Error('Bạn cần đăng nhập.');
-    const rows = Object.entries(this.portal.allocations).map(([competition_id, data]) => ({
+    const rows = Object.entries(this.portal.allocations).filter(([id]) => COMPETITION_IDS.has(id)).map(([competition_id, data]) => ({
       competition_id, data, updated_by: this.session.member.id, updated_at: new Date().toISOString()
     }));
     const { error } = await this.client.from('allocations').upsert(rows, { onConflict: 'competition_id' });
@@ -577,7 +598,26 @@ export class CollaborationController {
       this.renderTypingIndicator();
       this.renderPresence();
     });
-    this.channel.subscribe(status => this.setConnection(status === 'SUBSCRIBED', status));
+    this.channel.subscribe(status => {
+      const online = status === 'SUBSCRIBED';
+      this.setConnection(online, status);
+      if (online) this.trackPresence();
+    });
+  }
+
+  trackPresence(typingRoom = null) {
+    if (!this.session?.member || !this.channel) return;
+    const payload = {
+      online: true,
+      id: this.session.member.id,
+      name: this.session.member.name,
+      at: Date.now()
+    };
+    if (typingRoom) {
+      payload.typingRoom = typingRoom;
+      payload.typingAt = Date.now();
+    }
+    this.channel.track(payload);
   }
 
   broadcastTyping() {
@@ -588,12 +628,12 @@ export class CollaborationController {
     if (this.typingTimeout) clearTimeout(this.typingTimeout);
     
     if (isTyping) {
-      this.channel.track({ typingRoom: this.activeRoom, name: this.session.member.name, at: Date.now() });
+      this.trackPresence(this.activeRoom);
       this.typingTimeout = setTimeout(() => {
-        this.channel.track({});
+        this.trackPresence();
       }, 5000);
     } else {
-      this.channel.track({});
+      this.trackPresence();
     }
   }
 
@@ -605,7 +645,7 @@ export class CollaborationController {
     for (const [key, presences] of Object.entries(state)) {
       if (key === this.session?.member?.id) continue;
       const p = presences[0];
-      if (p && p.typingRoom === this.activeRoom && p.name) {
+      if (p && p.typingRoom === this.activeRoom && p.name && Date.now() - Number(p.typingAt || 0) < 6000) {
         typingUsers.push(p.name);
       }
     }
@@ -641,7 +681,9 @@ export class CollaborationController {
   renderPresence() {
     if (!this.channel) return;
     const state = this.channel.presenceState();
-    const onlineIds = new Set(Object.keys(state));
+    const onlineIds = new Set(Object.entries(state)
+      .filter(([, presences]) => presences.some(p => p.online))
+      .map(([id]) => id));
     document.querySelectorAll('[data-user-id]').forEach(el => {
       const id = el.dataset.userId;
       if (id && onlineIds.has(id)) {
@@ -691,7 +733,7 @@ export class CollaborationController {
       list.innerHTML = '<div class="chat-empty">Chưa có tin nhắn. Hãy bắt đầu cuộc trò chuyện.</div>';
       return;
     }
-    const messages = decorateMessages(chronologicalMessages(data));
+    const messages = decorateMessages(chronologicalMessages(data).map(message => this.hydrateMessageSender(message)));
     this.renderedMessageIds = new Set(messages.map(message => message.id));
     this.renderedMessages = messages;
     list.innerHTML = messages.map(message => this.messageMarkup(message)).join('');
@@ -704,7 +746,7 @@ export class CollaborationController {
     const { data, error } = await this.client.from('messages')
       .select(MESSAGE_SELECT).eq('id', messageId).eq('room_id', roomId).maybeSingle();
     if (error) throw error;
-    return data;
+    return this.hydrateMessageSender(data);
   }
 
   async appendRealtimeMessage(realtimeRow) {
@@ -936,6 +978,23 @@ export class CollaborationController {
       status.textContent = error.message;
       status.classList.add('error');
     }
+  }
+
+  handlePasteAttachment(event) {
+    const files = [...(event.clipboardData?.files || [])];
+    const itemFiles = [...(event.clipboardData?.items || [])]
+      .filter(item => item.kind === 'file')
+      .map(item => item.getAsFile())
+      .filter(Boolean);
+    const file = [...files, ...itemFiles].find(item => item.type.startsWith('image/'));
+    if (!file || typeof DataTransfer === 'undefined') return;
+    const input = document.getElementById('chat-file-input');
+    if (!input) return;
+    const transfer = new DataTransfer();
+    transfer.items.add(file);
+    input.files = transfer.files;
+    this.renderSelectedFile(file);
+    event.preventDefault();
   }
 
   clearSelectedFile(resetInput = true) {
@@ -1181,12 +1240,13 @@ export class CollaborationController {
       if (list) list.innerHTML = `<p class="notification-empty error">${escapeHtml(error.message)}</p>`;
       return;
     }
-    this.notifications = data || [];
+    this.notifications = (data || []).filter(item => item.kind !== 'message' || ROOM_NAMES[item.room_id]);
     this.renderNotifications();
   }
 
   handleNotification(notification) {
     if (!notification || notification.recipient_id !== this.session?.member?.id) return;
+    if (notification.kind === 'message' && !ROOM_NAMES[notification.room_id]) return;
     if (this.notifications.some(item => item.id === notification.id)) return;
 
     if (notification.kind === 'message' && notification.room_id === this.activeRoom && document.hasFocus() && isNearBottom(document.getElementById('chat-message-list'))) {

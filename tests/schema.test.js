@@ -7,7 +7,17 @@ const notificationSql = readFileSync(new URL('../supabase/migrations/20260629192
 const migrationsDir = new URL('../supabase/migrations/', import.meta.url);
 const moderationMigration = readdirSync(migrationsDir).find(name => name.endsWith('_chat_moderation_retention.sql'));
 const moderationSql = moderationMigration ? readFileSync(new URL(moderationMigration, migrationsDir), 'utf8') : '';
+const retentionCronMigration = readdirSync(migrationsDir).find(name => name.endsWith('_refactor_chat_retention_cron.sql'));
+const retentionCronSql = retentionCronMigration ? readFileSync(new URL(retentionCronMigration, migrationsDir), 'utf8') : '';
+const xoMigration = readdirSync(migrationsDir).find(name => name.endsWith('_xo_arena.sql'));
+const xoSql = xoMigration ? readFileSync(new URL(xoMigration, migrationsDir), 'utf8') : '';
 const allMigrationSql = readdirSync(migrationsDir).map(name => readFileSync(new URL(name, migrationsDir), 'utf8')).join('\n');
+const dailyCheckinMigration = readdirSync(migrationsDir).find(name => name.endsWith('_citizen_daily_checkin.sql'));
+const dailyCheckinSql = dailyCheckinMigration ? readFileSync(new URL(dailyCheckinMigration, migrationsDir), 'utf8') : '';
+const checkinPenaltyMigration = readdirSync(migrationsDir).find(name => name.endsWith('_checkin_repeat_penalty.sql'));
+const checkinPenaltySql = checkinPenaltyMigration ? readFileSync(new URL(checkinPenaltyMigration, migrationsDir), 'utf8') : '';
+const xoResetMigration = readdirSync(migrationsDir).find(name => name.endsWith('_reset_xo_casino_data.sql'));
+const xoResetSql = xoResetMigration ? readFileSync(new URL(xoResetMigration, migrationsDir), 'utf8') : '';
 
 for (const table of ['members', 'allocations', 'tasks', 'messages', 'attachments']) {
   test(`schema creates ${table}`, () => {
@@ -89,4 +99,66 @@ test('chat replies expose a to-one computed relationship for PostgREST', () => {
   assert.match(allMigrationSql, /function public\.reply_to\(public\.messages\)/i);
   assert.match(allMigrationSql, /returns setof public\.messages rows 1/i);
   assert.match(allMigrationSql, /where message\.id = source\.reply_to_id/i);
+});
+
+test('retention cron migration preserves reply-aware send RPC', () => {
+  assert.ok(retentionCronMigration, 'retention cron migration is missing');
+  assert.match(retentionCronSql, /p_reply_to_id uuid default null/i);
+  assert.match(retentionCronSql, /INVALID_REPLY_TARGET/i);
+  assert.match(retentionCronSql, /attachment_id, reply_to_id, kind, created_at/i);
+  assert.match(retentionCronSql, /send_chat_message\(text, text, text, text, uuid, uuid\)/i);
+});
+
+test('xo casino migration creates match, wallet, and bet tables without tournaments', () => {
+  assert.ok(xoMigration, 'xo casino migration is missing');
+  for (const table of ['xo_matches', 'xo_games', 'xo_ratings', 'citizen_wallets', 'citizen_point_ledger', 'xo_bets']) {
+    assert.match(xoSql, new RegExp(`create table if not exists public\\.${table}`, 'i'));
+  }
+  assert.doesNotMatch(xoSql, /xo_tournaments|xo_tournament_players|playoff|lucky_member/i);
+  assert.match(xoSql, /challenger_id text not null/i);
+  assert.match(xoSql, /opponent_id text not null/i);
+  assert.match(xoSql, /wager integer not null/i);
+  assert.match(xoSql, /target_wins integer not null default 1/i);
+  assert.match(xoSql, /balance integer not null default 0/i);
+  assert.match(xoSql, /moves jsonb not null default '\[\]'::jsonb/i);
+  assert.match(xoSql, /bounds jsonb not null/i);
+  assert.match(xoSql, /36/i);
+});
+
+test('xo casino migration exposes challenge RPCs and realtime tables', () => {
+  for (const fn of ['xo_grant_monthly_citizen_points', 'xo_create_challenge', 'xo_respond_challenge', 'xo_place_bet', 'xo_make_move']) {
+    assert.match(xoSql, new RegExp(`function public\\.${fn}`, 'i'));
+    assert.match(xoSql, new RegExp(`grant execute on function public\\.${fn}[\\s\\S]*to anon`, 'i'));
+  }
+  assert.match(xoSql, /CHALLENGE_YOURSELF/i);
+  assert.match(xoSql, /winner.*36/i);
+  assert.match(xoSql, /loser.*-18/i);
+  assert.match(xoSql, /unique \(member_id, grant_month\)/i);
+  assert.match(xoSql, /alter publication supabase_realtime add table public\.xo_matches/i);
+});
+
+test('daily citizen check-in grants once per Vietnam day with weekend bonus', () => {
+  assert.ok(dailyCheckinMigration, 'daily check-in migration is missing');
+  assert.match(dailyCheckinSql, /function public\.xo_daily_checkin/i);
+  assert.match(dailyCheckinSql, /Asia\/Ho_Chi_Minh/i);
+  assert.match(dailyCheckinSql, /isodow[\s\S]*\(6, 7\)[\s\S]*36[\s\S]*18/i);
+  assert.match(dailyCheckinSql, /unique \(member_id, grant_date\)/i);
+  assert.match(dailyCheckinSql, /on conflict \(member_id, grant_date\) do nothing/i);
+  assert.match(dailyCheckinSql, /grant execute on function public\.xo_daily_checkin[\s\S]*to anon/i);
+});
+
+test('repeat daily check-in deducts 360 points on the server', () => {
+  assert.ok(checkinPenaltyMigration, 'check-in penalty migration is missing');
+  assert.match(checkinPenaltySql, /v_inserted > 0[\s\S]*else[\s\S]*balance - 360/i);
+  assert.match(checkinPenaltySql, /-360, 'daily_checkin_penalty'/i);
+  assert.match(checkinPenaltySql, /drop constraint if exists citizen_wallets_balance_check/i);
+});
+
+test('xo reset clears casino history and restores equal starting wallets', () => {
+  assert.ok(xoResetMigration, 'xo reset migration is missing');
+  for (const table of ['citizen_point_ledger', 'xo_matches', 'xo_ratings', 'citizen_wallets']) {
+    assert.match(xoResetSql, new RegExp(`delete from public\\.${table}`, 'i'));
+  }
+  assert.match(xoResetSql, /select id, 36 from public\.members/i);
+  assert.match(xoResetSql, /'monthly_grant'/i);
 });

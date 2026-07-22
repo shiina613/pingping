@@ -5,6 +5,8 @@ for tab in dashboard competitions planner timeline kanban directory chat setting
   grep -q "id=\"tab-$tab\"" index.html
   grep -q "data-tab=\"$tab\"" index.html
 done
+grep -q 'id="tab-xo"' index.html
+! grep -q 'data-tab="xo"' index.html
 
 for id in login-modal login-code login-submit account-button logout-btn change-code-btn tab-chat chat-room-list chat-message-list chat-new-message-btn chat-compose-form chat-message-input chat-file-input chat-send-btn; do
   grep -q "id=\"$id\"" index.html
@@ -25,6 +27,8 @@ grep -q 'pp_session' collaboration-controller.js
 grep -q 'postgres_changes' collaboration-controller.js
 grep -q 'chat-files' collaboration-controller.js
 grep -q 'PINGPING_CONFIG' config.js
+grep -Fq "import './config.js';" app.js
+! grep -q '<script src="config.js' index.html
 grep -q 'code.md' .vercelignore
 grep -q '^note\.md$' .vercelignore
 grep -q '^supabase$' .vercelignore
@@ -64,6 +68,42 @@ grep -q 'markAllNotificationsRead' collaboration-controller.js
 grep -q 'requestBrowserNotifications' collaboration-controller.js
 grep -q "rpc('send_chat_message'" collaboration-controller.js
 grep -q 'notificationDocumentTitle(summary.total)' collaboration-controller.js
+for id in xo-arena-root xo-board xo-spectator-status xo-threat-flash xo-challenge-form xo-opponent xo-wager xo-open-matches xo-recent-matches xo-leaderboard citizen-points-leaderboard xo-wallet citizen-checkin-button citizen-checkin-status checkin-penalty-modal checkin-penalty-title checkin-penalty-close xo-bets xo-bet-form about-update-button about-update-modal about-update-close; do
+  grep -q "id=\"$id\"" index.html
+done
+grep -q 'xoArenaEnabled' config.js
+grep -q 'xoArenaTesterIds' config.js
+grep -q 'isXoArenaVisible' app.js
+grep -q 'renderXoArena' app.js
+grep -q "this.currentTab === 'xo') await this.loadXoCasino()" app.js
+grep -q 'const \[grantResult, matchesResult, ratingsResult, walletsResult, checkinResult\] = await Promise.all' app.js
+! grep -q "const grantResult = await this.collaboration.client.rpc('xo_grant_monthly_citizen_points'" app.js
+grep -q 'About new update' index.html
+grep -q 'Bản thử nghiệm, chưa release chính thức' index.html
+grep -q '.xo-arena' index.css
+grep -q 'Sòng X-O' index.html
+grep -q 'BXH điểm công dân' index.html
+grep -q 'class="glass-card citizen-checkin-card"' index.html
+grep -q 'Mày đã bị trừ 360 điểm' index.html
+grep -q 'Đây là trang nội bộ nên không quá để tâm đến vấn đề security' app.js
+grep -q 'Xem & cược' app.js
+! grep -q 'xo-create-tournament\|xo-standings\|xo-bracket' index.html
+grep -q '.xo-cell.last' index.css
+grep -q 'Mày sắp chết rồi' app.js
+grep -q 'Mày chết rồi' app.js
+grep -q 'notifyXoThreat' app.js
+grep -q 'animation: xoThreatFlash 3.6s' index.css
+grep -q '.about-update-button' index.css
+grep -q '.about-update-modal' index.css
+! grep -q 'Vietnam AI Innovation' index.html
+! grep -q "id: 'aichallenge'" src/constants.js
+! grep -q 'aichallenge\.team' app.js
+! grep -q 'Build@HUB' index.html
+! grep -q "id: 'buildhub'" src/constants.js
+! grep -q 'buildhub\.team' app.js
+grep -q "2026-08-04T23:59:00+07:00" src/constants.js
+grep -q 'Vòng 2 - Sơ khảo (15–18/08)' src/constants.js
+grep -q 'Vòng 3 - Chung kết (09–10/09)' src/constants.js
 
 grep -q 'data-theme=' index.html
 grep -q "const theme = saved || 'light'" index.html

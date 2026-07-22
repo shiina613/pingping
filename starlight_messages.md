@@ -16,10 +16,26 @@ Các thông điệp mang tính vượt thời gian: Lời chúc, lời quan tâm
 - 💪 You got this!
 - ☕ Take it easy & chill~
 - 🌈 Don't worry, everything will be fine!
-- ✨ Cố lên PingPing Team!
+- ✨ Ping Ping
 - 💻 Code bằng cả trái tim
-- ⚡ Cùng nhau tiến bước!
-- 🌟 Hôm nay là một ngày tuyệt vời
+- ⚡ Just go
+- 🌟 Have a good day bae
+- 🍃 Kệ đi
+- 🙈 Kệ mày
+- 🕶️ Kệ tao
+- 🐱 Kệ nó
+- 🔥 Kệ mẹ mày
+- 💥 Kệ mẹ tao
+- ⚡ Kệ mẹ nó
+- ⚡ Kệ con mẹ mày
+- 💥 Kệ con mẹ tao
+- 🔥 Kệ con mẹ nó
+- 🕺 Nhảy cùng Zinzin
+- 🌌 Life is either a daring adventure or nothing.
+- 🧘 Until death all defeat is psychological
+- 💥 Bengz
+- 😄 hihihaha
+- 👻 pekkboo
 
 ---
 
@@ -38,13 +54,12 @@ Các thông điệp mang tính vượt thời gian: Lời chúc, lời quan tâm
 ---
 
 ## 🔴 Rarely (Hiếm khi ~10%)
-- 💧 Uống đủ 2 lít nước hôm nay chưa?
+- 💧 Uống đủ nước nhé!
 - 🏆 Mọi thử thách rồi cũng sẽ qua!
 - 🌌 Ngắm sao 3 giây rồi lại quẩy tiếp...
 - 💖 Địt mẹ mày <3
-- 🛸 AI không thay thế bạn, người dùng AI mới thay thế!
 - 🔮 Đêm nay nguyện ước bug tự nhiên biến mất!
 - ☕ Cà phê đêm muộn, sao đêm lấp lánh
-- 🍟 Thèm ăn vặt quá, ai bao không?
+- 🏊 Đi bơi không?
 - 🐛 Bug ơi bug à, làm ơn đừng xuất hiện nữa!
-- 🚀 Ship code thành công không lỗi prod!
+- 🔥 Hãy test code trên production nhé

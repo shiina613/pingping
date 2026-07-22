@@ -1,7 +1,9 @@
+import './config.js';
 import { DEFAULT_MEMBERS, COMPETITIONS, INITIAL_ALLOCATIONS, DEFAULT_KANBAN_TASKS } from './src/constants.js';
-import { CollaborationController } from './collaboration-controller.js';
+import { CollaborationController, escapeHtml } from './collaboration-controller.js';
 import { buildCalendar, getTeamSizeWarning } from './collaboration.js';
 import { getCompetitionCountdowns, getCountdownParts } from './src/countdown.js';
+import { boardSize, createEmptyBoard, getFourThreat } from './src/xo.js';
 
 class TeamPortal {
   constructor() {
@@ -11,6 +13,19 @@ class TeamPortal {
     this.theme = this.loadData('pp_theme', document.documentElement.dataset.theme || 'light');
 
     this.activeKanbanComp = 'onevoice';
+    this.xoState = createEmptyBoard();
+    this.xoMatches = [];
+    this.xoRatings = [];
+    this.xoWallets = [];
+    this.xoCheckin = null;
+    this.xoBets = [];
+    this.xoActiveGame = null;
+    this.xoSelectedMatchId = null;
+    this.xoWalletBalance = null;
+    this.xoChannel = null;
+    this.xoReloadTimer = null;
+    this.xoThreatNoticeKey = null;
+    this.xoThreatTimer = null;
     this.countdownTimer = null;
     this.activeDragElement = null;
     this.tempAvatar = ''; // Temp cache for modal photo updates
@@ -29,6 +44,82 @@ class TeamPortal {
     this.applyTheme();
     this.render();
     this.startCollaboration();
+    this.setupMeteorEngine();
+  }
+
+  setupMeteorEngine() {
+    let container = document.getElementById('meteor-container');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'meteor-container';
+      container.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;pointer-events:none;z-index:0;overflow:hidden;';
+      document.body.appendChild(container);
+    }
+
+    const spawnMeteor = () => {
+      if (document.hidden) return;
+
+      const meteor = document.createElement('div');
+      meteor.className = 'dynamic-meteor';
+
+      const startX = Math.random() * (window.innerWidth * 0.7) + (window.innerWidth * 0.15);
+      const startY = Math.random() * (window.innerHeight * 0.35);
+      const angle = -35 + (Math.random() * 10 - 5);
+      const width = 130 + Math.random() * 150;
+      const duration = 0.7 + Math.random() * 0.6;
+      const distance = 400 + Math.random() * 350;
+
+      meteor.style.cssText = `
+        position: absolute;
+        top: ${startY}px;
+        left: ${startX}px;
+        width: ${width}px;
+        height: 2px;
+        background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(251, 191, 36, 0.9) 60%, rgba(255, 255, 255, 1) 100%);
+        border-radius: 999px;
+        box-shadow: 0 0 10px rgba(251, 191, 36, 0.9), 0 0 18px rgba(244, 63, 94, 0.7);
+        transform-origin: left center;
+        --meteor-angle: ${angle}deg;
+        --meteor-distance: ${distance}px;
+        animation: meteorFly ${duration}s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+      `;
+
+      container.appendChild(meteor);
+      setTimeout(() => meteor.remove(), duration * 1000 + 100);
+    };
+
+    // 1. Regular frequent meteors every 3.5s to 6.5s
+    const scheduleNextSingle = () => {
+      const delay = 3500 + Math.random() * 3000;
+      setTimeout(() => {
+        spawnMeteor();
+        scheduleNextSingle();
+      }, delay);
+    };
+    scheduleNextSingle();
+
+    // 2. Random light meteor shower every 16s to 32s
+    const triggerMeteorShower = () => {
+      const count = 6 + Math.floor(Math.random() * 6);
+      for (let i = 0; i < count; i++) {
+        setTimeout(() => {
+          spawnMeteor();
+        }, i * (160 + Math.random() * 200));
+      }
+    };
+
+    const scheduleNextShower = () => {
+      const delay = 16000 + Math.random() * 16000;
+      setTimeout(() => {
+        triggerMeteorShower();
+        scheduleNextShower();
+      }, delay);
+    };
+
+    setTimeout(() => {
+      triggerMeteorShower();
+      scheduleNextShower();
+    }, 3000);
   }
 
   loadData(key, fallback) {
@@ -69,6 +160,10 @@ class TeamPortal {
     this.taskInputDesc = document.getElementById('task-desc');
     this.taskInputAssignee = document.getElementById('task-assignee');
     this.taskInputColumn = document.getElementById('task-column');
+
+    this.aboutUpdateButton = document.getElementById('about-update-button');
+    this.aboutUpdateModal = document.getElementById('about-update-modal');
+    this.xoBoard = document.getElementById('xo-board');
   }
 
   initEvents() {
@@ -131,6 +226,36 @@ class TeamPortal {
       themeBtn.addEventListener('click', () => this.toggleTheme());
     }
 
+    document.getElementById('about-update-button')?.addEventListener('click', () => this.openAboutUpdate());
+    document.getElementById('about-update-close')?.addEventListener('click', () => this.closeAboutUpdate());
+    document.getElementById('about-update-modal')?.addEventListener('click', event => {
+      if (event.target.id === 'about-update-modal') this.closeAboutUpdate();
+    });
+    document.getElementById('xo-refresh-btn')?.addEventListener('click', () => this.loadXoCasino());
+    document.getElementById('citizen-checkin-button')?.addEventListener('click', () => this.claimCitizenCheckin());
+    document.getElementById('checkin-penalty-close')?.addEventListener('click', () => this.closeCheckinPenalty());
+    document.getElementById('checkin-penalty-modal')?.addEventListener('click', event => {
+      if (event.target.id === 'checkin-penalty-modal') this.closeCheckinPenalty();
+    });
+    document.getElementById('xo-challenge-form')?.addEventListener('submit', event => {
+      event.preventDefault();
+      this.createXoChallenge();
+    });
+    document.getElementById('xo-bet-form')?.addEventListener('submit', event => {
+      event.preventDefault();
+      this.placeXoBet();
+    });
+    document.getElementById('xo-open-matches')?.addEventListener('click', event => {
+      const button = event.target.closest('[data-xo-action]');
+      if (!button) return;
+      if (button.dataset.xoAction === 'view') this.selectXoMatch(button.dataset.matchId);
+      else this.respondXoChallenge(button.dataset.matchId, button.dataset.xoAction === 'accept');
+    });
+    document.getElementById('xo-recent-matches')?.addEventListener('click', event => {
+      const button = event.target.closest('[data-match-id]');
+      if (button) this.selectXoMatch(button.dataset.matchId);
+    });
+
     // Custom base64 image uploader event
     const fileInput = document.getElementById('avatar-file-input');
     const emojiInput = document.getElementById('edit-member-emoji');
@@ -168,6 +293,7 @@ class TeamPortal {
   }
 
   switchTab(tabName, updateHash = true) {
+    if (tabName === 'xo' && !this.isXoArenaVisible()) tabName = 'dashboard';
     this.currentTab = tabName;
     document.body.classList.toggle('chat-active', tabName === 'chat');
     this.tabButtons.forEach(btn => {
@@ -178,6 +304,7 @@ class TeamPortal {
     });
     this.render();
     if (tabName === 'chat') this.collaboration?.loadMessages();
+    if (tabName === 'xo') this.loadXoCasino();
     if (updateHash) window.history.pushState(null, '', `#${tabName}`);
   }
 
@@ -190,6 +317,7 @@ class TeamPortal {
     this.collaboration = new CollaborationController(this, window.supabase.createClient(config.supabaseUrl, config.supabaseKey));
     try {
       await this.collaboration.init();
+      if (this.currentTab === 'xo') await this.loadXoCasino();
     } catch (error) {
       console.error('Không thể khởi tạo cộng tác:', error);
       this.collaboration.setConnection(false, error.message);
@@ -250,6 +378,7 @@ class TeamPortal {
   }
 
   render() {
+    this.applyFeatureFlags();
     this.renderStats();
     this.setupCountdown();
 
@@ -267,6 +396,8 @@ class TeamPortal {
       this.renderKanbanBoard();
     } else if (this.currentTab === 'settings') {
       this.renderSettings();
+    } else if (this.currentTab === 'xo') {
+      this.renderXoArena();
     }
   }
 
@@ -340,10 +471,10 @@ class TeamPortal {
   }
 
   renderStats() {
-    this.statActiveComp.innerText = `${COMPETITIONS.length} / 5`;
+    this.statActiveComp.innerText = `${COMPETITIONS.length} / ${COMPETITIONS.length}`;
 
     let teamCount = 0;
-    Object.keys(this.allocations).forEach(compId => {
+    COMPETITIONS.forEach(({ id: compId }) => {
       const alloc = this.allocations[compId];
       if (alloc.members) teamCount += 1;
       if (alloc.teamA) teamCount += 1;
@@ -658,10 +789,6 @@ class TeamPortal {
               <option value="onevoice.members">OneVoice</option>
               <option value="thucchien.teamA">Thực chiến A</option>
               <option value="thucchien.teamB">Thực chiến B</option>
-              <option value="aichallenge.teamA">AI Challenge A</option>
-              <option value="aichallenge.teamB">AI Challenge B</option>
-              <option value="buildhub.teamA">Build@HUB A</option>
-              <option value="buildhub.teamB">Build@HUB B</option>
               <option value="viettel.teamA">Viettel AI A</option>
               <option value="viettel.teamB">Viettel AI B</option>
             </select>
@@ -1238,6 +1365,394 @@ class TeamPortal {
 
   renderSettings() {
     this.collaboration?.renderAccount();
+  }
+
+  isXoArenaVisible() {
+    const config = window.PINGPING_CONFIG || {};
+    const memberId = this.collaboration?.session?.member?.id;
+    return Boolean(config.xoArenaEnabled || (memberId && (config.xoArenaTesterIds || []).includes(memberId)));
+  }
+
+  applyFeatureFlags() {
+    const visible = this.isXoArenaVisible();
+    document.querySelectorAll('[data-tab="xo"]').forEach(el => { el.hidden = !visible; });
+    const panel = document.getElementById('tab-xo');
+    if (panel) panel.hidden = !visible;
+    if (this.aboutUpdateButton) this.aboutUpdateButton.hidden = !visible;
+    if (!visible && this.currentTab === 'xo') this.switchTab('dashboard', true);
+  }
+
+  openAboutUpdate() {
+    if (!this.isXoArenaVisible()) return;
+    this.aboutUpdateModal.hidden = false;
+    this.aboutUpdateModal.classList.add('active');
+    document.getElementById('about-update-close')?.focus();
+  }
+
+  closeAboutUpdate() {
+    this.aboutUpdateModal?.classList.remove('active');
+    if (this.aboutUpdateModal) this.aboutUpdateModal.hidden = true;
+    this.aboutUpdateButton?.focus();
+  }
+
+  renderXoArena() {
+    if (!this.isXoArenaVisible()) return;
+    this.renderXoBoard();
+    this.renderXoPanels();
+  }
+
+  xoCredentials(extra = {}) {
+    return {
+      p_member_id: this.collaboration.session.member.id,
+      p_login_code: this.collaboration.session.code,
+      ...extra
+    };
+  }
+
+  async loadXoCasino() {
+    if (!this.isXoArenaVisible() || !this.collaboration?.session?.member) {
+      this.renderXoArena();
+      return;
+    }
+    try {
+      const [grantResult, matchesResult, ratingsResult, walletsResult, checkinResult] = await Promise.all([
+        this.collaboration.client.rpc('xo_grant_monthly_citizen_points', this.xoCredentials()),
+        this.collaboration.client.from('xo_matches').select('*').order('created_at', { ascending: false }).limit(30),
+        this.collaboration.client.from('xo_ratings').select('*').order('rating', { ascending: false }),
+        this.collaboration.client.from('citizen_wallets').select('member_id, balance').order('balance', { ascending: false }),
+        this.collaboration.client.rpc('xo_daily_checkin', { ...this.xoCredentials(), p_claim: false })
+      ]);
+      const error = grantResult.error || matchesResult.error || ratingsResult.error || walletsResult.error || checkinResult.error;
+      if (error) throw error;
+      const memberId = this.collaboration.session.member.id;
+      const currentBalance = grantResult.data?.[0]?.balance
+        ?? walletsResult.data?.find(row => row.member_id === memberId)?.balance
+        ?? 0;
+      this.xoMatches = matchesResult.data || [];
+      this.xoRatings = ratingsResult.data || [];
+      this.xoWallets = (walletsResult.data || []).map(row => row.member_id === memberId ? { ...row, balance: currentBalance } : row);
+      this.xoCheckin = checkinResult.data?.[0] || null;
+      this.xoWalletBalance = currentBalance;
+
+      const selected = this.xoMatches.find(match => match.id === this.xoSelectedMatchId);
+      const preferred = selected || this.xoMatches.find(match =>
+        match.status === 'active' && [match.challenger_id, match.opponent_id].includes(memberId)
+      ) || this.xoMatches.find(match => match.status === 'active') || this.xoMatches[0];
+      this.xoSelectedMatchId = preferred?.id || null;
+      this.xoBets = [];
+      this.renderXoPanels();
+
+      if (preferred) {
+        const [gameResult, betsResult] = await Promise.all([
+          this.collaboration.client.from('xo_games').select('*').eq('match_id', preferred.id).order('game_number', { ascending: false }).limit(1).maybeSingle(),
+          this.collaboration.client.from('xo_bets').select('*').eq('match_id', preferred.id)
+        ]);
+        if (gameResult.error || betsResult.error) throw gameResult.error || betsResult.error;
+        this.xoActiveGame = gameResult.data;
+        this.xoBets = betsResult.data || [];
+        this.xoState = this.xoActiveGame
+          ? { bounds: this.xoActiveGame.bounds, moves: this.xoActiveGame.moves || [] }
+          : createEmptyBoard();
+      } else {
+        this.xoActiveGame = null;
+        this.xoBets = [];
+        this.xoState = createEmptyBoard();
+      }
+      this.notifyXoThreat();
+      this.subscribeXoCasino();
+      this.renderXoArena();
+    } catch (error) {
+      this.collaboration.toast(error.message || 'Không thể tải Sòng X-O.', 'error');
+    }
+  }
+
+  notifyXoThreat() {
+    const memberId = this.collaboration?.session?.member?.id;
+    const lastMove = this.xoState.moves.at(-1);
+    if (!this.xoActiveGame || !lastMove || this.xoActiveGame.status !== 'active' || this.xoActiveGame.next_member_id !== memberId || lastMove.member_id === memberId) return;
+    const noticeKey = `${this.xoActiveGame.id}:${this.xoState.moves.length}`;
+    if (noticeKey === this.xoThreatNoticeKey) return;
+    const threat = getFourThreat(this.xoState, lastMove?.mark);
+    if (!threat.level) return;
+    this.xoThreatNoticeKey = noticeKey;
+    const flash = document.getElementById('xo-threat-flash');
+    if (!flash) return;
+    clearTimeout(this.xoThreatTimer);
+    flash.hidden = false;
+    flash.textContent = threat.level === 'unblockable' ? '💀 Mày chết rồi' : '⚠️ Mày sắp chết rồi';
+    flash.className = `xo-threat-flash ${threat.level}`;
+    void flash.offsetWidth;
+    flash.classList.add('active');
+    this.xoThreatTimer = setTimeout(() => {
+      flash.classList.remove('active');
+      flash.hidden = true;
+    }, 3600);
+  }
+
+  subscribeXoCasino() {
+    if (this.xoChannel) return;
+    const reload = () => {
+      clearTimeout(this.xoReloadTimer);
+      this.xoReloadTimer = setTimeout(() => this.loadXoCasino(), 120);
+    };
+    this.xoChannel = this.collaboration.client.channel('xo-casino-live');
+    for (const table of ['xo_matches', 'xo_games', 'xo_ratings', 'citizen_wallets', 'xo_bets']) {
+      this.xoChannel.on('postgres_changes', { event: '*', schema: 'public', table }, reload);
+    }
+    this.xoChannel.subscribe();
+  }
+
+  async createXoChallenge() {
+    if (!this.collaboration?.requireLogin()) return;
+    const opponentId = document.getElementById('xo-opponent')?.value;
+    const wager = Number(document.getElementById('xo-wager')?.value);
+    try {
+      const { data, error } = await this.collaboration.client.rpc('xo_create_challenge', this.xoCredentials({
+        p_opponent_id: opponentId,
+        p_wager: wager
+      }));
+      if (error) throw error;
+      this.xoSelectedMatchId = data;
+      this.collaboration.toast('Kèo đã mở. Chờ đối thủ nhận lời!', 'success');
+      await this.loadXoCasino();
+    } catch (error) {
+      this.collaboration.toast(this.xoErrorMessage(error), 'error');
+    }
+  }
+
+  async respondXoChallenge(matchId, accept) {
+    if (!this.collaboration?.requireLogin()) return;
+    try {
+      const { error } = await this.collaboration.client.rpc('xo_respond_challenge', this.xoCredentials({
+        p_match_id: matchId,
+        p_accept: accept
+      }));
+      if (error) throw error;
+      this.xoSelectedMatchId = matchId;
+      this.collaboration.toast(accept ? 'Đã nhận kèo. Vào bàn!' : 'Đã từ chối kèo.', 'success');
+      await this.loadXoCasino();
+    } catch (error) {
+      this.collaboration.toast(this.xoErrorMessage(error), 'error');
+    }
+  }
+
+  async placeXoBet() {
+    if (!this.collaboration?.requireLogin() || !this.xoSelectedMatchId) return;
+    try {
+      const { error } = await this.collaboration.client.rpc('xo_place_bet', this.xoCredentials({
+        p_match_id: this.xoSelectedMatchId,
+        p_pick_member_id: document.getElementById('xo-bet-pick')?.value,
+        p_stake: Number(document.getElementById('xo-bet-stake')?.value)
+      }));
+      if (error) throw error;
+      this.collaboration.toast('Đã xuống điểm!', 'success');
+      await this.loadXoCasino();
+    } catch (error) {
+      this.collaboration.toast(this.xoErrorMessage(error), 'error');
+    }
+  }
+
+  async claimCitizenCheckin() {
+    if (!this.collaboration?.requireLogin()) return;
+    const button = document.getElementById('citizen-checkin-button');
+    if (button) button.disabled = true;
+    try {
+      const { data, error } = await this.collaboration.client.rpc('xo_daily_checkin', {
+        ...this.xoCredentials(),
+        p_claim: true
+      });
+      if (error) throw error;
+      const result = data?.[0];
+      if (Number(result?.points) === -360) this.openCheckinPenalty();
+      else this.collaboration.toast(`Điểm danh thành công: +${result.points} điểm!`, 'success');
+      await this.loadXoCasino();
+    } catch (error) {
+      this.collaboration.toast(error.message || 'Không thể điểm danh.', 'error');
+      if (button) button.disabled = false;
+    }
+  }
+
+  openCheckinPenalty() {
+    const modal = document.getElementById('checkin-penalty-modal');
+    if (!modal) return;
+    modal.hidden = false;
+    modal.classList.add('active');
+    document.getElementById('checkin-penalty-close')?.focus();
+  }
+
+  closeCheckinPenalty() {
+    const modal = document.getElementById('checkin-penalty-modal');
+    modal?.classList.remove('active');
+    if (modal) modal.hidden = true;
+    document.getElementById('citizen-checkin-button')?.focus();
+  }
+
+  selectXoMatch(matchId) {
+    this.xoSelectedMatchId = matchId;
+    this.loadXoCasino();
+  }
+
+  xoErrorMessage(error) {
+    const code = String(error?.message || '');
+    const messages = {
+      CHALLENGE_YOURSELF: 'Không thể tự thách đấu chính mình.',
+      INVALID_OPPONENT: 'Đối thủ không hợp lệ.',
+      PLAYER_BUSY: 'Một trong hai người đang có kèo chưa xong.',
+      INSUFFICIENT_BALANCE: 'Không đủ điểm công dân.',
+      CHALLENGE_NOT_AVAILABLE: 'Kèo này không còn khả dụng.',
+      NOT_YOUR_TURN: 'Chưa đến lượt của bạn.',
+      BETTING_LOCKED: 'Cược đã khóa sau nước đi đầu tiên.',
+      PLAYERS_CANNOT_POOL_BET: 'Hai người chơi đã có tiền kèo, không cược pool.',
+      OCCUPIED_CELL: 'Ô này đã được đánh.'
+    };
+    return Object.entries(messages).find(([key]) => code.includes(key))?.[1] || code || 'Không thể thực hiện thao tác X-O.';
+  }
+
+  renderXoBoard() {
+    const board = document.getElementById('xo-board');
+    const status = document.getElementById('xo-board-status');
+    const spectatorStatus = document.getElementById('xo-spectator-status');
+    if (!board || !status) return;
+
+    const size = boardSize(this.xoState.bounds);
+    const selectedMatch = this.xoMatches.find(match => match.id === this.xoSelectedMatchId);
+    const memberId = this.collaboration?.session?.member?.id;
+    const isSpectator = selectedMatch && ![selectedMatch.challenger_id, selectedMatch.opponent_id].includes(memberId);
+    const occupied = new Map(this.xoState.moves.map(move => [`${move.row},${move.col}`, move]));
+    const lastMove = this.xoState.moves.at(-1);
+    board.style.setProperty('--xo-size', String(size.cols));
+    board.innerHTML = '';
+
+    for (let row = this.xoState.bounds.minRow; row <= this.xoState.bounds.maxRow; row += 1) {
+      for (let col = this.xoState.bounds.minCol; col <= this.xoState.bounds.maxCol; col += 1) {
+        const move = occupied.get(`${row},${col}`);
+        const cell = document.createElement('button');
+        cell.type = 'button';
+        const isLastMove = move && move.row === lastMove?.row && move.col === lastMove?.col;
+        cell.className = `xo-cell${move ? ` ${move.mark}` : ''}${isLastMove ? ' last' : ''}`;
+        cell.textContent = move?.mark?.toUpperCase() || '';
+        cell.setAttribute('aria-label', `Ô ${row}, ${col}${isLastMove ? ', nước đi mới nhất' : ''}`);
+        cell.disabled = Boolean(move || !this.xoActiveGame || selectedMatch?.status !== 'active' || this.xoActiveGame.next_member_id !== memberId);
+        cell.addEventListener('click', () => this.playXoMove(row, col));
+        board.appendChild(cell);
+      }
+    }
+
+    if (spectatorStatus) {
+      spectatorStatus.hidden = !isSpectator;
+      if (isSpectator) {
+        if (selectedMatch.status === 'active') {
+          spectatorStatus.textContent = selectedMatch.locked_at
+            ? 'Bạn đang xem trực tiếp với tư cách khán giả · cược đã khóa.'
+            : 'Bạn đang xem trực tiếp với tư cách khán giả · cược mở đến nước đi đầu tiên.';
+        } else if (selectedMatch.status === 'completed') {
+          spectatorStatus.textContent = 'Bạn đang xem lại trận với tư cách khán giả.';
+        } else {
+          spectatorStatus.textContent = 'Bạn đang theo dõi kèo đang chờ đối thủ nhận lời.';
+        }
+      }
+    }
+
+    if (!selectedMatch) status.textContent = 'Chọn một kèo để xem bàn';
+    else if (selectedMatch.status === 'pending') status.textContent = 'Đang chờ đối thủ nhận kèo';
+    else if (selectedMatch.status === 'completed') status.textContent = `${this.getMemberName(selectedMatch.winner_id)} thắng kèo`;
+    else status.textContent = `${isSpectator ? 'Đang xem · ' : ''}BO1 · lượt ${this.getMemberName(this.xoActiveGame?.next_member_id)}`;
+  }
+
+  async playXoMove(row, col) {
+    if (!this.xoActiveGame || !this.collaboration?.requireLogin()) return;
+    try {
+      const { error } = await this.collaboration.client.rpc('xo_make_move', this.xoCredentials({
+        p_game_id: this.xoActiveGame.id,
+        p_row: row,
+        p_col: col
+      }));
+      if (error) throw error;
+      await this.loadXoCasino();
+    } catch (error) {
+      this.collaboration.toast(this.xoErrorMessage(error), 'error');
+    }
+  }
+
+  renderXoPanels() {
+    const openMatches = document.getElementById('xo-open-matches');
+    const recentMatches = document.getElementById('xo-recent-matches');
+    const leaderboard = document.getElementById('xo-leaderboard');
+    const citizenLeaderboard = document.getElementById('citizen-points-leaderboard');
+    const wallet = document.getElementById('xo-wallet');
+    const checkinButton = document.getElementById('citizen-checkin-button');
+    const checkinStatus = document.getElementById('citizen-checkin-status');
+    const bets = document.getElementById('xo-bets');
+    const selectedMatch = this.xoMatches.find(match => match.id === this.xoSelectedMatchId);
+    const memberId = this.collaboration?.session?.member?.id;
+    const title = document.getElementById('xo-match-title');
+    const opponent = document.getElementById('xo-opponent');
+    if (opponent) {
+      const current = opponent.value;
+      opponent.innerHTML = this.members.filter(member => member.id !== memberId)
+        .map(member => `<option value="${member.id}">${escapeHtml(member.name)}</option>`).join('');
+      if ([...opponent.options].some(option => option.value === current)) opponent.value = current;
+    }
+    if (title) title.textContent = selectedMatch
+      ? `${this.getMemberName(selectedMatch.challenger_id)} ⚔ ${this.getMemberName(selectedMatch.opponent_id)} · ${selectedMatch.wager} điểm`
+      : 'Chưa chọn kèo';
+
+    const matchMarkup = match => {
+      const incoming = match.status === 'pending' && match.opponent_id === memberId;
+      const outgoing = match.status === 'pending' && match.challenger_id === memberId;
+      const participant = [match.challenger_id, match.opponent_id].includes(memberId);
+      const viewLabel = match.status === 'active' && !match.locked_at && !participant ? 'Xem & cược' : 'Xem';
+      return `<div class="xo-row"><span class="xo-row-main"><strong>${escapeHtml(this.getMemberName(match.challenger_id))} ⚔ ${escapeHtml(this.getMemberName(match.opponent_id))}</strong><small>${match.wager} điểm · ${match.status === 'pending' ? 'chờ nhận kèo' : 'BO1 · LIVE'}</small></span><span class="xo-row-actions">${incoming ? `<button class="btn-primary" data-xo-action="accept" data-match-id="${match.id}">Nhận</button><button class="btn-secondary" data-xo-action="reject" data-match-id="${match.id}">Từ chối</button>` : ''}${outgoing ? `<button class="btn-secondary" data-xo-action="cancel" data-match-id="${match.id}">Hủy</button>` : ''}<button class="btn-secondary" data-xo-action="view" data-match-id="${match.id}">${viewLabel}</button></span></div>`;
+    };
+    if (openMatches) {
+      const rows = this.xoMatches.filter(match => ['pending', 'active'].includes(match.status));
+      openMatches.innerHTML = rows.length ? rows.map(matchMarkup).join('') : '<span>Chưa có kèo nào. Mở bát đi!</span>';
+    }
+    if (recentMatches) {
+      const rows = this.xoMatches.filter(match => match.status === 'completed').slice(0, 8);
+      recentMatches.innerHTML = rows.length ? rows.map(match => `<button class="xo-row" data-match-id="${match.id}"><span>${escapeHtml(this.getMemberName(match.challenger_id))} ${match.challenger_wins}-${match.opponent_wins} ${escapeHtml(this.getMemberName(match.opponent_id))}</span><span><strong>${escapeHtml(this.getMemberName(match.winner_id))}</strong><small>Xem lại</small></span></button>`).join('') : '<span>Chưa có kết quả.</span>';
+    }
+    if (leaderboard) {
+      const ratings = this.members.map(member => ({ member, ...(this.xoRatings.find(row => row.member_id === member.id) || {}) }))
+        .sort((a, b) => Number(b.rating || 0) - Number(a.rating || 0));
+      leaderboard.innerHTML = ratings.map((row, index) => `<div class="xo-row"><span>${index + 1}. ${escapeHtml(row.member.name)}</span><strong>${row.rating || 0}</strong></div>`).join('');
+    }
+    if (citizenLeaderboard) {
+      const wallets = this.members.map(member => ({ member, balance: this.xoWallets.find(row => row.member_id === member.id)?.balance || 0 }))
+        .sort((a, b) => b.balance - a.balance);
+      citizenLeaderboard.innerHTML = wallets.map((row, index) => `<div class="xo-row"><span>${index + 1}. ${escapeHtml(row.member.name)}</span><strong>${row.balance} điểm</strong></div>`).join('');
+    }
+    if (wallet) {
+      wallet.textContent = memberId ? `${this.xoWalletBalance ?? 0} điểm` : 'Đăng nhập để nhận điểm';
+    }
+    if (checkinButton && checkinStatus) {
+      const claimed = Boolean(this.xoCheckin?.claimed);
+      checkinButton.disabled = !memberId || !this.xoCheckin || this.xoCheckin.claimed;
+      checkinButton.textContent = claimed ? 'Đã điểm danh' : `Điểm danh +${this.xoCheckin?.points || 18}`;
+      checkinStatus.classList.toggle('bait', claimed);
+      checkinStatus.textContent = claimed
+        ? '🙏 Xin đừng dùng F12 🛠️ để bật lại nút này. 🏠 Đây là trang nội bộ nên không quá để tâm đến vấn đề security 🔐. 🤝 MỌI NGƯỜI TIN TƯỞNG VÀO NHÂN PHẨM CỦA BẠN 👀'
+        : `Hôm nay nhận ${this.xoCheckin?.points || 18} điểm · cuối tuần nhận 36 điểm.`;
+    }
+    if (bets) {
+      const pool = id => this.xoBets.filter(bet => bet.pick_member_id === id).reduce((sum, bet) => sum + Number(bet.stake), 0);
+      const ownBet = this.xoBets.find(bet => bet.member_id === memberId);
+      const betNote = ownBet
+        ? `<p class="xo-bet-note">Vé của bạn: <strong>${ownBet.stake} điểm</strong> cho ${escapeHtml(this.getMemberName(ownBet.pick_member_id))}</p>`
+        : selectedMatch?.status === 'active' && selectedMatch.locked_at
+          ? '<p class="xo-bet-note">Cược đã khóa sau nước đi đầu tiên.</p>'
+          : '';
+      bets.innerHTML = selectedMatch ? `<div class="xo-row"><span>${escapeHtml(this.getMemberName(selectedMatch.challenger_id))}</span><strong>${pool(selectedMatch.challenger_id)} điểm</strong></div><div class="xo-row"><span>${escapeHtml(this.getMemberName(selectedMatch.opponent_id))}</span><strong>${pool(selectedMatch.opponent_id)} điểm</strong></div>${betNote}` : 'Chọn một kèo để xem pool.';
+    }
+    const betForm = document.getElementById('xo-bet-form');
+    const alreadyBet = this.xoBets.some(bet => bet.member_id === memberId);
+    const canBet = selectedMatch?.status === 'active' && !selectedMatch.locked_at && !alreadyBet && ![selectedMatch.challenger_id, selectedMatch.opponent_id].includes(memberId);
+    if (betForm) betForm.hidden = !canBet;
+    const betPick = document.getElementById('xo-bet-pick');
+    if (betPick && selectedMatch) {
+      betPick.innerHTML = [selectedMatch.challenger_id, selectedMatch.opponent_id]
+        .map(id => `<option value="${id}">${escapeHtml(this.getMemberName(id))}</option>`).join('');
+    }
   }
 
   // ==========================================================================

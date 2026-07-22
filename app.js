@@ -327,8 +327,25 @@ class TeamPortal {
     const spawnStarlightQuote = () => {
       if (document.hidden) return;
 
-      const pool = this.starlightMessages && this.starlightMessages.length > 0 ? this.starlightMessages : DEFAULT_STARLIGHT_MESSAGES;
-      const text = pool[Math.floor(Math.random() * pool.length)];
+      const data = this.starlightMessages || DEFAULT_STARLIGHT_MESSAGES;
+      let text = '✨ Cố lên PingPing Team!';
+
+      if (Array.isArray(data)) {
+        text = data[Math.floor(Math.random() * data.length)] || text;
+      } else if (typeof data === 'object') {
+        const rand = Math.random();
+        let cat = 'usually';
+        if (rand < 0.10 && Array.isArray(data.rarely) && data.rarely.length > 0) {
+          cat = 'rarely';
+        } else if (rand < 0.40 && Array.isArray(data.sometimes) && data.sometimes.length > 0) {
+          cat = 'sometimes';
+        }
+        const pool = (Array.isArray(data[cat]) && data[cat].length > 0) ? data[cat] : (data.usually || []);
+        if (pool.length > 0) {
+          text = pool[Math.floor(Math.random() * pool.length)];
+        }
+      }
+
       const startX = Math.random() * (width * 0.65) + width * 0.15;
       const startY = Math.random() * (height * 0.55) + height * 0.15;
 

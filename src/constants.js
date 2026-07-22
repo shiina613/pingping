@@ -129,19 +129,25 @@ export const DEFAULT_KANBAN_TASKS = {
   ]
 };
 
-export const DEFAULT_STARLIGHT_MESSAGES = [
-  '✨ Cố lên PingPing Team!',
-  '🚀 Viettel AI Race 2026',
-  '💻 Code bằng cả trái tim',
-  '🌟 Keep shining bright!',
-  '🔥 Thực chiến AI - Vươn tầm xa',
-  '🎙️ OneVoice - Kết nối ước mơ',
-  '💫 Mỗi dòng code là một ngôi sao',
-  '⚡ Tự hào Team 7 Thành viên',
-  '💧 Shiina ơi, nhớ uống nước nhé!',
-  '🏆 Vượt qua mọi thử thách 2026',
-  '🌌 Ngắm sao và tiếp tục tiến bước'
-];
+export const DEFAULT_STARLIGHT_MESSAGES = {
+  usually: [
+    '✨ Cố lên PingPing Team!',
+    '🚀 Viettel AI Race 2026',
+    '💻 Code bằng cả trái tim',
+    '⚡ Tự hào Team 7 Thành viên'
+  ],
+  sometimes: [
+    '🌟 Keep shining bright!',
+    '🔥 Thực chiến AI - Vươn tầm xa',
+    '🎙️ OneVoice - Kết nối ước mơ',
+    '💫 Mỗi dòng code là một ngôi sao'
+  ],
+  rarely: [
+    '💧 Shiina ơi, nhớ uống nước nhé!',
+    '🏆 Vượt qua mọi thử thách 2026!',
+    '🌌 Ngắm sao và tiếp tục tiến bước...'
+  ]
+};
 
 // ==========================================================================
 // PORTAL CONTROLLER & LOCALSTORAGE & SUPABASE BINDINGS

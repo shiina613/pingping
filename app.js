@@ -70,21 +70,21 @@ class TeamPortal {
 
     // Dynamic Twinkling Stars Pool
     const stars = [];
-    const maxStars = 80;
+    const maxStars = 95;
 
     const createStar = () => ({
       x: Math.random() * width,
-      y: Math.random() * (height * 0.8),
-      radius: 0.5 + Math.random() * 1.3,
+      y: Math.random() * (height * 0.82),
+      radius: 0.6 + Math.random() * 1.5,
       alpha: 0,
-      peakAlpha: 0.25 + Math.random() * 0.7,
+      peakAlpha: 0.45 + Math.random() * 0.55, // Brighter peak brightness
       state: 'fadeIn',
-      fadeInSpeed: 0.004 + Math.random() * 0.01,
-      fadeOutSpeed: 0.003 + Math.random() * 0.008,
-      holdTime: 30 + Math.floor(Math.random() * 100),
+      fadeInSpeed: 0.012 + Math.random() * 0.02, // 2.5x faster fade in
+      fadeOutSpeed: 0.010 + Math.random() * 0.018, // 2.5x faster fade out
+      holdTime: 14 + Math.floor(Math.random() * 35), // Snappier hold time
       holdTimer: 0,
-      isEveningStar: Math.random() < 0.12, // 12% bright flare star (Ngôi Sao Hôm)
-      color: Math.random() > 0.4 ? '#ffffff' : Math.random() > 0.5 ? '#fde68a' : '#fda4af',
+      isEveningStar: Math.random() < 0.15, // 15% bright flare star (Ngôi Sao Hôm)
+      color: Math.random() > 0.35 ? '#ffffff' : Math.random() > 0.5 ? '#fde68a' : '#fda4af',
     });
 
     for (let i = 0; i < maxStars; i++) {
@@ -176,8 +176,8 @@ class TeamPortal {
           }
         } else if (s.state === 'hold') {
           s.holdTimer++;
-          s.alpha += (Math.random() - 0.5) * 0.015;
-          s.alpha = Math.max(0.05, Math.min(s.peakAlpha + 0.1, s.alpha));
+          s.alpha += (Math.random() - 0.5) * 0.035;
+          s.alpha = Math.max(0.1, Math.min(s.peakAlpha + 0.15, s.alpha));
           if (s.holdTimer >= s.holdTime) {
             s.state = 'fadeOut';
           }
@@ -194,7 +194,7 @@ class TeamPortal {
           ctx.save();
           ctx.globalAlpha = Math.max(0, Math.min(1, s.alpha));
           ctx.shadowColor = s.color;
-          ctx.shadowBlur = s.radius * 2.5;
+          ctx.shadowBlur = s.radius * 3.5;
 
           ctx.beginPath();
           ctx.arc(s.x, s.y, s.radius, 0, Math.PI * 2);
@@ -202,15 +202,15 @@ class TeamPortal {
           ctx.fill();
 
           // Ngôi Sao Hôm 4-point lens flare
-          if (s.isEveningStar && s.alpha > 0.25) {
-            const rayLen = s.radius * 3.2;
+          if (s.isEveningStar && s.alpha > 0.3) {
+            const rayLen = s.radius * 3.8;
             ctx.beginPath();
             ctx.moveTo(s.x - rayLen, s.y);
             ctx.lineTo(s.x + rayLen, s.y);
             ctx.moveTo(s.x, s.y - rayLen);
             ctx.lineTo(s.x, s.y + rayLen);
             ctx.strokeStyle = s.color;
-            ctx.lineWidth = 0.5;
+            ctx.lineWidth = 0.6;
             ctx.stroke();
           }
 

@@ -70,19 +70,19 @@ class TeamPortal {
     const spawnMeteor = (isShower = false) => {
       if (document.hidden) return;
 
-      const angleDeg = 32 + Math.random() * 14; // 32deg to 46deg
+      const angleDeg = 30 + Math.random() * 12; // 30deg to 42deg
       const angleRad = (angleDeg * Math.PI) / 180;
-      const speed = 6.5 + Math.random() * 5.5; // Gentler floating speed
-      const length = 100 + Math.random() * 120; // Tail length
+      const speed = 7.5 + Math.random() * 6; // Smooth floating velocity
+      const length = 220 + Math.random() * 200; // Long, elegant tail streak
 
-      // Wide distribution across the screen canvas
+      // Start from upper right sky, sweeping across full screen width
       const startX = isShower
-        ? Math.random() * (width * 1.1) - width * 0.05
-        : Math.random() * (width * 0.8) + width * 0.1;
-      const startY = Math.random() * (height * 0.4) - 50;
+        ? Math.random() * (width * 1.2) - width * 0.05
+        : Math.random() * (width * 0.85) + width * 0.15;
+      const startY = Math.random() * (height * 0.4) - 60;
 
-      // Subtle curve acceleration (-0.015 to +0.015)
-      const curveAcc = (Math.random() - 0.5) * 0.03;
+      // Gentle curve acceleration tuned for long flight (-0.008 to +0.008)
+      const curveAcc = (Math.random() - 0.5) * 0.016;
 
       meteors.push({
         x: startX,
@@ -92,7 +92,7 @@ class TeamPortal {
         curve: curveAcc,
         length: length,
         life: 0,
-        maxLife: 55 + Math.floor(Math.random() * 35),
+        maxLife: 90 + Math.floor(Math.random() * 70), // Long travel lifespan (1.5s - 2.6s)
         width: 0.6 + Math.random() * 0.7, // Delicate thin streak
         color: Math.random() > 0.3 ? '#fbbf24' : '#fb7185',
         history: [{ x: startX, y: startY }],
@@ -155,10 +155,10 @@ class TeamPortal {
 
         const progress = m.life / m.maxLife;
         let alpha = 1;
-        if (progress < 0.12) {
-          alpha = progress / 0.12;
-        } else if (progress > 0.65) {
-          alpha = (1 - progress) / 0.35;
+        if (progress < 0.1) {
+          alpha = progress / 0.1;
+        } else if (progress > 0.75) {
+          alpha = (1 - progress) / 0.25;
         }
 
         if (m.history.length > 1) {

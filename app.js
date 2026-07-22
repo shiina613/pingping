@@ -287,28 +287,30 @@ class TeamPortal {
         }
       }
 
-      // 3. Render Starlight Ambient Messages
+      // 3. Render Starlight Ambient Messages (Twinkling in place for 3.6s)
       for (let i = quotes.length - 1; i >= 0; i--) {
         const q = quotes[i];
-        q.y += q.dy;
         q.life++;
 
-        const progress = q.life / q.maxLife;
+        const progress = q.life / q.maxLife; // 0.0 to 1.0 over 3.6s
         let alpha = 0;
-        if (progress < 0.2) {
-          alpha = progress / 0.2;
+        if (progress < 0.18) {
+          alpha = progress / 0.18; // Fade in (~0.65s)
         } else if (progress > 0.75) {
-          alpha = (1 - progress) / 0.25;
+          alpha = (1 - progress) / 0.25; // Fade out (~0.9s)
         } else {
           alpha = 1;
         }
-        alpha *= 0.55; // Ambient translucent glow
+
+        // Soft natural twinkling shimmer modulation
+        const shimmer = 0.85 + 0.15 * Math.sin((q.life * 0.15) + q.twinkleOffset);
+        alpha *= 0.70 * shimmer;
 
         ctx.save();
         ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
         ctx.font = '600 13px "Be Vietnam Pro", "Outfit", sans-serif';
         ctx.shadowColor = q.color;
-        ctx.shadowBlur = 10;
+        ctx.shadowBlur = 12;
         ctx.fillStyle = q.color;
         ctx.fillText(q.text, q.x, q.y);
         ctx.restore();
@@ -362,15 +364,16 @@ class TeamPortal {
         text: text,
         x: startX,
         y: startY,
-        dy: -0.22 - Math.random() * 0.15,
+        dy: 0, // Stationary in place like a star
         life: 0,
-        maxLife: 260 + Math.floor(Math.random() * 100),
+        maxLife: 216, // Exactly 3.6s at 60 FPS
+        twinkleOffset: Math.random() * Math.PI * 2,
         color: Math.random() > 0.4 ? '#fbbf24' : Math.random() > 0.5 ? '#ffffff' : '#fb7185',
       });
     };
 
     const scheduleQuotes = () => {
-      const delay = 10000 + Math.random() * 10000;
+      const delay = 6000 + Math.random() * 6000;
       setTimeout(() => {
         spawnStarlightQuote();
         scheduleQuotes();
@@ -380,7 +383,7 @@ class TeamPortal {
     setTimeout(() => {
       spawnStarlightQuote();
       scheduleQuotes();
-    }, 3500);
+    }, 2500);
 
     animLoop();
   }

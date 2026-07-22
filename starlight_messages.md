@@ -54,7 +54,7 @@ Các thông điệp mang tính vượt thời gian: Lời chúc, lời quan tâm
 - 🎈 Cứ thong thả thôi
 - 🎵 Chỉ là một phút giây thôi mà ~~
 - 🌳 Không lẽ, mình không cứng cỏi bằng mấy cái cây sau nhà
-- 💊 Đi hút thuốc đi
+- 🚬 Đi hút thuốc đi
 
 ---
 

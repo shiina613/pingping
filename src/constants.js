@@ -178,7 +178,7 @@ export const DEFAULT_STARLIGHT_MESSAGES = {
     '🎈 Cứ thong thả thôi',
     '🎵 Chỉ là một phút giây thôi mà ~~',
     '🌳 Không lẽ, mình không cứng cỏi bằng mấy cái cây sau nhà',
-    '💊 Đi uống thuốc đi'
+    '🚬 Đi hút thuốc đi'
   ],
   rarely: [
     '💧 Uống nước đi',

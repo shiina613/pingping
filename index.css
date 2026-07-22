@@ -3206,13 +3206,11 @@ body.media-lightbox-open { overflow: hidden; }
   position: relative;
   width: 100%;
   min-height: 520px;
-  background: rgba(15, 23, 42, 0.25);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: transparent;
+  border: none;
   border-radius: 1.25rem;
-  backdrop-filter: blur(8px);
   overflow: hidden;
   padding: 1.25rem;
-  box-shadow: inset 0 0 60px rgba(15, 23, 42, 0.8);
 }
 
 .constellation-svg {
@@ -3222,18 +3220,18 @@ body.media-lightbox-open { overflow: hidden; }
   overflow: visible;
 }
 
-/* Subtle glowing constellation connecting lines */
+/* Translucent glowing constellation connecting lines */
 .constellation-line {
-  stroke: rgba(186, 230, 253, 0.28);
-  stroke-width: 1.5;
+  stroke: rgba(224, 242, 254, 0.25);
+  stroke-width: 1.25;
   stroke-dasharray: 4 4;
-  filter: drop-shadow(0 0 4px rgba(56, 189, 248, 0.3));
+  filter: drop-shadow(0 0 4px rgba(224, 242, 254, 0.25));
   transition: all 0.35s ease;
 }
 
 .constellation-line.active {
   stroke: #38bdf8;
-  stroke-width: 2.8;
+  stroke-width: 2.5;
   stroke-dasharray: none;
   filter: drop-shadow(0 0 12px #38bdf8);
 }
@@ -3251,7 +3249,7 @@ body.media-lightbox-open { overflow: hidden; }
 
 .star-node:hover {
   animation-play-state: paused;
-  transform: scale(1.35) !important;
+  transform: scale(1.4) !important;
 }
 
 .star-flare {
@@ -3263,14 +3261,14 @@ body.media-lightbox-open { overflow: hidden; }
 }
 
 @keyframes starOrganicTwinkle {
-  0% { opacity: 0.65; transform: scale(0.92); }
+  0% { opacity: 0.55; transform: scale(0.88); }
   50% { opacity: 1; transform: scale(1.08); }
-  100% { opacity: 0.75; transform: scale(0.96); }
+  100% { opacity: 0.68; transform: scale(0.94); }
 }
 
 @keyframes polarisFlareGlow {
-  0% { opacity: 0.8; filter: drop-shadow(0 0 8px #fbbf24); }
-  100% { opacity: 1; filter: drop-shadow(0 0 18px #f59e0b); }
+  0% { opacity: 0.75; filter: drop-shadow(0 0 6px #fbbf24); }
+  100% { opacity: 1; filter: drop-shadow(0 0 16px #f59e0b); }
 }
 
 .polaris-aura {
@@ -3278,16 +3276,26 @@ body.media-lightbox-open { overflow: hidden; }
 }
 
 @keyframes polarisPulse {
-  0% { r: 22px; opacity: 0.25; }
-  100% { r: 34px; opacity: 0.7; filter: drop-shadow(0 0 18px #fbbf24); }
+  0% { r: 16px; opacity: 0.15; }
+  100% { r: 28px; opacity: 0.5; filter: drop-shadow(0 0 14px #fbbf24); }
 }
 
+/* Member Name Label - Hidden by default until hovered */
 .star-node-label {
   font-family: inherit;
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 600;
-  fill: #f1f5f9;
-  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9), 0 0 8px rgba(56, 189, 248, 0.4);
+  fill: #f8fafc;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.95), 0 0 10px rgba(56, 189, 248, 0.7);
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.25s ease, transform 0.25s ease;
+  pointer-events: none;
+}
+
+.star-node:hover .star-node-label {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .constellation-popover-card {

@@ -1350,25 +1350,24 @@ class TeamPortal {
       return `<line id="c-line-${fromId}-${toId}" class="constellation-line" x1="${fromNode.x}" y1="${fromNode.y}" x2="${toNode.x}" y2="${toNode.y}" />`;
     }).join('');
 
-    // Draw SVG Star Nodes (Natural 4-point twinkling star flares)
+    // Draw SVG Star Nodes (Natural 4-point twinkling star flares embedded seamlessly)
     const nodesHTML = members.map(m => {
       const isPolaris = m.isPolaris;
-      const starColor = isPolaris ? '#fbbf24' : (m.color || '#38bdf8');
+      const starColor = isPolaris ? '#fbbf24' : '#e0f2fe';
       const points = isPolaris
-        ? '0,-15 3.5,-3.5 15,0 3.5,3.5 0,15 -3.5,3.5 -15,0 -3.5,-3.5'
-        : '0,-9 2.2,-2.2 9,0 2.2,2.2 0,9 -2.2,2.2 -9,0 -2.2,-2.2';
+        ? '0,-14 3.2,-3.2 14,0 3.2,3.2 0,14 -3.2,3.2 -14,0 -3.2,-3.2'
+        : '0,-8 2,-2 8,0 2,2 0,8 -2,2 -8,0 -2,-2';
       
       return `
         <g class="star-node" id="star-node-${m.id}" transform="translate(${m.x}, ${m.y})" 
            onmouseenter="portal.showStarPopover(event, '${m.id}')"
            onmouseleave="portal.hideStarPopover(event, '${m.id}')">
           
-          ${isPolaris ? `<circle class="polaris-aura" r="30" fill="rgba(251, 191, 36, 0.22)" />` : ''}
-          <circle class="star-halo" r="${isPolaris ? 18 : 12}" fill="${starColor}" opacity="0.3" />
-          <polygon class="star-flare ${isPolaris ? 'polaris-flare' : ''}" points="${points}" fill="#ffffff" filter="drop-shadow(0 0 6px ${starColor})" />
-          <circle class="star-core" r="${isPolaris ? 3.5 : 2.5}" fill="#ffffff" />
+          ${isPolaris ? `<circle class="polaris-aura" r="24" fill="rgba(251, 191, 36, 0.18)" />` : ''}
+          <polygon class="star-flare ${isPolaris ? 'polaris-flare' : ''}" points="${points}" fill="#ffffff" filter="drop-shadow(0 0 5px ${starColor})" />
+          <circle class="star-core" r="${isPolaris ? 3 : 2}" fill="#ffffff" />
           
-          <text class="star-node-label" y="${isPolaris ? 32 : 23}" text-anchor="middle" style="pointer-events: none;">
+          <text class="star-node-label" y="${isPolaris ? 28 : 22}" text-anchor="middle" style="pointer-events: none;">
             ${escapeHtml(m.name || '')} ${isPolaris ? '⭐' : ''}
           </text>
         </g>

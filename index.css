@@ -500,15 +500,10 @@ body.light-theme .stat-icon-wrapper {
 
 .stat-label {
   font-size: 0.8rem;
-  color: #57534e !important;
+  color: var(--text-muted) !important;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   font-weight: 700;
-}
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--text-muted);
 }
 
 /* Sleek Countdown clock with neon glow */

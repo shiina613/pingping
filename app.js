@@ -67,28 +67,35 @@ class TeamPortal {
 
     const meteors = [];
 
-    const spawnMeteor = () => {
+    const spawnMeteor = (isShower = false) => {
       if (document.hidden) return;
 
-      const angleDeg = 36 + Math.random() * 8; // 36deg to 44deg sweep
+      const angleDeg = 32 + Math.random() * 14; // 32deg to 46deg
       const angleRad = (angleDeg * Math.PI) / 180;
-      const speed = 14 + Math.random() * 9;
-      const length = 140 + Math.random() * 160;
+      const speed = 6.5 + Math.random() * 5.5; // Gentler floating speed
+      const length = 100 + Math.random() * 120; // Tail length
 
-      // Start from upper right sky region
-      const startX = Math.random() * (width * 0.95) + width * 0.15;
-      const startY = Math.random() * (height * 0.4) - 60;
+      // Wide distribution across the screen canvas
+      const startX = isShower
+        ? Math.random() * (width * 1.1) - width * 0.05
+        : Math.random() * (width * 0.8) + width * 0.1;
+      const startY = Math.random() * (height * 0.4) - 50;
+
+      // Subtle curve acceleration (-0.015 to +0.015)
+      const curveAcc = (Math.random() - 0.5) * 0.03;
 
       meteors.push({
         x: startX,
         y: startY,
         dx: -Math.cos(angleRad) * speed,
         dy: Math.sin(angleRad) * speed,
+        curve: curveAcc,
         length: length,
         life: 0,
-        maxLife: 42 + Math.floor(Math.random() * 25),
-        width: 1.6 + Math.random() * 1.4,
-        color: Math.random() > 0.35 ? '#fbbf24' : '#fb7185',
+        maxLife: 55 + Math.floor(Math.random() * 35),
+        width: 0.6 + Math.random() * 0.7, // Delicate thin streak
+        color: Math.random() > 0.3 ? '#fbbf24' : '#fb7185',
+        history: [{ x: startX, y: startY }],
       });
     };
 
@@ -96,84 +103,101 @@ class TeamPortal {
     const scheduleSingleMeteors = () => {
       const delay = 2500 + Math.random() * 3000;
       setTimeout(() => {
-        spawnMeteor();
+        spawnMeteor(false);
         scheduleSingleMeteors();
       }, delay);
     };
     scheduleSingleMeteors();
 
-    // 2. Random light meteor shower every 15s to 28s
+    // 2. Random light meteor shower every 14s to 26s with random screen distribution
     const triggerShower = () => {
-      const count = 7 + Math.floor(Math.random() * 8); // 7 to 14 meteors
+      const count = 7 + Math.floor(Math.random() * 7); // 7 to 13 meteors
       for (let i = 0; i < count; i++) {
         setTimeout(() => {
-          spawnMeteor();
-        }, i * (120 + Math.random() * 160));
+          spawnMeteor(true);
+        }, i * (140 + Math.random() * 220));
       }
     };
 
     const scheduleShowers = () => {
-      const delay = 15000 + Math.random() * 13000;
+      const delay = 14000 + Math.random() * 12000;
       setTimeout(() => {
         triggerShower();
         scheduleShowers();
       }, delay);
     };
 
-    // Initial shower after 2.5 seconds
+    // Initial shower after 2 seconds
     setTimeout(() => {
       triggerShower();
       scheduleShowers();
-    }, 2500);
+    }, 2000);
 
-    // 60FPS Silky Canvas Render Loop
+    // 60FPS Silky Canvas Render Loop with Curved Bezier Paths
     const animLoop = () => {
       ctx.clearRect(0, 0, width, height);
 
       for (let i = meteors.length - 1; i >= 0; i--) {
         const m = meteors[i];
+
+        // Apply subtle organic curve acceleration
+        m.dx += m.curve;
         m.x += m.dx;
         m.y += m.dy;
         m.life++;
 
-        const progress = m.life / m.maxLife;
-        let alpha = 1;
-        if (progress < 0.15) {
-          alpha = progress / 0.15;
-        } else if (progress > 0.7) {
-          alpha = (1 - progress) / 0.3;
+        m.history.push({ x: m.x, y: m.y });
+        // Keep trail history length proportional to meteor tail
+        const maxHistLen = Math.floor(m.length / (Math.hypot(m.dx, m.dy) || 1));
+        if (m.history.length > maxHistLen) {
+          m.history.shift();
         }
 
-        const normX = m.dx / Math.hypot(m.dx, m.dy);
-        const normY = m.dy / Math.hypot(m.dx, m.dy);
+        const progress = m.life / m.maxLife;
+        let alpha = 1;
+        if (progress < 0.12) {
+          alpha = progress / 0.12;
+        } else if (progress > 0.65) {
+          alpha = (1 - progress) / 0.35;
+        }
 
-        const tailX = m.x - normX * m.length * (1 - progress * 0.2);
-        const tailY = m.y - normY * m.length * (1 - progress * 0.2);
+        if (m.history.length > 1) {
+          const tailPt = m.history[0];
+          const headPt = m.history[m.history.length - 1];
 
-        // Luminous streak gradient
-        const grad = ctx.createLinearGradient(tailX, tailY, m.x, m.y);
-        grad.addColorStop(0, 'rgba(255, 255, 255, 0)');
-        grad.addColorStop(0.65, m.color);
-        grad.addColorStop(1, '#ffffff');
+          // Luminous curved streak gradient
+          const grad = ctx.createLinearGradient(tailPt.x, tailPt.y, headPt.x, headPt.y);
+          grad.addColorStop(0, 'rgba(255, 255, 255, 0)');
+          grad.addColorStop(0.65, m.color);
+          grad.addColorStop(1, '#ffffff');
 
-        ctx.save();
-        ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
-        ctx.beginPath();
-        ctx.moveTo(tailX, tailY);
-        ctx.lineTo(m.x, m.y);
-        ctx.strokeStyle = grad;
-        ctx.lineWidth = m.width;
-        ctx.lineCap = 'round';
-        ctx.stroke();
+          ctx.save();
+          ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
+          ctx.beginPath();
+          ctx.moveTo(tailPt.x, tailPt.y);
 
-        // Glowing nucleus head
-        ctx.beginPath();
-        ctx.arc(m.x, m.y, m.width * 1.2, 0, Math.PI * 2);
-        ctx.fillStyle = '#ffffff';
-        ctx.shadowColor = m.color;
-        ctx.shadowBlur = 8;
-        ctx.fill();
-        ctx.restore();
+          // Draw organic curved path using quadratic curve
+          for (let j = 1; j < m.history.length - 1; j++) {
+            const xc = (m.history[j].x + m.history[j + 1].x) / 2;
+            const yc = (m.history[j].y + m.history[j + 1].y) / 2;
+            ctx.quadraticCurveTo(m.history[j].x, m.history[j].y, xc, yc);
+          }
+          ctx.lineTo(headPt.x, headPt.y);
+
+          ctx.strokeStyle = grad;
+          ctx.lineWidth = m.width;
+          ctx.lineCap = 'round';
+          ctx.stroke();
+
+          // Glowing nucleus head
+          ctx.beginPath();
+          ctx.arc(headPt.x, headPt.y, m.width * 1.1, 0, Math.PI * 2);
+          ctx.fillStyle = '#ffffff';
+          ctx.shadowColor = m.color;
+          ctx.shadowBlur = 6;
+          ctx.fill();
+          ctx.restore();
+        }
 
         if (m.life >= m.maxLife || m.x < -150 || m.y > height + 150) {
           meteors.splice(i, 1);

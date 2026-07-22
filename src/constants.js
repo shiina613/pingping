@@ -182,18 +182,18 @@ export const DEFAULT_STARLIGHT_MESSAGES = {
     '🗿 Flex đến breath-taking',
     '😎 Ghê chưa ghê chưa!',
     '🥑 Hẻm biết nữa, kệ ik',
-    '🎵 Chỉ một phút giây thôi ~~'
+    '🎵 Chỉ là một phút giây thôi mà ~~',
+    '🌳 Không lẽ, mình không cứng cỏi bằng mấy cái cây sau nhà'
   ],
   rarely: [
     '💧 Uống nước đi',
     '🩺 Chú ý sức khỏe',
-    '🏆 Mọi thử thách rồi cũng sẽ qua!',
     '🌌 Ngắm sao 3 giây rồi lại quẩy tiếp...',
+    '🌠 ƯỚC ĐIIIIIIII',
     '💖 Địt mẹ mày <3',
-    '🐛 Bug chỉ là tính năng ta chưa khám phá ra',
     '✨ Youre shining',
     '🏊 Đi bơi không?',
-    '👑 Gemini, vua fix bug',
+    '🎮 Làm ván X-O ?',
     '🔥 Hãy test code trên production nhé'
   ]
 };

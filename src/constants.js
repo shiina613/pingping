@@ -165,7 +165,8 @@ export const DEFAULT_STARLIGHT_MESSAGES = {
     '🧘 until death all defeat is psychological',
     '💥 Bengz',
     '😄 hihihaha',
-    '👻 pekkboo'
+    '👻 pekkboo',
+    '🌾 Ước gì mình là người Thanh Hóa'
   ],
   sometimes: [
     '🌟 Keep shining!',
@@ -176,7 +177,8 @@ export const DEFAULT_STARLIGHT_MESSAGES = {
     '☕ Trà hay Cà phê?',
     '🎈 Cứ thong thả thôi',
     '🎵 Chỉ là một phút giây thôi mà ~~',
-    '🌳 Không lẽ, mình không cứng cỏi bằng mấy cái cây sau nhà'
+    '🌳 Không lẽ, mình không cứng cỏi bằng mấy cái cây sau nhà',
+    '💊 Đi uống thuốc đi'
   ],
   rarely: [
     '💧 Uống nước đi',

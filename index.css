@@ -197,7 +197,7 @@ body.light-theme #tsparticles::after {
   filter: blur(90px);
 }
 
-/* Organic Non-Repeating Starfield Layer */
+/* Organic Canvas Starfield Container */
 body::before {
   content: '';
   position: fixed;
@@ -207,21 +207,6 @@ body::before {
   height: 100vh;
   pointer-events: none;
   z-index: 0;
-  background-image: 
-    radial-gradient(2px 2px at 45px 55px, #ffffff, rgba(0,0,0,0)),
-    radial-gradient(2.5px 2.5px at 120px 240px, #fbbf24, rgba(0,0,0,0)),
-    radial-gradient(1.5px 1.5px at 280px 90px, #fb7185, rgba(0,0,0,0)),
-    radial-gradient(2px 2px at 410px 380px, #ffffff, rgba(0,0,0,0)),
-    radial-gradient(1.5px 1.5px at 530px 170px, #38bdf8, rgba(0,0,0,0)),
-    radial-gradient(2.5px 2.5px at 690px 480px, #f59e0b, rgba(0,0,0,0)),
-    radial-gradient(1.5px 1.5px at 840px 110px, #ffffff, rgba(0,0,0,0)),
-    radial-gradient(2px 2px at 970px 310px, #c084fc, rgba(0,0,0,0)),
-    radial-gradient(2.5px 2.5px at 1120px 80px, #fbbf24, rgba(0,0,0,0)),
-    radial-gradient(1.5px 1.5px at 1280px 420px, #ffffff, rgba(0,0,0,0)),
-    radial-gradient(2px 2px at 1390px 220px, #fb7185, rgba(0,0,0,0));
-  background-repeat: repeat;
-  background-size: 1400px 900px;
-  animation: organicTwinkle 13s ease-in-out infinite alternate;
 }
 
 /* Meteor / Shooting Star Beam Layer */

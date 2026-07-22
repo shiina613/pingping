@@ -68,6 +68,32 @@ class TeamPortal {
 
     const meteors = [];
 
+    // Dynamic Twinkling Stars Pool
+    const stars = [];
+    const maxStars = 80;
+
+    const createStar = () => ({
+      x: Math.random() * width,
+      y: Math.random() * (height * 0.8),
+      radius: 0.5 + Math.random() * 1.3,
+      alpha: 0,
+      peakAlpha: 0.25 + Math.random() * 0.7,
+      state: 'fadeIn',
+      fadeInSpeed: 0.004 + Math.random() * 0.01,
+      fadeOutSpeed: 0.003 + Math.random() * 0.008,
+      holdTime: 30 + Math.floor(Math.random() * 100),
+      holdTimer: 0,
+      isEveningStar: Math.random() < 0.12, // 12% bright flare star (Ngôi Sao Hôm)
+      color: Math.random() > 0.4 ? '#ffffff' : Math.random() > 0.5 ? '#fde68a' : '#fda4af',
+    });
+
+    for (let i = 0; i < maxStars; i++) {
+      const star = createStar();
+      star.alpha = Math.random() * star.peakAlpha;
+      star.state = Math.random() > 0.5 ? 'fadeIn' : 'hold';
+      stars.push(star);
+    }
+
     const spawnMeteor = (isShower = false) => {
       if (document.hidden) return;
 
@@ -134,10 +160,65 @@ class TeamPortal {
       scheduleShowers();
     }, 2000);
 
-    // 60FPS Silky Canvas Render Loop with Curved Bezier Paths
+    // 60FPS Silky Canvas Render Loop with Curved Bezier Paths & Dynamic Twinkling Stars
     const animLoop = () => {
       ctx.clearRect(0, 0, width, height);
 
+      // 1. Render Dynamic Twinkling Evening Stars
+      for (let i = 0; i < stars.length; i++) {
+        const s = stars[i];
+
+        if (s.state === 'fadeIn') {
+          s.alpha += s.fadeInSpeed;
+          if (s.alpha >= s.peakAlpha) {
+            s.alpha = s.peakAlpha;
+            s.state = 'hold';
+          }
+        } else if (s.state === 'hold') {
+          s.holdTimer++;
+          s.alpha += (Math.random() - 0.5) * 0.015;
+          s.alpha = Math.max(0.05, Math.min(s.peakAlpha + 0.1, s.alpha));
+          if (s.holdTimer >= s.holdTime) {
+            s.state = 'fadeOut';
+          }
+        } else if (s.state === 'fadeOut') {
+          s.alpha -= s.fadeOutSpeed;
+          if (s.alpha <= 0) {
+            s.alpha = 0;
+            // Respawn star at a NEW random screen location!
+            Object.assign(s, createStar());
+          }
+        }
+
+        if (s.alpha > 0) {
+          ctx.save();
+          ctx.globalAlpha = Math.max(0, Math.min(1, s.alpha));
+          ctx.shadowColor = s.color;
+          ctx.shadowBlur = s.radius * 2.5;
+
+          ctx.beginPath();
+          ctx.arc(s.x, s.y, s.radius, 0, Math.PI * 2);
+          ctx.fillStyle = s.color;
+          ctx.fill();
+
+          // Ngôi Sao Hôm 4-point lens flare
+          if (s.isEveningStar && s.alpha > 0.25) {
+            const rayLen = s.radius * 3.2;
+            ctx.beginPath();
+            ctx.moveTo(s.x - rayLen, s.y);
+            ctx.lineTo(s.x + rayLen, s.y);
+            ctx.moveTo(s.x, s.y - rayLen);
+            ctx.lineTo(s.x, s.y + rayLen);
+            ctx.strokeStyle = s.color;
+            ctx.lineWidth = 0.5;
+            ctx.stroke();
+          }
+
+          ctx.restore();
+        }
+      }
+
+      // 2. Render Meteors
       for (let i = meteors.length - 1; i >= 0; i--) {
         const m = meteors[i];
 

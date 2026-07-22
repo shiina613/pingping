@@ -5,13 +5,13 @@ Bạn có thể tự do thêm, bớt hoặc chỉnh sửa các thông điệp th
 ---
 
 ## 🟢 Usually (Thường xuyên ~60%)
-- 👑 Shiina
-- 🧠 Tuấn Trần
-- ⚙️ Thạch
-- 🦁 Duy Anh
-- 🎨 Hưng
-- 📊 Hậu
-- 🚀 Tùng Anh
+- ✨ Shiina
+- ✨ Tuấn Trần
+- ✨ Thạch
+- ✨ Duy Anh
+- ✨ Hưng
+- ✨ Hậu
+- ✨ Tùng Anh
 - 🍀 Good luck!
 - 💪 You got this!
 - ☕ Take it easy & chill~

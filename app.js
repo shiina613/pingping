@@ -1350,22 +1350,25 @@ class TeamPortal {
       return `<line id="c-line-${fromId}-${toId}" class="constellation-line" x1="${fromNode.x}" y1="${fromNode.y}" x2="${toNode.x}" y2="${toNode.y}" />`;
     }).join('');
 
-    // Draw SVG Star Nodes (Pure natural 4-point twinkling star flares)
-    const nodesHTML = members.map(m => {
+    // Draw SVG Star Nodes (Pure sparkling 4-point star flares with NO inline text labels)
+    const nodesHTML = members.map((m, idx) => {
       const isPolaris = m.isPolaris;
       const starColor = isPolaris ? '#fbbf24' : '#e0f2fe';
       const points = isPolaris
-        ? '0,-14 3.2,-3.2 14,0 3.2,3.2 0,14 -3.2,3.2 -14,0 -3.2,-3.2'
-        : '0,-8 2,-2 8,0 2,2 0,8 -2,2 -8,0 -2,-2';
+        ? '0,-15 3.5,-3.5 15,0 3.5,3.5 0,15 -3.5,3.5 -15,0 -3.5,-3.5'
+        : '0,-9 2.2,-2.2 9,0 2.2,2.2 0,9 -2.2,2.2 -9,0 -2.2,-2.2';
       
+      const animDelay = ((idx * 0.73) % 2.8).toFixed(2);
+
       return `
-        <g class="star-node" id="star-node-${m.id}" transform="translate(${m.x}, ${m.y})" 
+        <g class="star-node" id="star-node-${m.id}" transform="translate(${m.x}, ${m.y})" style="animation-delay: -${animDelay}s;"
            onmouseenter="portal.showStarPopover(event, '${m.id}')"
            onmouseleave="portal.hideStarPopover(event, '${m.id}')">
           
-          ${isPolaris ? `<circle class="polaris-aura" r="24" fill="rgba(251, 191, 36, 0.18)" />` : ''}
-          <polygon class="star-flare ${isPolaris ? 'polaris-flare' : ''}" points="${points}" fill="#ffffff" filter="drop-shadow(0 0 5px ${starColor})" />
-          <circle class="star-core" r="${isPolaris ? 3 : 2}" fill="#ffffff" />
+          ${isPolaris ? `<circle class="polaris-aura" r="28" fill="rgba(251, 191, 36, 0.22)" />` : ''}
+          <circle class="star-halo" r="${isPolaris ? 16 : 10}" fill="${starColor}" opacity="0.3" />
+          <polygon class="star-flare ${isPolaris ? 'polaris-flare' : ''}" points="${points}" fill="#ffffff" filter="drop-shadow(0 0 6px ${starColor})" />
+          <circle class="star-core" r="${isPolaris ? 3.2 : 2}" fill="#ffffff" />
         </g>
       `;
     }).join('');

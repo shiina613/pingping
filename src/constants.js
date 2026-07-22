@@ -169,19 +169,12 @@ export const DEFAULT_STARLIGHT_MESSAGES = {
   ],
   sometimes: [
     '🌟 Keep shining!',
-    '💫 Mỗi dòng code là vì sao',
     '🌙 Nhớ ngủ sớm nhé',
     '🥛 Uống nước rồi làm tiếp',
     '🎯 Mọi nỗ lực sẽ đáp lời',
     '🔥 Cháy hết mình cùng đam mê',
-    '🕊️ Giữ bình thản nhé',
     '☕ Trà hay Cà phê?',
     '🎈 Cứ thong thả thôi',
-    '☀️ Cười lên cho tươi!',
-    '🫠 Chầm kẽm luôn á',
-    '🗿 Flex đến breath-taking',
-    '😎 Ghê chưa ghê chưa!',
-    '🥑 Hẻm biết nữa, kệ ik',
     '🎵 Chỉ là một phút giây thôi mà ~~',
     '🌳 Không lẽ, mình không cứng cỏi bằng mấy cái cây sau nhà'
   ],
@@ -194,7 +187,7 @@ export const DEFAULT_STARLIGHT_MESSAGES = {
     '✨ Youre shining',
     '🏊 Đi bơi không?',
     '🎮 Làm ván X-O ?',
-    '🔥 Hãy test code trên production nhé'
+    '🌈 You are GAY'
   ]
 };
 

@@ -16,10 +16,7 @@ Các thông điệp mang tính vượt thời gian: Lời chúc, lời quan tâm
 - 💪 You got this!
 - ☕ Take it easy & chill~
 - 🌈 Don't worry, be fine!
-- ✨ Cố lên PingPing!
-- 💻 Code hết mình
-- ⚡ Cùng tiến bước!
-- 🌟 Ngày tuyệt vời!
+- 🌟 Good day!
 - ✨ Ping Ping
 - ⚡ Just go
 - 🌟 Have a good day bae

@@ -1,2229 +1,2579 @@
-import './config.js';
-import { DEFAULT_MEMBERS, COMPETITIONS, INITIAL_ALLOCATIONS, DEFAULT_KANBAN_TASKS, DEFAULT_STARLIGHT_MESSAGES } from './src/constants.js';
-import { CONSTELLATION_NODES, CONSTELLATION_LINES, getConstellationMembers } from './src/constellation-data.js';
-import { CollaborationController, escapeHtml } from './collaboration-controller.js';
-import { buildCalendar, getTeamSizeWarning } from './collaboration.js';
-import { getCompetitionCountdowns, getCountdownParts } from './src/countdown.js';
-import { boardSize, createEmptyBoard, getFourThreat } from './src/xo.js';
-
-class TeamPortal {
-  constructor() {
-    this.members = this.loadData('pp_members', DEFAULT_MEMBERS);
-    this.allocations = this.loadData('pp_allocations', INITIAL_ALLOCATIONS);
-    this.kanbanTasks = this.loadData('pp_kanban_tasks', DEFAULT_KANBAN_TASKS);
-    this.starlightMessages = this.loadData('pp_starlight_messages', DEFAULT_STARLIGHT_MESSAGES);
-    this.theme = this.loadData('pp_theme', document.documentElement.dataset.theme || 'dark');
-    this.theme = 'dark';
-
-    this.activeKanbanComp = 'onevoice';
-    this.xoState = createEmptyBoard();
-    this.xoMatches = [];
-    this.xoRatings = [];
-    this.xoWallets = [];
-    this.xoCheckin = null;
-    this.xoBets = [];
-    this.xoActiveGame = null;
-    this.xoSelectedMatchId = null;
-    this.xoWalletBalance = null;
-    this.xoChannel = null;
-    this.xoReloadTimer = null;
-    this.xoThreatNoticeKey = null;
-    this.xoThreatTimer = null;
-    this.countdownTimer = null;
-    this.activeDragElement = null;
-    this.tempAvatar = ''; // Temp cache for modal photo updates
-
-    this.initDOM();
-    this.initEvents();
-    
-    const hashTab = window.location.hash.replace('#', '') || 'dashboard';
-    this.switchTab(hashTab, false);
-    
-    window.addEventListener('hashchange', () => {
-      const tab = window.location.hash.replace('#', '') || 'dashboard';
-      this.switchTab(tab, false);
-    });
-
-    this.applyTheme();
-    this.render();
-    this.startCollaboration();
-    this.setupMeteorEngine();
-  }
-
-  setupMeteorEngine() {
-    let canvas = document.getElementById('meteor-canvas');
-    if (!canvas) {
-      canvas = document.createElement('canvas');
-      canvas.id = 'meteor-canvas';
-      canvas.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;pointer-events:none;z-index:0;';
-      document.body.appendChild(canvas);
-    }
-
-    const ctx = canvas.getContext('2d');
-    let width = (canvas.width = window.innerWidth);
-    let height = (canvas.height = window.innerHeight);
-
-    window.addEventListener('resize', () => {
-      width = canvas.width = window.innerWidth;
-      height = canvas.height = window.innerHeight;
-    });
-
-    const meteors = [];
-
-    // Dynamic Twinkling Stars Pool
-    const stars = [];
-    const maxStars = 61;
-
-    const createStar = () => ({
-      x: Math.random() * width,
-      y: Math.random() * (height * 0.82),
-      radius: 0.6 + Math.random() * 1.5,
-      alpha: 0,
-      peakAlpha: 0.45 + Math.random() * 0.55, // Brighter peak brightness
-      state: 'fadeIn',
-      fadeInSpeed: 0.012 + Math.random() * 0.02, // 2.5x faster fade in
-      fadeOutSpeed: 0.010 + Math.random() * 0.018, // 2.5x faster fade out
-      holdTime: 36 + Math.floor(Math.random() * 35), // Snappier hold time
-      holdTimer: 0,
-      isEveningStar: Math.random() < 0.15, // 15% bright flare star (Ngôi Sao Hôm)
-      color: Math.random() > 0.35 ? '#ffffff' : Math.random() > 0.5 ? '#fde68a' : '#fda4af',
-    });
-
-    for (let i = 0; i < maxStars; i++) {
-      const star = createStar();
-      star.alpha = Math.random() * star.peakAlpha;
-      star.state = Math.random() > 0.5 ? 'fadeIn' : 'hold';
-      stars.push(star);
-    }
-
-    const spawnMeteor = (isShower = false) => {
-      if (document.hidden) return;
-
-      const angleDeg = 30 + Math.random() * 12; // 30deg to 42deg
-      const angleRad = (angleDeg * Math.PI) / 180;
-      const speed = 7.5 + Math.random() * 6; // Smooth floating velocity
-      const length = 220 + Math.random() * 200; // Long, elegant tail streak
-
-      // Start from upper right sky, sweeping across full screen width
-      const startX = isShower
-        ? Math.random() * (width * 1.2) - width * 0.05
-        : Math.random() * (width * 0.85) + width * 0.15;
-      const startY = Math.random() * (height * 0.4) - 60;
-
-      // Gentle curve acceleration tuned for long flight (-0.008 to +0.008)
-      const curveAcc = (Math.random() - 0.5) * 0.016;
-
-      meteors.push({
-        x: startX,
-        y: startY,
-        dx: -Math.cos(angleRad) * speed,
-        dy: Math.sin(angleRad) * speed,
-        curve: curveAcc,
-        length: length,
-        life: 0,
-        maxLife: 90 + Math.floor(Math.random() * 70), // Long travel lifespan (1.5s - 2.6s)
-        width: 0.6 + Math.random() * 0.7, // Delicate thin streak
-        color: Math.random() > 0.3 ? '#fbbf24' : '#fb7185',
-        history: [{ x: startX, y: startY }],
-      });
-    };
-
-    // 1. Regular single shooting stars every 2.5s to 5.5s
-    const scheduleSingleMeteors = () => {
-      const delay = 2500 + Math.random() * 3000;
-      setTimeout(() => {
-        spawnMeteor(false);
-        scheduleSingleMeteors();
-      }, delay);
-    };
-    scheduleSingleMeteors();
-
-    // 2. Random light meteor shower every 14s to 26s with random screen distribution
-    const triggerShower = () => {
-      const count = 7 + Math.floor(Math.random() * 7); // 7 to 13 meteors
-      for (let i = 0; i < count; i++) {
-        setTimeout(() => {
-          spawnMeteor(true);
-        }, i * (140 + Math.random() * 220));
+// Initial Rich Mock Data with Multimedia (Images, Videos, Files, Links, Voice notes)
+const DEFAULT_CHATS = {
+  'chat-world-class': {
+    title: 'World Class 🌍',
+    type: 'global_channel',
+    members: ['Tất cả thành viên', 'Shiina', 'Lương Thanh Hậu', 'Nguyễn Quang Tùng', 'Nguyễn Lâm Tùng', 'Alex Rivers', 'Elena Rostova'],
+    membersCount: 'Giao lưu toàn cầu · Tối đa 180 tin',
+    unread: 0,
+    messages: [
+      {
+        id: 'wc_1',
+        author: 'Shiina',
+        time: '20:10',
+        content: 'Chào mừng mọi người đến với phòng chat chung **World Class**! 🌍🎉 Đây là nơi tất cả thành viên có thể giao lưu, chia sẻ ý tưởng và trao đổi kinh nghiệm tự do.'
+      },
+      {
+        id: 'wc_2',
+        author: 'Lương Thanh Hậu',
+        role: 'Quản lý',
+        time: '20:12',
+        content: 'Xin chào cả nhà! Chúc mọi người một ngày làm việc hiệu quả và nhiều niềm vui! 😊'
+      },
+      {
+        id: 'wc_3',
+        author: 'Nguyễn Quang Tùng',
+        role: 'Kỹ thuật viên',
+        time: '20:15',
+        content: 'Phòng chat này được thiết lập tự động lưu giữ **180 tin nhắn** gần nhất và tự động làm sạch các tin cũ. Mọi người có thể thoải mái gửi hình ảnh, video và liên kết nhé!'
       }
-    };
-
-    const scheduleShowers = () => {
-      const delay = 14000 + Math.random() * 12000;
-      setTimeout(() => {
-        triggerShower();
-        scheduleShowers();
-      }, delay);
-    };
-
-    // Initial shower after 2 seconds
-    setTimeout(() => {
-      triggerShower();
-      scheduleShowers();
-    }, 2000);
-
-    // 60FPS Silky Canvas Render Loop with Curved Bezier Paths & Dynamic Twinkling Stars
-    const animLoop = () => {
-      ctx.clearRect(0, 0, width, height);
-
-      // 1. Render Dynamic Twinkling Evening Stars
-      for (let i = 0; i < stars.length; i++) {
-        const s = stars[i];
-
-        if (s.state === 'fadeIn') {
-          s.alpha += s.fadeInSpeed;
-          if (s.alpha >= s.peakAlpha) {
-            s.alpha = s.peakAlpha;
-            s.state = 'hold';
-          }
-        } else if (s.state === 'hold') {
-          s.holdTimer++;
-          s.alpha += (Math.random() - 0.5) * 0.035;
-          s.alpha = Math.max(0.1, Math.min(s.peakAlpha + 0.15, s.alpha));
-          if (s.holdTimer >= s.holdTime) {
-            s.state = 'fadeOut';
-          }
-        } else if (s.state === 'fadeOut') {
-          s.alpha -= s.fadeOutSpeed;
-          if (s.alpha <= 0) {
-            s.alpha = 0;
-            // Respawn star at a NEW random screen location!
-            Object.assign(s, createStar());
-          }
+    ]
+  },
+  'chat-1': {
+    title: 'trại bò cơ sở 1',
+    type: 'channel',
+    members: ['Shiina', 'Lương Thanh Hậu', 'Nguyễn Quang Tùng', 'Nguyễn Lâm Tùng'],
+    membersCount: '4 thành viên · Tối đa 36 tin',
+    unread: 0,
+    messages: [
+      {
+        id: 'm1_1',
+        author: 'Shiina',
+        time: '22:40',
+        content: 'xin chào cả đội, tình hình chuồng số 2 thế nào rồi?'
+      },
+      {
+        id: 'm1_2',
+        author: 'Lương Thanh Hậu',
+        role: 'Quản lý',
+        time: '22:41',
+        content: 'Chuồng số 2 đã hoàn thành việc khử trùng và bổ sung máng ăn tự động rồi nhé. Em gửi ảnh kiểm tra thực tế:',
+        image: 'https://images.unsplash.com/photo-1570042225831-d98fa7577f1e?w=800&auto=format&fit=crop&q=80',
+        imageCaption: 'Ảnh thực tế khu chuồng số 2 sau vệ sinh khử trùng'
+      },
+      {
+        id: 'm1_3',
+        author: 'Nguyễn Lâm Tùng',
+        role: 'Giám sát',
+        time: '22:42',
+        content: 'Em gửi thêm clip camera giám sát hệ thống quạt thông gió và máng nước tự động lúc 20h:',
+        video: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
+        videoCaption: 'Video camera CS1 - Khu máng ăn tự động'
+      },
+      {
+        id: 'm1_4',
+        author: 'Lương Thanh Hậu',
+        role: 'Quản lý',
+        time: '22:43',
+        content: 'Mọi người tham khảo tài liệu tiêu chuẩn mới tại https://nongnghiep.vn/tieu-chuan-chuong-trai-hien-dai và xem file báo cáo đính kèm bên dưới:',
+        file: {
+          name: 'Bao_cao_kiem_toan_ky_thuat_thang8.pdf',
+          size: '3.4 MB',
+          type: 'pdf'
         }
+      },
+      {
+        id: 'm1_5',
+        author: 'Nguyễn Quang Tùng',
+        role: 'Kỹ thuật viên',
+        time: '22:44',
+        thought: 'Đã suy nghĩ trong 2s',
+        thoughtTime: '2s',
+        content: `Được rồi, mình kể bạn nghe câu chuyện này nhé:
 
-        if (s.alpha > 0) {
-          ctx.save();
-          ctx.globalAlpha = Math.max(0, Math.min(1, s.alpha));
-          ctx.shadowColor = s.color;
-          ctx.shadowBlur = s.radius * 3.5;
+**Người canh giữ ngọn hải đăng**
 
-          ctx.beginPath();
-          ctx.arc(s.x, s.y, s.radius, 0, Math.PI * 2);
-          ctx.fillStyle = s.color;
-          ctx.fill();
+Ở một hòn đảo nhỏ xa xôi, có một ông lão tên Tư sống một mình trong ngọn hải đăng đã hơn ba mươi năm. Mỗi đêm, ông thắp sáng ngọn đèn để dẫn đường cho tàu thuyền qua vùng biển đầy đá ngầm.
 
-          // Ngôi Sao Hôm 4-point lens flare
-          if (s.isEveningStar && s.alpha > 0.3) {
-            const rayLen = s.radius * 3.8;
-            ctx.beginPath();
-            ctx.moveTo(s.x - rayLen, s.y);
-            ctx.lineTo(s.x + rayLen, s.y);
-            ctx.moveTo(s.x, s.y - rayLen);
-            ctx.lineTo(s.x, s.y + rayLen);
-            ctx.strokeStyle = s.color;
-            ctx.lineWidth = 0.6;
-            ctx.stroke();
-          }
-
-          ctx.restore();
-        }
+Suốt nhiều giờ liền giữa mưa bão, ông vẫn giơ cao ngọn đèn cứu sống con tàu đánh cá. Trái tim ấm áp của ông đã trở thành điểm tựa cho muôn người... 🏮`
       }
-
-      // 2. Render Meteors
-      for (let i = meteors.length - 1; i >= 0; i--) {
-        const m = meteors[i];
-
-        // Apply subtle organic curve acceleration
-        m.dx += m.curve;
-        m.x += m.dx;
-        m.y += m.dy;
-        m.life++;
-
-        m.history.push({ x: m.x, y: m.y });
-        // Keep trail history length proportional to meteor tail
-        const maxHistLen = Math.floor(m.length / (Math.hypot(m.dx, m.dy) || 1));
-        if (m.history.length > maxHistLen) {
-          m.history.shift();
-        }
-
-        const progress = m.life / m.maxLife;
-        let alpha = 1;
-        if (progress < 0.1) {
-          alpha = progress / 0.1;
-        } else if (progress > 0.75) {
-          alpha = (1 - progress) / 0.25;
-        }
-
-        if (m.history.length > 1) {
-          const tailPt = m.history[0];
-          const headPt = m.history[m.history.length - 1];
-
-          // Luminous curved streak gradient
-          const grad = ctx.createLinearGradient(tailPt.x, tailPt.y, headPt.x, headPt.y);
-          grad.addColorStop(0, 'rgba(255, 255, 255, 0)');
-          grad.addColorStop(0.65, m.color);
-          grad.addColorStop(1, '#ffffff');
-
-          ctx.save();
-          ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
-          ctx.beginPath();
-          ctx.moveTo(tailPt.x, tailPt.y);
-
-          // Draw organic curved path using quadratic curve
-          for (let j = 1; j < m.history.length - 1; j++) {
-            const xc = (m.history[j].x + m.history[j + 1].x) / 2;
-            const yc = (m.history[j].y + m.history[j + 1].y) / 2;
-            ctx.quadraticCurveTo(m.history[j].x, m.history[j].y, xc, yc);
-          }
-          ctx.lineTo(headPt.x, headPt.y);
-
-          ctx.strokeStyle = grad;
-          ctx.lineWidth = m.width;
-          ctx.lineCap = 'round';
-          ctx.stroke();
-
-          // Glowing nucleus head
-          ctx.beginPath();
-          ctx.arc(headPt.x, headPt.y, m.width * 1.1, 0, Math.PI * 2);
-          ctx.fillStyle = '#ffffff';
-          ctx.shadowColor = m.color;
-          ctx.shadowBlur = 6;
-          ctx.fill();
-          ctx.restore();
-        }
-
-        if (m.life >= m.maxLife || m.x < -150 || m.y > height + 150) {
-          meteors.splice(i, 1);
-        }
-      }
-
-      // 3. Render Starlight Ambient Messages (Twinkling in place for 3.6s)
-      for (let i = quotes.length - 1; i >= 0; i--) {
-        const q = quotes[i];
-        q.life++;
-
-        const progress = q.life / q.maxLife; // 0.0 to 1.0 over 3.6s
-        let alpha = 0;
-        if (progress < 0.18) {
-          alpha = progress / 0.18; // Fade in (~0.65s)
-        } else if (progress > 0.75) {
-          alpha = (1 - progress) / 0.25; // Fade out (~0.9s)
-        } else {
-          alpha = 1;
-        }
-
-        // Soft natural twinkling shimmer modulation
-        const shimmer = 0.85 + 0.15 * Math.sin((q.life * 0.15) + q.twinkleOffset);
-        alpha *= 0.70 * shimmer;
-
-        ctx.save();
-        ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
-        ctx.font = '600 13px "Be Vietnam Pro", "Outfit", sans-serif';
-        ctx.shadowColor = q.color;
-        ctx.shadowBlur = 12;
-        ctx.fillStyle = q.color;
-        ctx.fillText(q.text, q.x, q.y);
-        ctx.restore();
-
-        if (q.life >= q.maxLife) {
-          quotes.splice(i, 1);
-        }
-      }
-
-      requestAnimationFrame(animLoop);
-    };
-
-    // Starlight Messages Pool & Scheduler
-    const quotes = [];
-
-    const spawnStarlightQuote = () => {
-      if (document.hidden) return;
-
-      const data = this.starlightMessages || DEFAULT_STARLIGHT_MESSAGES;
-      let text = '✨ Cố lên PingPing Team!';
-
-      if (Array.isArray(data)) {
-        text = data[Math.floor(Math.random() * data.length)] || text;
-      } else if (typeof data === 'object') {
-        const rand = Math.random();
-        let cat = 'usually';
-        if (rand < 0.10 && Array.isArray(data.rarely) && data.rarely.length > 0) {
-          cat = 'rarely';
-        } else if (rand < 0.40 && Array.isArray(data.sometimes) && data.sometimes.length > 0) {
-          cat = 'sometimes';
-        }
-        const pool = (Array.isArray(data[cat]) && data[cat].length > 0) ? data[cat] : (data.usually || []);
-        if (pool.length > 0) {
-          text = pool[Math.floor(Math.random() * pool.length)];
-        }
-      }
-
-      // Auto-format icon prefix if missing
-      const trimmedText = text.trim();
-      const hasEmojiPrefix = /^[\p{Extended_Pictographic}\u{1F300}-\u{1FAFF}]/u.test(trimmedText);
-      if (!hasEmojiPrefix) {
-        const defaultIcons = ['✨', '🌟', '💖', '🔥', '🚀', '💫', '⚡', '🔮'];
-        const autoIcon = defaultIcons[Math.floor(Math.random() * defaultIcons.length)];
-        text = `${autoIcon} ${trimmedText}`;
-      }
-
-      const startX = Math.random() * (width * 0.65) + width * 0.15;
-      const startY = Math.random() * (height * 0.55) + height * 0.15;
-
-      quotes.push({
-        text: text,
-        x: startX,
-        y: startY,
-        dy: 0, // Stationary in place like a star
-        life: 0,
-        maxLife: 216, // Exactly 3.6s at 60 FPS
-        twinkleOffset: Math.random() * Math.PI * 2,
-        color: Math.random() > 0.4 ? '#fbbf24' : Math.random() > 0.5 ? '#ffffff' : '#fb7185',
-      });
-    };
-
-    const scheduleQuotes = () => {
-      const delay = 6000 + Math.random() * 6000;
-      setTimeout(() => {
-        spawnStarlightQuote();
-        scheduleQuotes();
-      }, delay);
-    };
-
-    setTimeout(() => {
-      spawnStarlightQuote();
-      scheduleQuotes();
-    }, 2500);
-
-    animLoop();
-  }
-
-  loadData(key, fallback) {
-    const raw = localStorage.getItem(key);
-    try {
-      return raw ? JSON.parse(raw) : fallback;
-    } catch (e) {
-      console.error('Error loading localStorage key: ' + key, e);
-      return fallback;
-    }
-  }
-
-  saveData(key, data) {
-    localStorage.setItem(key, JSON.stringify(data));
-  }
-
-  initDOM() {
-    this.tabButtons = document.querySelectorAll('.tab-btn');
-    this.tabPanels = document.querySelectorAll('.tab-panel');
-
-    this.statActiveComp = document.getElementById('stat-active-comp');
-    this.statActiveTeams = document.getElementById('stat-active-teams');
-    this.statNearestDays = document.getElementById('stat-nearest-days');
-
-    this.countdownContainer = document.getElementById('competition-countdowns');
-
-    this.modal = document.getElementById('edit-member-modal');
-    this.modalTitle = document.getElementById('modal-title-text');
-    this.modalInputId = document.getElementById('edit-member-id');
-    this.modalInputName = document.getElementById('edit-member-name');
-    this.modalInputRole = document.getElementById('edit-member-role');
-    this.modalInputSkills = document.getElementById('edit-member-skills');
-
-    this.sbStatusBadge = document.getElementById('supabase-status-badge');
-
-    this.taskModal = document.getElementById('add-task-modal');
-    this.taskInputTitle = document.getElementById('task-title');
-    this.taskInputDesc = document.getElementById('task-desc');
-    this.taskInputAssignee = document.getElementById('task-assignee');
-    this.taskInputColumn = document.getElementById('task-column');
-
-    this.aboutUpdateButton = document.getElementById('about-update-button');
-    this.aboutUpdateModal = document.getElementById('about-update-modal');
-    this.xoBoard = document.getElementById('xo-board');
-  }
-
-  initEvents() {
-    this.tabButtons.forEach(btn => {
-      btn.addEventListener('click', () => {
-        this.switchTab(btn.getAttribute('data-tab'), true);
-      });
-    });
-
-    const savePlannerBtn = document.getElementById('save-allocations-btn');
-    if (savePlannerBtn) {
-      savePlannerBtn.addEventListener('click', async () => {
-        if (!this.collaboration?.requireLogin()) return;
-        try {
-          await this.collaboration.saveAllocations();
-          this.collaboration.toast('Đội hình đã được lưu.', 'success');
-        } catch (error) {
-          this.collaboration.toast(error.message || 'Không thể lưu đội hình.', 'error');
-          await this.collaboration.loadSnapshot();
-        }
-      });
-    }
-
-    const exportBtnTimeline = document.getElementById('export-calendar-btn-timeline');
-    if (exportBtnTimeline) {
-      exportBtnTimeline.addEventListener('click', () => this.exportCalendar());
-    }
-
-    // Modal profile triggers
-    const modalCloseX = document.getElementById('modal-close-x');
-    const modalCancelBtn = document.getElementById('modal-cancel-btn');
-    const modalSaveBtn = document.getElementById('modal-save-btn');
-
-    if (modalCloseX) modalCloseX.addEventListener('click', () => this.closeModal());
-    if (modalCancelBtn) modalCancelBtn.addEventListener('click', () => this.closeModal());
-    if (modalSaveBtn) modalSaveBtn.addEventListener('click', () => this.saveMemberProfile());
-
-    // Kanban Modals
-    const addTaskBtn = document.getElementById('add-task-btn');
-    const taskCloseX = document.getElementById('task-modal-close-x');
-    const taskCancelBtn = document.getElementById('task-modal-cancel-btn');
-    const taskSaveBtn = document.getElementById('task-modal-save-btn');
-
-    if (addTaskBtn) addTaskBtn.addEventListener('click', () => this.openTaskModal());
-    if (taskCloseX) taskCloseX.addEventListener('click', () => this.closeTaskModal());
-    if (taskCancelBtn) taskCancelBtn.addEventListener('click', () => this.closeTaskModal());
-    if (taskSaveBtn) taskSaveBtn.addEventListener('click', () => this.saveNewKanbanTask());
-
-    const kanbanCompSelect = document.getElementById('kanban-comp-select');
-    if (kanbanCompSelect) {
-      kanbanCompSelect.addEventListener('change', (e) => {
-        this.activeKanbanComp = e.target.value;
-        this.render();
-      });
-    }
-
-    // Toggle theme button
-    const themeBtn = document.getElementById('theme-toggle');
-    if (themeBtn) {
-      themeBtn.addEventListener('click', () => this.toggleTheme());
-    }
-
-    document.getElementById('about-update-button')?.addEventListener('click', () => this.openAboutUpdate());
-    document.getElementById('about-update-close')?.addEventListener('click', () => this.closeAboutUpdate());
-    document.getElementById('about-update-modal')?.addEventListener('click', event => {
-      if (event.target.id === 'about-update-modal') this.closeAboutUpdate();
-    });
-    document.getElementById('xo-refresh-btn')?.addEventListener('click', () => this.loadXoCasino());
-    document.getElementById('citizen-checkin-button')?.addEventListener('click', () => this.claimCitizenCheckin());
-    document.getElementById('checkin-penalty-close')?.addEventListener('click', () => this.closeCheckinPenalty());
-    document.getElementById('checkin-penalty-modal')?.addEventListener('click', event => {
-      if (event.target.id === 'checkin-penalty-modal') this.closeCheckinPenalty();
-    });
-    document.getElementById('xo-challenge-form')?.addEventListener('submit', event => {
-      event.preventDefault();
-      this.createXoChallenge();
-    });
-    document.getElementById('xo-bet-form')?.addEventListener('submit', event => {
-      event.preventDefault();
-      this.placeXoBet();
-    });
-    document.getElementById('xo-open-matches')?.addEventListener('click', event => {
-      const button = event.target.closest('[data-xo-action]');
-      if (!button) return;
-      if (button.dataset.xoAction === 'view') this.selectXoMatch(button.dataset.matchId);
-      else this.respondXoChallenge(button.dataset.matchId, button.dataset.xoAction === 'accept');
-    });
-    document.getElementById('xo-recent-matches')?.addEventListener('click', event => {
-      const button = event.target.closest('[data-match-id]');
-      if (button) this.selectXoMatch(button.dataset.matchId);
-    });
-
-    // Custom base64 image uploader event
-    const fileInput = document.getElementById('avatar-file-input');
-    const emojiInput = document.getElementById('edit-member-emoji');
-    const previewBox = document.getElementById('edit-avatar-preview');
-
-    if (fileInput) {
-      fileInput.addEventListener('change', (e) => {
-        const file = e.target.files[0];
-        if (file) {
-          const reader = new FileReader();
-          reader.onloadend = () => {
-            this.tempAvatar = reader.result; // Base64 string
-            previewBox.innerHTML = `<img src="${this.tempAvatar}" class="member-avatar-img" alt="Avatar Preview">`;
-            emojiInput.value = ''; // Clear emoji text if file chosen
-          };
-          reader.readAsDataURL(file);
-        }
-      });
-    }
-
-    if (emojiInput) {
-      emojiInput.addEventListener('input', (e) => {
-        const val = e.target.value.trim();
-        if (val) {
-          this.tempAvatar = val;
-          previewBox.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;font-size:1.5rem;">${val}</div>`;
-        }
-      });
-    }
-
-    window.addEventListener('click', (e) => {
-      if (e.target === this.modal) this.closeModal();
-      if (e.target === this.taskModal) this.closeTaskModal();
-    });
-  }
-
-  switchTab(tabName, updateHash = true) {
-    if (tabName === 'xo' && !this.isXoArenaVisible()) tabName = 'dashboard';
-    this.currentTab = tabName;
-    document.body.classList.toggle('chat-active', tabName === 'chat');
-    this.tabButtons.forEach(btn => {
-      btn.classList.toggle('active', btn.getAttribute('data-tab') === tabName);
-    });
-    this.tabPanels.forEach(panel => {
-      panel.classList.toggle('active', panel.getAttribute('id') === `tab-${tabName}`);
-    });
-    this.render();
-    if (tabName === 'chat') this.collaboration?.loadMessages();
-    if (tabName === 'xo') this.loadXoCasino();
-    if (updateHash) window.history.pushState(null, '', `#${tabName}`);
-  }
-
-  async startCollaboration() {
-    const config = window.PINGPING_CONFIG;
-    if (!config?.supabaseUrl || !config?.supabaseKey || !window.supabase?.createClient) {
-      console.error('Thiếu cấu hình Supabase hoặc SDK không tải được.');
-      return;
-    }
-    this.collaboration = new CollaborationController(this, window.supabase.createClient(config.supabaseUrl, config.supabaseKey));
-    try {
-      await this.collaboration.init();
-      if (this.currentTab === 'xo') await this.loadXoCasino();
-    } catch (error) {
-      console.error('Không thể khởi tạo cộng tác:', error);
-      this.collaboration.setConnection(false, error.message);
-    }
-  }
-
-  // ==========================================================================
-  // UI/UX REDESIGN: LIGHT/DARK MODE IMPLEMENTATION
-  // ==========================================================================
-
-  toggleTheme() {
-    this.theme = this.theme === 'dark' ? 'light' : 'dark';
-    this.saveData('pp_theme', this.theme);
-    this.applyTheme();
-  }
-
-  applyTheme() {
-    const isLight = this.theme === 'light';
-    document.documentElement.dataset.theme = this.theme;
-    document.body.classList.toggle('light-theme', isLight);
-    const themeBtn = document.getElementById('theme-toggle');
-    const themeMeta = document.querySelector('meta[name="theme-color"]');
-    if (themeBtn) {
-      themeBtn.setAttribute('aria-pressed', String(!isLight));
-      themeBtn.setAttribute('aria-label', isLight ? 'Chuyển sang chế độ tối' : 'Chuyển sang chế độ sáng');
-    }
-    if (themeMeta) themeMeta.content = isLight ? '#f3f5f8' : '#101319';
-    const themeIcon = document.getElementById('theme-icon');
-    if (themeIcon) {
-      if (isLight) {
-        // Render Moon SVG for switching back to dark
-        themeIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z"></path>`;
-      } else {
-        // Render Sun SVG for switching back to light
-        themeIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m0-12.728l.707.707m12.728 12.728l.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z"></path>`;
-      }
-    }
-  }
-
-  // ==========================================================================
-  // VIEW RENDERER HELPER: VISUAL AVATAR ENGINE
-  // ==========================================================================
-
-  renderAvatarMarkup(member, sizeClass = '') {
-    const initials = member.name.split(' ').map(n => n[0]).join('');
-    const bubbleBg = member.color;
-
-    if (member.avatar) {
-      if (member.avatar.startsWith('data:image/')) {
-        return `<div class="${sizeClass}" style="background: ${bubbleBg}; border: 1.5px solid rgba(255,255,255,0.15);" title="${member.name} - ${member.role}"><img src="${member.avatar}" class="member-avatar-img" alt="${member.name}"></div>`;
-      } else {
-        // Emoji
-        return `<div class="${sizeClass}" style="background: ${bubbleBg}; display: flex; align-items: center; justify-content: center; font-size: 1.25em;" title="${member.name} - ${member.role}">${member.avatar}</div>`;
-      }
-    }
-    // Fallback to text initials
-    return `<div class="${sizeClass}" style="background: ${bubbleBg}; display: flex; align-items: center; justify-content: center; color: white; font-weight:700;" title="${member.name} - ${member.role}">${initials}</div>`;
-  }
-
-  render() {
-    this.applyFeatureFlags();
-    this.renderStats();
-    this.setupCountdown();
-
-    if (this.currentTab === 'dashboard') {
-      this.renderDashboard();
-    } else if (this.currentTab === 'competitions') {
-      this.renderCompetitions();
-    } else if (this.currentTab === 'planner') {
-      this.renderPlanner();
-    } else if (this.currentTab === 'timeline') {
-      this.renderTimeline();
-    } else if (this.currentTab === 'directory') {
-      this.renderDirectory();
-    } else if (this.currentTab === 'kanban') {
-      this.renderKanbanBoard();
-    } else if (this.currentTab === 'settings') {
-      this.renderSettings();
-    } else if (this.currentTab === 'xo') {
-      this.renderXoArena();
-    }
-  }
-
-  getNearestMilestone() {
-    let nearest = null;
-    let minDiff = Infinity;
-    const now = new Date();
-
-    COMPETITIONS.forEach(comp => {
-      comp.timeline.forEach(event => {
-        const eventDate = new Date(event.date);
-        const diff = eventDate - now;
-        if (diff > 0 && diff < minDiff) {
-          minDiff = diff;
-          nearest = { comp, event };
-        }
-      });
-    });
-
-    return nearest;
-  }
-
-  setupCountdown() {
-    if (this.countdownTimer) {
-      clearInterval(this.countdownTimer);
-      this.countdownTimer = null;
-    }
-
-    const countdowns = getCompetitionCountdowns(COMPETITIONS);
-    this.countdownContainer.innerHTML = countdowns.map(({ comp, event }) => `
-      <div class="glass-card countdown-box competition-countdown-row" data-countdown-id="${comp.id}">
-        <div class="countdown-header">
-          <div>
-            <span class="stat-label" style="color: var(--accent-rose);">Sự kiện sắp tới</span>
-            <h3 class="countdown-title">${comp.name}</h3>
-          </div>
-          <div class="countdown-milestone">${event ? `${event.label} (${new Date(event.date).toLocaleDateString('vi-VN')})` : 'Đã hoàn thành'}</div>
-        </div>
-        <div class="countdown-display">
-          ${[['days', 'Ngày'], ['hours', 'Giờ'], ['minutes', 'Phút'], ['seconds', 'Giây']].map(([part, label]) => `
-            <div class="countdown-unit">
-              <span class="countdown-value" data-countdown-part="${part}">00</span>
-              <span class="countdown-label">${label}</span>
-            </div>
-          `).join('')}
-        </div>
-      </div>
-    `).join('');
-
-    const updateTimer = () => {
-      const now = new Date();
-      for (const { comp, event } of countdowns) {
-        if (!event) continue;
-        if (new Date(event.date) <= now) {
-          this.setupCountdown();
-          return;
-        }
-
-        const row = this.countdownContainer.querySelector(`[data-countdown-id="${comp.id}"]`);
-        const parts = getCountdownParts(new Date(event.date), now);
-        Object.entries(parts).forEach(([part, value]) => {
-          row.querySelector(`[data-countdown-part="${part}"]`).innerText = value;
-        });
-      }
-    };
-
-    updateTimer();
-    if (countdowns.some(({ event }) => event)) {
-      this.countdownTimer = setInterval(updateTimer, 1000);
-    }
-  }
-
-  renderStats() {
-    this.statActiveComp.innerText = `${COMPETITIONS.length} / ${COMPETITIONS.length}`;
-
-    let teamCount = 0;
-    COMPETITIONS.forEach(({ id: compId }) => {
-      const alloc = this.allocations[compId];
-      if (alloc.members) teamCount += 1;
-      if (alloc.teamA) teamCount += 1;
-      if (alloc.teamB) teamCount += 1;
-    });
-    this.statActiveTeams.innerText = `${teamCount} Nhóm`;
-
-    const nearest = this.getNearestMilestone();
-    if (nearest) {
-      const diffTime = new Date(nearest.event.date) - new Date();
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      this.statNearestDays.innerText = diffDays > 0 ? `${diffDays} Ngày` : 'Hôm nay!';
-    } else {
-      this.statNearestDays.innerText = 'N/A';
-    }
-  }
-
-  renderDashboard() {
-    // 1. Render active allocations map with avatar chips
-    const allocContainer = document.getElementById('dashboard-allocations-list');
-    allocContainer.innerHTML = '';
-
-    COMPETITIONS.forEach(comp => {
-      const alloc = this.allocations[comp.id];
-      let allocationHTML = '';
-
-      if (comp.id === 'onevoice') {
-        const teamMembers = (alloc.members || []).map(id => this.getMemberById(id)).filter(Boolean);
-        allocationHTML = `
-          <div class="comp-meta-row" style="padding: 0.75rem 0; border-bottom: 1px solid rgba(255,255,255,0.03);">
-            <div style="flex: 1;">
-              <span class="q-comp-name" style="color: var(--accent-cyan); font-weight: 700;">${comp.name}</span>
-              <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.15rem;">Đội hình chung (Cả 7 người)</div>
-            </div>
-            <div class="quick-members-list">
-              ${teamMembers.map(m => this.renderAvatarMarkup(m, 'quick-member-bubble')).join('')}
-            </div>
-          </div>
-        `;
-      } else {
-        const teamAMembers = (alloc.teamA || []).map(id => this.getMemberById(id)).filter(Boolean);
-        const teamBMembers = (alloc.teamB || []).map(id => this.getMemberById(id)).filter(Boolean);
-
-        allocationHTML = `
-          <div style="padding: 0.75rem 0; border-bottom: 1px solid rgba(255,255,255,0.03);">
-            <span class="q-comp-name" style="color: var(--accent-purple); font-weight: 700;">${comp.name}</span>
-            <div style="display: flex; justify-content: space-between; margin-top: 0.35rem;">
-              <div style="display: flex; align-items: center; justify-content: space-between; flex: 1; border-right: 1px solid rgba(255,255,255,0.05); padding-right: 0.75rem;">
-                <span style="font-size: 0.75rem; color: var(--text-secondary);">Nhóm A:</span>
-                <div class="quick-members-list">
-                  ${teamAMembers.map(m => this.renderAvatarMarkup(m, 'quick-member-bubble')).join('')}
-                </div>
-              </div>
-              <div style="display: flex; align-items: center; justify-content: space-between; flex: 1; padding-left: 0.75rem;">
-                <span style="font-size: 0.75rem; color: var(--text-secondary);">Nhóm B:</span>
-                <div class="quick-members-list">
-                  ${teamBMembers.map(m => this.renderAvatarMarkup(m, 'quick-member-bubble')).join('')}
-                </div>
-              </div>
-            </div>
-          </div>
-        `;
-      }
-      allocContainer.insertAdjacentHTML('beforeend', allocationHTML);
-    });
-
-    // 2. Render chronological upcoming events
-    const quickTimelineContainer = document.getElementById('dashboard-timeline-list');
-    quickTimelineContainer.innerHTML = '';
-
-    const allEvents = [];
-    COMPETITIONS.forEach(comp => {
-      comp.timeline.forEach(event => {
-        allEvents.push({ comp, event });
-      });
-    });
-
-    const now = new Date();
-    const upcomingEvents = allEvents
-      .filter(item => new Date(item.event.date) >= now)
-      .sort((a, b) => new Date(a.event.date) - new Date(b.event.date))
-      .slice(0, 5);
-
-    upcomingEvents.forEach(item => {
-      const d = new Date(item.event.date);
-      const day = d.getDate();
-      const month = `Thg ${d.getMonth() + 1}`;
-
-      const chipColor = item.event.type === 'registration' ? 'rgba(239, 68, 68, 0.15)' : item.event.type === 'final' ? 'rgba(16, 184, 129, 0.15)' : 'rgba(59, 130, 246, 0.15)';
-      const chipTextColor = item.event.type === 'registration' ? 'var(--accent-rose)' : item.event.type === 'final' ? 'var(--accent-emerald)' : 'var(--accent-blue)';
-      const chipLabel = item.event.type === 'registration' ? 'Đăng ký' : item.event.type === 'final' ? 'Chung kết' : 'Mốc phụ';
-
-      const itemHTML = `
-        <div class="quick-timeline-item">
-          <div class="q-date-badge">
-            <span class="q-day">${day}</span>
-            <span class="q-month">${month}</span>
-          </div>
-          <div class="q-details">
-            <div class="q-comp-name" style="color: var(--text-muted);">${item.comp.name}</div>
-            <div class="q-event-title">${item.event.label}</div>
-            <span class="q-tag" style="background: ${chipColor}; color: ${chipTextColor}; font-weight: 600;">${chipLabel}</span>
-          </div>
-        </div>
-      `;
-      quickTimelineContainer.insertAdjacentHTML('beforeend', itemHTML);
-    });
-
-    // 3. Render Workload Chart
-    const ctx = document.getElementById('workload-chart');
-    if (ctx && window.Chart) {
-      if (this.workloadChart) this.workloadChart.destroy();
-      
-      const memberNames = this.members.map(m => m.name);
-      const memberTasksCount = this.members.map(m => {
-        let count = 0;
-        Object.values(this.kanbanTasks || {}).forEach(tasks => {
-          count += tasks.filter(t => t.assignee === m.id && t.column !== 'done').length;
-        });
-        return count;
-      });
-
-      this.workloadChart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-          labels: memberNames,
-          datasets: [{
-            label: 'Task cần làm',
-            data: memberTasksCount,
-            backgroundColor: this.members.map(m => (m.color || '#8b5cf6') + '88'),
-            borderColor: this.members.map(m => m.color || '#8b5cf6'),
-            borderWidth: 1,
-            borderRadius: 4
-          }]
+    ]
+  },
+  'chat-2': {
+    title: 'Lương Thanh Hậu',
+    type: 'direct',
+    members: ['Shiina', 'Lương Thanh Hậu'],
+    membersCount: 'Quản lý - Online',
+    unread: 1,
+    messages: [
+      {
+        id: 'm2_1',
+        author: 'Lương Thanh Hậu',
+        time: '19:15',
+        content: 'Chào anh Shiina! Em gửi anh hóa đơn vận chuyển 15 tấn thức ăn ủ chua sáng mai:'
+      },
+      {
+        id: 'm2_2',
+        author: 'Lương Thanh Hậu',
+        time: '19:16',
+        file: {
+          name: 'Phieu_xuat_kho_thuc_an_15Tan.pdf',
+          size: '1.2 MB',
+          type: 'pdf'
         },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          scales: {
-            y: {
-              beginAtZero: true,
-              ticks: { stepSize: 1, color: this.theme === 'dark' ? '#94a3b8' : '#64748b' }
-            },
-            x: {
-              ticks: { color: this.theme === 'dark' ? '#94a3b8' : '#64748b' }
-            }
-          },
-          plugins: {
-            legend: { display: false }
-          }
+        voice: {
+          duration: '0:22'
         }
-      });
-    }
-  }
-
-  // ==========================================================================
-  // VIEW RENDERERS: COMPETITIONS (with slide-down details)
-  // ==========================================================================
-
-  renderCompetitions() {
-    const container = document.getElementById('competitions-list-container');
-    container.innerHTML = '';
-
-    COMPETITIONS.forEach(comp => {
-      const alloc = this.allocations[comp.id];
-      let teamDisplayHTML = '';
-
-      if (comp.id === 'onevoice') {
-        const teamMembers = (alloc.members || []).map(id => this.getMemberById(id)).filter(Boolean);
-        teamDisplayHTML = `
-          <div class="quick-members-list">
-            ${teamMembers.map(m => this.renderAvatarMarkup(m, 'quick-member-bubble')).join('')}
-          </div>
-        `;
-      } else {
-        const teamAMembers = (alloc.teamA || []).map(id => this.getMemberById(id)).filter(Boolean);
-        const teamBMembers = (alloc.teamB || []).map(id => this.getMemberById(id)).filter(Boolean);
-        teamDisplayHTML = `
-          <div style="display:flex; gap:1.5rem; align-items:center;">
-            <div style="display:flex; align-items:center; gap:0.5rem;">
-              <span style="font-size:0.75rem; color:var(--text-secondary);">Nhóm A:</span>
-              <div class="quick-members-list">${teamAMembers.map(m => this.renderAvatarMarkup(m, 'quick-member-bubble')).join('')}</div>
-            </div>
-            <div style="display:flex; align-items:center; gap:0.5rem;">
-              <span style="font-size:0.75rem; color:var(--text-secondary);">Nhóm B:</span>
-              <div class="quick-members-list">${teamBMembers.map(m => this.renderAvatarMarkup(m, 'quick-member-bubble')).join('')}</div>
-            </div>
-          </div>
-        `;
+      },
+      {
+        id: 'm2_3',
+        author: 'Shiina',
+        time: '19:20',
+        content: 'Đã duyệt phiếu. Nhớ nhắc tài xế vào đúng cổng số 2 nhé.'
       }
-
-      const listTopicsHTML = comp.topics.map(t => `<li class="comp-topic-item">• ${t}</li>`).join('');
-      const listPrizesHTML = comp.prizes.map(p => `<li>🏆 ${p}</li>`).join('');
-
-      const compEvents = comp.timeline.map(t => {
-        const formattedDate = new Date(t.date).toLocaleDateString('vi-VN');
-        return `<div class="comp-timeline-step">
-          <span>${t.label}</span>
-          <span style="font-weight: 600;">${formattedDate}</span>
-        </div>`;
-      }).join('');
-
-      const cardHTML = `
-        <div class="glass-card comp-card">
-          <div class="comp-card-glow" style="background: ${comp.glow};"></div>
-          
-          <div class="comp-visual-panel">
-            <div>
-              <span class="comp-tag" style="background: ${comp.glow}; color: #ffffff;">${comp.status}</span>
-              <h2 class="comp-title">${comp.name}</h2>
-              <p class="comp-slogan">"${comp.slogan}"</p>
-            </div>
-            
-            <div class="comp-meta-table">
-              <div class="comp-meta-row">
-                <span class="comp-meta-label">Ban tổ chức:</span>
-                <span class="comp-meta-val">${comp.organizer}</span>
-              </div>
-              <div class="comp-meta-row">
-                <span class="comp-meta-label">Thành viên / Đội:</span>
-                <span class="comp-meta-val">${comp.teamLimit.max === 99 ? 'Không giới hạn' : comp.teamLimit.min === comp.teamLimit.max ? `${comp.teamLimit.min} người` : `${comp.teamLimit.min}-${comp.teamLimit.max} người`}</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="comp-content-panel">
-            <div class="comp-team-alloc" style="margin-bottom:1.5rem; justify-content:space-between; flex-wrap:wrap; gap:1rem;">
-              <div style="display:flex; align-items:center; gap:0.5rem;">
-                <span class="comp-team-label" style="font-weight:600;">Nhóm tham gia:</span>
-                ${teamDisplayHTML}
-              </div>
-              
-              <button class="btn-expand-details" onclick="portal.toggleCompDetails('${comp.id}')" id="btn-expand-${comp.id}">
-                <span>Chi tiết thể lệ</span>
-                <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width:14px; height:14px;">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"></path>
-                </svg>
-              </button>
-            </div>
-
-            <!-- Slide down collapsible section -->
-            <div class="comp-collapsible-details" id="details-${comp.id}">
-              <div class="comp-grid-details">
-                <div>
-                  <h4 class="comp-section-title">Nội dung đề tài</h4>
-                  <ul style="list-style:none;">${listTopicsHTML}</ul>
-                </div>
-                <div>
-                  <h4 class="comp-section-title">Giải thưởng chính</h4>
-                  <ul>${listPrizesHTML}</ul>
-                </div>
-              </div>
-
-              <div>
-                <h4 class="comp-section-title">Mốc thời gian quan trọng</h4>
-                <div class="comp-timeline-steps">${compEvents}</div>
-              </div>
-            </div>
-
-            <div class="comp-footer" style="border-top: 1px solid rgba(255,255,255,0.04); padding-top:1rem; margin-top:0.75rem;">
-              <span style="font-size:0.75rem; color:var(--text-muted);">Trạng thái: ${comp.status}</span>
-              <a href="${comp.registrationLink}" target="_blank" class="btn-primary" style="padding: 0.5rem 1rem; font-size:0.8rem;">
-                Trang chủ cuộc thi
-                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width:14px; height:14px;">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
-                </svg>
-              </a>
-            </div>
-          </div>
-        </div>
-      `;
-      container.insertAdjacentHTML('beforeend', cardHTML);
-    });
-  }
-
-  toggleCompDetails(compId) {
-    const el = document.getElementById(`details-${compId}`);
-    const btn = document.getElementById(`btn-expand-${compId}`);
-    if (el && btn) {
-      const active = el.classList.toggle('expanded');
-      btn.classList.toggle('expanded', active);
-      btn.querySelector('span').innerText = active ? 'Thu gọn thể lệ' : 'Chi tiết thể lệ';
-    }
-  }
-
-  // ==========================================================================
-  // VIEW RENDERERS: PLANNER (with quick selection dropdowns)
-  // ==========================================================================
-
-  renderPlanner() {
-    // 1. Pool
-    const poolContainer = document.getElementById('planner-member-pool');
-    poolContainer.innerHTML = '';
-
-    this.members.forEach(member => {
-      const avatarBadge = this.renderAvatarMarkup(member, 'member-initials-bubble');
-
-      const cardHTML = `
-        <div class="draggable-member" draggable="true" data-member-id="${member.id}">
-          <div class="member-core-info">
-            ${avatarBadge}
-            <div>
-              <div class="m-name">${member.name}</div>
-              <div class="m-role-label">${member.role}</div>
-            </div>
-          </div>
-          
-          <!-- Mobile friendly quick assign selector -->
-          <div style="display:flex; align-items:center; gap:0.25rem;">
-            <select class="quick-assign-select" onchange="portal.quickAssignMember('${member.id}', this)">
-              <option value="" disabled selected>+</option>
-              <option value="onevoice.members">OneVoice</option>
-              <option value="thucchien.teamA">Thực chiến A</option>
-              <option value="thucchien.teamB">Thực chiến B</option>
-              <option value="viettel.teamA">Viettel AI A</option>
-              <option value="viettel.teamB">Viettel AI B</option>
-            </select>
-          </div>
-        </div>
-      `;
-      poolContainer.insertAdjacentHTML('beforeend', cardHTML);
-    });
-
-    // 2. Workspace
-    const workspaceContainer = document.getElementById('planner-workspace-root');
-    workspaceContainer.innerHTML = '';
-
-    COMPETITIONS.forEach(comp => {
-      const alloc = this.allocations[comp.id];
-      let subteamsHTML = '';
-
-      if (comp.id === 'onevoice') {
-        const teamList = alloc.members || [];
-        const warnings = this.checkTeamSizeWarning(comp, teamList.length);
-
-        subteamsHTML = `
-          <div class="subteams-grid" style="grid-template-columns: 1fr;">
-            <div class="subteam-box" data-comp-id="${comp.id}" data-team-type="members">
-              <div class="subteam-header">
-                <span class="subteam-title" style="color: var(--accent-cyan);">Đội hình chung</span>
-                <span class="subteam-count">${teamList.length} người</span>
-              </div>
-              <div class="subteam-members-list">
-                ${teamList.map(memberId => this.renderAllocatedMemberMarkup(comp.id, 'members', memberId)).join('')}
-              </div>
-            </div>
-          </div>
-          ${warnings ? `<div class="alert-warning">${warnings}</div>` : ''}
-        `;
-      } else {
-        const listA = alloc.teamA || [];
-        const listB = alloc.teamB || [];
-        const warningA = this.checkTeamSizeWarning(comp, listA.length, 'A');
-        const warningB = this.checkTeamSizeWarning(comp, listB.length, 'B');
-
-        subteamsHTML = `
-          <div class="subteams-grid">
-            <div class="subteam-box" data-comp-id="${comp.id}" data-team-type="teamA">
-              <div class="subteam-header">
-                <span class="subteam-title">Nhóm A</span>
-                <span class="subteam-count">${listA.length} / ${comp.teamLimit.max} người</span>
-              </div>
-              <div class="subteam-members-list">
-                ${listA.map(memberId => this.renderAllocatedMemberMarkup(comp.id, 'teamA', memberId)).join('')}
-              </div>
-              ${warningA ? `<div class="alert-warning">${warningA}</div>` : ''}
-            </div>
-            <div class="subteam-box" data-comp-id="${comp.id}" data-team-type="teamB">
-              <div class="subteam-header">
-                <span class="subteam-title">Nhóm B</span>
-                <span class="subteam-count">${listB.length} / ${comp.teamLimit.max} người</span>
-              </div>
-              <div class="subteam-members-list">
-                ${listB.map(memberId => this.renderAllocatedMemberMarkup(comp.id, 'teamB', memberId)).join('')}
-              </div>
-              ${warningB ? `<div class="alert-warning">${warningB}</div>` : ''}
-            </div>
-          </div>
-        `;
+    ]
+  },
+  'chat-3': {
+    title: 'Nguyễn Quang Tùng',
+    type: 'direct',
+    members: ['Shiina', 'Nguyễn Quang Tùng'],
+    membersCount: 'Kỹ thuật viên - Online',
+    unread: 0,
+    messages: [
+      {
+        id: 'm3_1',
+        author: 'Nguyễn Quang Tùng',
+        time: '16:05',
+        content: 'Em vừa cập nhật bản firmware ESP32 mới nhất đọc cảm biến qua MQTT:'
+      },
+      {
+        id: 'm3_2',
+        author: 'Nguyễn Quang Tùng',
+        time: '16:06',
+        hasArtifact: true,
+        artifactTitle: 'sensor_telemetry.py',
+        artifactCode: `import time\nimport json\nimport random\n\ndef read_barn_sensors(barn_id="CS1-ZONE-A"):\n    temp = round(random.uniform(24.5, 29.2), 2)\n    humidity = round(random.uniform(65.0, 78.5), 2)\n    return json.dumps({"temp": temp, "humidity": humidity}, indent=2)\n\nprint(read_barn_sensors())`,
+        content: 'Đã tối ưu thuật toán giảm tiêu hao năng lượng.'
       }
-
-      const limitLabel = comp.teamLimit.max === 99 ? 'Không giới hạn số lượng' : comp.teamLimit.min === comp.teamLimit.max ? `Yêu cầu đúng ${comp.teamLimit.min} người` : `Yêu cầu ${comp.teamLimit.min}-${comp.teamLimit.max} người`;
-
-      const rowHTML = `
-        <div class="planner-comp-row">
-          <div class="planner-comp-header">
-            <h4 class="planner-comp-title">
-              <span class="logo-icon" style="width: 24px; height: 24px; font-size:0.6rem; border-radius: 6px;">${comp.name[0]}</span>
-              ${comp.name}
-            </h4>
-            <span class="planner-comp-limit">${limitLabel}</span>
-          </div>
-          ${subteamsHTML}
-        </div>
-      `;
-      workspaceContainer.insertAdjacentHTML('beforeend', rowHTML);
-    });
-
-    this.attachDragAndDropHandlers();
+    ]
+  },
+  'chat-4': {
+    title: 'Nguyễn Lâm Tùng',
+    type: 'direct',
+    members: ['Shiina', 'Nguyễn Lâm Tùng'],
+    membersCount: 'Giám sát - Online',
+    unread: 0,
+    messages: [
+      {
+        id: 'm4_1',
+        author: 'Nguyễn Lâm Tùng',
+        time: '14:30',
+        content: 'Ảnh chụp đồng hồ tải điện máy phát 150kVA sau khi kiểm tra:',
+        image: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=800&auto=format&fit=crop&q=80',
+        imageCaption: 'Tủ điều khiển tự động ATS và máy phát điện'
+      }
+    ]
   }
+};
 
-  quickAssignMember(memberId, selectElement) {
-    const val = selectElement.value;
-    if (!val) return;
+// Global Directory of Available Contacts
+const CONTACTS_DIRECTORY = [
+  { name: 'Lương Thanh Hậu', role: 'Quản lý', status: 'Online', avatar: 'LH' },
+  { name: 'Nguyễn Quang Tùng', role: 'Kỹ thuật viên', status: 'Online', avatar: 'QT' },
+  { name: 'Nguyễn Lâm Tùng', role: 'Giám sát', status: 'Online', avatar: 'LT' },
+  { name: 'Alex Rivers', role: 'Chuyên gia Thú y', status: 'Online', avatar: 'AR' },
+  { name: 'Phạm Thu Trang', role: 'Kế toán kho', status: 'Away', avatar: 'TT' },
+  { name: 'Trần Văn Mạnh', role: 'Vận hành máy', status: 'Offline', avatar: 'TM' }
+];
 
-    const [compId, teamType] = val.split('.');
-    this.addMemberToAllocation(compId, teamType, memberId);
-
-    // Reset selection
-    selectElement.value = '';
+// Global State
+const state = {
+  currentUser: {
+    name: 'Shiina',
+    role: 'Quản trị viên',
+    initials: 'S'
+  },
+  currentChatId: null,
+  heroMode: 'chat', // 'chat' (1-1 direct) or 'cowork' (group/channel)
+  heroSelectedRecipient: 'Lương Thanh Hậu',
+  isSidebarCollapsed: false,
+  isArtifactsOpen: false,
+  chats: JSON.parse(localStorage.getItem('pingping_chats')) || DEFAULT_CHATS,
+  settings: JSON.parse(localStorage.getItem('pingping_settings')) || {
+    theme: 'dark',
+    soundEnabled: true,
+    notificationsEnabled: true
   }
+};
 
-  renderAllocatedMemberMarkup(compId, teamType, memberId) {
-    const member = this.getMemberById(memberId);
-    if (!member) return '';
-    return `<div class="allocated-member" draggable="true" data-member-id="${member.id}">
-      ${this.renderAvatarMarkup(member, 'member-initials-bubble')}
-      <span>${member.name}</span>
-      <button type="button" class="allocated-member-remove" onclick="portal.removeMemberFromAllocation('${compId}','${teamType}','${member.id}')" aria-label="Bỏ ${member.name} khỏi đội">×</button>
-    </div>`;
+// Save state helper
+function saveState() {
+  try {
+    localStorage.setItem('pingping_chats', JSON.stringify(state.chats));
+    localStorage.setItem('pingping_settings', JSON.stringify(state.settings));
+  } catch (e) {
+    console.error('Save error:', e);
   }
+}
 
-  checkTeamSizeWarning(competition, count, teamLabel = '') {
-    return getTeamSizeWarning(competition, count, teamLabel);
-  }
+// DOM Elements Registry
+const elements = {
+  sidebar: document.getElementById('sidebar'),
+  collapseSidebarBtn: document.getElementById('collapseSidebarBtn'),
+  openSidebarBtn: document.getElementById('openSidebarBtn'),
+  mobileSidebarToggle: document.getElementById('mobileSidebarToggle'),
+  brandLogo: document.getElementById('brand-logo'),
+  newChatBtn: document.getElementById('newChatBtn'),
+  sidebarChatsList: document.getElementById('sidebarChatsList'),
+  navProjects: document.getElementById('navProjects'),
+  navConnect: document.getElementById('navConnect'),
+  navCustomize: document.getElementById('navCustomize'),
+  
+  // Views
+  heroView: document.getElementById('heroView'),
+  chatView: document.getElementById('chatView'),
+  projectsView: document.getElementById('projectsView'),
+  
+  // Top Header & Session Dropdown
+  sessionDropdownBtn: document.getElementById('sessionDropdownBtn'),
+  activeChatTitle: document.getElementById('activeChatTitle'),
+  sessionQuickMenu: document.getElementById('sessionQuickMenu'),
+  sessionQuickItems: document.getElementById('sessionQuickItems'),
+  menuCreateNewSession: document.getElementById('menuCreateNewSession'),
+  topPlanBanner: document.getElementById('topPlanBanner'),
+  closePlanBannerBtn: document.getElementById('closePlanBannerBtn'),
+  planUpgradeLink: document.getElementById('planUpgradeLink'),
+  
+  // Hero Inputs & Mode Toggle
+  heroChatInput: document.getElementById('heroChatInput'),
+  heroSendBtn: document.getElementById('heroSendBtn'),
+  modeChatBtn: document.getElementById('modeChatBtn'),
+  modeCoworkBtn: document.getElementById('modeCoworkBtn'),
+  modelDropdownBtn: document.getElementById('modelDropdownBtn'),
+  modelDropdownMenu: document.getElementById('modelDropdownMenu'),
+  selectedModelLabel: document.getElementById('selectedModelLabel'),
+  
+  // Active Chat Stream Inputs
+  chatMessagesContainer: document.getElementById('chatMessagesContainer'),
+  activeChatInput: document.getElementById('activeChatInput'),
+  activeSendBtn: document.getElementById('activeSendBtn'),
+  typingIndicator: document.getElementById('typingIndicator'),
+  streamingStatusText: document.getElementById('streamingStatusText'),
+  activeMentionAutocomplete: document.getElementById('activeMentionAutocomplete'),
+  activeMentionItems: document.getElementById('activeMentionItems'),
+  
+  // Projects View
+  projectsGrid: document.getElementById('projectsGrid'),
+  projectCreateNewBtn: document.getElementById('projectCreateNewBtn'),
+  projectConnectBtn: document.getElementById('projectConnectBtn'),
+  allCount: document.getElementById('allCount'),
+  groupsCount: document.getElementById('groupsCount'),
+  friendsCount: document.getElementById('friendsCount'),
+  
+  // Modals
+  connectModal: document.getElementById('connectModal'),
+  closeConnectModalBtn: document.getElementById('closeConnectModalBtn'),
+  doneConnectBtn: document.getElementById('doneConnectBtn'),
+  copyMyIdBtn: document.getElementById('copyMyIdBtn'),
+  myIdCode: document.getElementById('myIdCode'),
+  targetIdInput: document.getElementById('targetIdInput'),
+  connectTargetBtn: document.getElementById('connectTargetBtn'),
+  
+  customizeModal: document.getElementById('customizeModal'),
+  closeCustomizeModalBtn: document.getElementById('closeCustomizeModalBtn'),
+  saveCustomizeBtn: document.getElementById('saveCustomizeBtn'),
+  testSoundBtn: document.getElementById('testSoundBtn'),
+  soundToggle: document.getElementById('soundToggle'),
+  notifToggle: document.getElementById('notifToggle'),
+  
+  searchModal: document.getElementById('searchModal'),
+  closeSearchModalBtn: document.getElementById('closeSearchModalBtn'),
+  globalSearchInput: document.getElementById('globalSearchInput'),
+  searchResultsList: document.getElementById('searchResultsList'),
+  searchChatsBtn: document.getElementById('searchChatsBtn'),
+  
+  profileModal: document.getElementById('profileModal'),
+  closeProfileModalBtn: document.getElementById('closeProfileModalBtn'),
+  cancelProfileBtn: document.getElementById('cancelProfileBtn'),
+  saveProfileBtn: document.getElementById('saveProfileBtn'),
+  profileNameInput: document.getElementById('profileNameInput'),
+  profileRoleInput: document.getElementById('profileRoleInput'),
+  userProfileBtn: document.getElementById('userProfileBtn'),
+  
+  // Artifacts Panel
+  artifactsDrawer: document.getElementById('artifactsDrawer'),
+  closeArtifactBtn: document.getElementById('closeArtifactBtn'),
+  copyArtifactBtn: document.getElementById('copyArtifactBtn'),
+  artifactPanelTitle: document.getElementById('artifactPanelTitle'),
+  artifactCodeBlock: document.getElementById('artifactCodeBlock'),
+  artifactsContent: document.getElementById('artifactsContent'),
+  tabCode: document.getElementById('tabCode'),
+  tabPreview: document.getElementById('tabPreview'),
+  tabHistory: document.getElementById('tabHistory'),
+  
+  // Header Live Status & Profile Switcher
+  liveDot: document.getElementById('liveDot'),
+  liveText: document.getElementById('liveText'),
+  quickUserSelect: document.getElementById('quickUserSelect'),
+  switchUserBtn: document.getElementById('switchUserBtn'),
+  profileIdInput: document.getElementById('profileIdInput'),
 
-  exportCalendar() {
-    const blob = new Blob([buildCalendar(COMPETITIONS)], { type: 'text/calendar;charset=utf-8' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = 'pingping-competitions-2026.ics';
-    link.click();
-    setTimeout(() => URL.revokeObjectURL(link.href), 1000);
-  }
+  // Toast & File
+  toastContainer: document.getElementById('toastContainer'),
+  hiddenFileInput: document.getElementById('hiddenFileInput'),
+  downloadTranscriptBtn: document.getElementById('downloadTranscriptBtn')
+};
 
-  addMemberToAllocation(compId, teamType, memberId) {
-    if (!this.collaboration?.requireLogin()) return;
-    const allocation = (this.allocations[compId] ||= {});
-    const list = (allocation[teamType] ||= []);
-    if (!list.includes(memberId)) list.push(memberId);
-    this.render();
-  }
-
-  removeMemberFromAllocation(compId, teamType, memberId) {
-    if (!this.collaboration?.requireLogin()) return;
-    const list = this.allocations[compId]?.[teamType] || [];
-    this.allocations[compId][teamType] = list.filter(id => id !== memberId);
-    this.render();
-  }
-
-  // ==========================================================================
-  // VIEW RENDERERS: TIMELINE (with past / future visual checkmarks)
-  // ==========================================================================
-
-  renderTimeline() {
-    const filterContainer = document.getElementById('timeline-filters-container');
-
-    if (filterContainer.children.length === 0) {
-      filterContainer.innerHTML = '';
-
-      const allChip = `<button class="filter-chip active" data-filter="all">Tất cả cuộc thi</button>`;
-      filterContainer.insertAdjacentHTML('beforeend', allChip);
-
-      COMPETITIONS.forEach(comp => {
-        const chip = `<button class="filter-chip" data-filter="${comp.id}">${comp.name}</button>`;
-        filterContainer.insertAdjacentHTML('beforeend', chip);
-      });
-
-      const chips = filterContainer.querySelectorAll('.filter-chip');
-      chips.forEach(chip => {
-        chip.addEventListener('click', () => {
-          chips.forEach(c => c.classList.remove('active'));
-          chip.classList.add('active');
-          this.filterTimelineEvents(chip.getAttribute('data-filter'));
-        });
-      });
-    }
-
-    this.filterTimelineEvents('all');
-  }
-
-  filterTimelineEvents(filterVal) {
-    const eventsContainer = document.getElementById('timeline-events-list');
-    eventsContainer.innerHTML = '';
-
-    const allEvents = [];
-    COMPETITIONS.forEach(comp => {
-      comp.timeline.forEach(event => {
-        if (filterVal === 'all' || comp.id === filterVal) {
-          allEvents.push({ comp, event });
-        }
-      });
-    });
-
-    if (allEvents.length === 0) {
-      eventsContainer.innerHTML = '<div style="padding: 2rem; text-align: center; color: var(--text-secondary);">Không tìm thấy mốc thời gian phù hợp.</div>';
-      return;
-    }
-
-    const now = new Date();
-
-    // Sort: Upcoming events at top (nearest first), Past events at bottom (most recent past first)
-    const upcomingEvents = allEvents
-      .filter(item => new Date(item.event.date) >= now)
-      .sort((a, b) => new Date(a.event.date) - new Date(b.event.date));
-
-    const pastEvents = allEvents
-      .filter(item => new Date(item.event.date) < now)
-      .sort((a, b) => new Date(b.event.date) - new Date(a.event.date));
-
-    const renderCard = (item, isPast) => {
-      const eventDate = new Date(item.event.date);
-
-      const formattedFullDate = eventDate.toLocaleDateString('vi-VN', {
-        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
-      });
-
-      const todayClass = Math.abs(eventDate - now) < (1000 * 60 * 60 * 24) ? 'today' : '';
-
-      return `
-        <div class="timeline-event-card ${todayClass}" style="color: ${isPast ? 'var(--text-muted)' : 'inherit'}; opacity: ${isPast ? '0.6' : '1'};">
-          <div class="timeline-event-header">
-            <span class="timeline-event-date">${formattedFullDate}</span>
-            <span style="font-size: 0.75rem; text-transform: uppercase; font-weight: 700; color: ${isPast ? 'var(--accent-emerald)' : 'var(--accent-cyan)'};">
-              ${isPast ? '[✓] Đã qua' : 'Sắp tới'}
-            </span>
-          </div>
-          <div class="timeline-event-body" style="border-left: 3px solid ${isPast ? 'var(--accent-emerald)' : 'var(--accent-blue)'}; background: ${isPast ? 'transparent' : 'rgba(255,255,255,0.01)'};">
-            <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing:0.05em; margin-bottom: 0.15rem;">
-              ${item.comp.name}
-            </div>
-            <h4 class="t-event-title">${item.event.label}</h4>
-            <p class="t-event-desc">Mốc quan trọng của cuộc thi. Các nhóm gán vui lòng lưu ý thời gian hoàn thành.</p>
-          </div>
-        </div>
-      `;
-    };
-
-    if (upcomingEvents.length > 0) {
-      upcomingEvents.forEach(item => {
-        eventsContainer.insertAdjacentHTML('beforeend', renderCard(item, false));
-      });
-    }
-
-    if (pastEvents.length > 0) {
-      const dividerHTML = `
-        <div class="timeline-past-divider" style="display: flex; align-items: center; gap: 12px; margin: 2rem 0 1rem; color: var(--text-muted); font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">
-          <span style="flex: 1; height: 1px; background: var(--border-glass);"></span>
-          <span>📁 Mốc thời gian đã trôi qua (${pastEvents.length})</span>
-          <span style="flex: 1; height: 1px; background: var(--border-glass);"></span>
-        </div>
-      `;
-      eventsContainer.insertAdjacentHTML('beforeend', dividerHTML);
-
-      pastEvents.forEach(item => {
-        eventsContainer.insertAdjacentHTML('beforeend', renderCard(item, true));
-      });
-    }
-  }
-
-  // ==========================================================================
-  // VIEW RENDERERS: KANBAN & DIRECTORY (with custom Base64 avatar display)
-  // ==========================================================================
-
-  renderDirectory() {
-    if (!this.directoryViewMode) {
-      this.directoryViewMode = 'constellation';
-    }
-
-    const toggleContainer = document.getElementById('directory-view-toggle');
-    if (toggleContainer) {
-      toggleContainer.querySelectorAll('.toggle-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.mode === this.directoryViewMode);
-        btn.onclick = () => {
-          this.directoryViewMode = btn.dataset.mode;
-          this.renderDirectory();
-        };
-      });
-    }
-
-    const constWrap = document.getElementById('constellation-view-container');
-    const gridWrap = document.getElementById('team-directory-grid');
-
-    if (this.directoryViewMode === 'constellation') {
-      if (constWrap) constWrap.style.display = 'block';
-      if (gridWrap) gridWrap.style.display = 'none';
-      this.renderConstellationView();
-    } else {
-      if (constWrap) constWrap.style.display = 'none';
-      if (gridWrap) gridWrap.style.display = 'grid';
-      this.renderDirectoryGrid();
-    }
-  }
-
-  renderConstellationView() {
-    const container = document.getElementById('constellation-view-container');
-    if (!container) return;
-
-    const rawMembers = getConstellationMembers(this.members);
-    const padding = 0.075;
-    const xs = rawMembers.map(member => member.x);
-    const ys = rawMembers.map(member => member.y);
-    const minX = Math.min(...xs);
-    const maxX = Math.max(...xs);
-    const minY = Math.min(...ys);
-    const maxY = Math.max(...ys);
-    const members = rawMembers.map(member => ({
-      ...member,
-      x: 1000 * padding + ((member.x - minX) / (maxX - minX)) * 1000 * (1 - padding * 2),
-      y: 500 * padding + ((member.y - minY) / (maxY - minY)) * 500 * (1 - padding * 2),
-    }));
+// Play pleasant synthesizer chime sound
+function playChimeSound(type = 'chime') {
+  if (!state.settings.soundEnabled) return;
+  try {
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
     
-    // Draw SVG Constellation Lines
-    const linesHTML = CONSTELLATION_LINES.map(([fromId, toId], idx) => {
-      const fromNode = members.find(m => m.id === fromId);
-      const toNode = members.find(m => m.id === toId);
-      if (!fromNode || !toNode) return '';
-      const lineDelay = ((idx * 1.73) % 7.5).toFixed(2);
-      return `<line id="c-line-${fromId}-${toId}" class="constellation-line" x1="${fromNode.x}" y1="${fromNode.y}" x2="${toNode.x}" y2="${toNode.y}" style="animation-delay: -${lineDelay}s;" />`;
-    }).join('');
+    if (type === 'send') {
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(440, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(659.25, audioCtx.currentTime + 0.08);
+      gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.2);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.2);
+    } else {
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(587.33, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.12);
+      gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.35);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.35);
+    }
+  } catch (e) {
+    console.log('Audio error:', e);
+  }
+}
 
-    // Draw SVG Star Nodes (Natural fading/twinkling stars at 1.36x scale)
-    const nodesHTML = members.map((m, idx) => {
-      const starColor = '#e0f2fe';
-      const points = '0,-9 2.2,-2.2 9,0 2.2,2.2 0,9 -2.2,2.2 -9,0 -2.2,-2.2';
-      const animDelay = ((idx * 1.83 + 0.5) % 5.2).toFixed(2);
-      const animDuration = (4.5 + ((idx * 1.3) % 2.8)).toFixed(2);
+// Show Toast Notification
+function showToast(message, icon = '✨') {
+  const container = elements.toastContainer;
+  if (!container) return;
+  const toast = document.createElement('div');
+  toast.className = 'toast-message';
+  toast.innerHTML = `<span>${icon}</span> <span>${escapeHtml(message)}</span>`;
+  container.appendChild(toast);
+  
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateY(-8px)';
+    toast.style.transition = 'all 0.2s ease';
+    setTimeout(() => toast.remove(), 250);
+  }, 2800);
+}
 
-      return `
-        <g class="star-node" id="star-node-${m.id}" transform="translate(${m.x}, ${m.y})"
-           onmouseenter="portal.showStarPopover(event, '${m.id}')"
-           onmouseleave="portal.hideStarPopover(event, '${m.id}')">
-          <!-- Invisible larger hover target area -->
-          <circle r="18" fill="transparent" />
-          <g class="star-anim" style="animation-delay: -${animDelay}s; animation-duration: ${animDuration}s;">
-            <circle class="star-halo" r="8" fill="${starColor}" opacity="0.14" />
-            <polygon class="star-flare" points="${points}" fill="#ffffff" filter="drop-shadow(0 0 3px ${starColor})" />
-            <circle class="star-core" r="2" fill="#ffffff" />
-          </g>
-        </g>
-      `;
-    }).join('');
+// ⚡ Socket.io Realtime & Backend Sync Engine
+let socket = null;
+let typingDebounceTimer = null;
 
-    container.innerHTML = `
-      <svg class="constellation-svg" viewBox="0 0 1000 500" preserveAspectRatio="xMidYMid meet">
-        <g id="constellation-lines-group">${linesHTML}</g>
-        <g id="constellation-nodes-group">${nodesHTML}</g>
-      </svg>
-      <div id="constellation-popover" class="constellation-popover-card"></div>
-    `;
+function updateLiveStatus(status) {
+  if (!elements.liveDot || !elements.liveText) return;
+  elements.liveDot.className = 'status-live-dot';
+
+  if (status === 'online') {
+    elements.liveText.textContent = 'Realtime';
+    elements.liveDot.title = 'Đã kết nối Socket.io máy chủ thời gian thực';
+  } else if (status === 'connecting') {
+    elements.liveDot.classList.add('connecting');
+    elements.liveText.textContent = 'Đang kết nối...';
+    elements.liveDot.title = 'Đang kết nối lại tới máy chủ...';
+  } else {
+    elements.liveDot.classList.add('offline');
+    elements.liveText.textContent = 'Offline';
+    elements.liveDot.title = 'Chế độ ngoại tuyến cục bộ';
+  }
+}
+
+function enforceMessageLimits(chatId) {
+  if (!state.chats[chatId] || !Array.isArray(state.chats[chatId].messages)) return;
+  const limit = chatId === 'chat-world-class' ? 180 : 36;
+  if (state.chats[chatId].messages.length > limit) {
+    state.chats[chatId].messages = state.chats[chatId].messages.slice(-limit);
+  }
+}
+
+function showTypingIndicator(userName) {
+  if (!elements.typingIndicator) return;
+  elements.typingIndicator.classList.remove('hidden');
+  if (elements.streamingStatusText) {
+    elements.streamingStatusText.textContent = `${userName || 'Một thành viên'} đang soạn tin...`;
+  }
+}
+
+function hideTypingIndicator() {
+  if (!elements.typingIndicator) return;
+  elements.typingIndicator.classList.add('hidden');
+}
+
+function handleIncomingRealtimeMessage(chatId, message) {
+  if (!chatId || !message) return;
+
+  if (!state.chats[chatId]) {
+    state.chats[chatId] = {
+      title: chatId === 'chat-world-class' ? 'World Class 🌍' : message.author,
+      type: chatId === 'chat-world-class' ? 'global_channel' : 'direct',
+      members: [state.currentUser.name, message.author],
+      membersCount: 'Trực tuyến',
+      unread: 0,
+      messages: []
+    };
   }
 
-  showStarPopover(event, memberId) {
-    if (this.popoverHideTimer) {
-      clearTimeout(this.popoverHideTimer);
-      this.popoverHideTimer = null;
+  const chat = state.chats[chatId];
+  const exists = chat.messages.some(m => m.id === message.id);
+  if (!exists) {
+    chat.messages.push(message);
+    enforceMessageLimits(chatId);
+    saveState();
+
+    if (state.currentChatId === chatId) {
+      renderCurrentChat();
+    } else {
+      chat.unread = (chat.unread || 0) + 1;
     }
-    const popover = document.getElementById('constellation-popover');
-    const member = this.members.find(m => m.id === memberId);
-    if (!popover || !member) return;
 
-    const avatarHTML = this.renderAvatarMarkup(member, 'member-avatar-lg');
-    const skillsHTML = (member.skills || '').split(',').map(s => `<span class="skill-tag">${escapeHtml(s.trim())}</span>`).join('');
+    renderSidebarChats();
 
-    popover.innerHTML = `
-      <div style="text-align: center;">
-        ${avatarHTML}
-        <h4 style="margin-top: 0.75rem; margin-bottom: 0.25rem; font-size: 1.1rem; color: #ffffff;">
-          ${escapeHtml(member.name || '')}
-        </h4>
-        <span class="member-role" style="font-size:0.8rem; color:#94a3b8; display:block; margin-bottom:0.75rem;">${escapeHtml(member.role || '')}</span>
-        
-        <div class="member-skills-section" style="margin-bottom: 0.85rem;">
-          <div class="skills-list-wrap" style="justify-content:center;">${skillsHTML}</div>
-        </div>
+    if (message.author === state.currentUser.name) {
+      playChimeSound('send');
+    } else {
+      playChimeSound('receive');
+    }
+  }
+}
 
-        <button class="btn-secondary member-btn-edit" style="width:100%; font-size:0.8rem; justify-content:center;" onclick="portal.openEditModal('${member.id}')">
-          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width: 14px; height: 14px;">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
+function handleMessagesPruned(chatId, prunedCount, retentionLimit) {
+  if (state.chats[chatId]) {
+    enforceMessageLimits(chatId);
+    saveState();
+    if (state.currentChatId === chatId) {
+      renderCurrentChat();
+    }
+  }
+}
+
+async function uploadFileToServer(file) {
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await fetch('/api/upload', {
+      method: 'POST',
+      body: formData
+    });
+    if (!res.ok) throw new Error('Upload failed');
+    const data = await res.json();
+    return data.success ? data.data : null;
+  } catch (e) {
+    console.warn('Upload API failed, fallback to local base64/url:', e);
+    return null;
+  }
+}
+
+function initSocket() {
+  if (typeof io === 'undefined') {
+    console.warn('Socket.io library not loaded, using local storage mode.');
+    updateLiveStatus('offline');
+    return;
+  }
+
+  try {
+    socket = io({
+      reconnection: true,
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      transports: ['websocket', 'polling']
+    });
+
+    socket.on('connect', () => {
+      console.log('🟢 Đã kết nối Socket.io Realtime:', socket.id);
+      updateLiveStatus('online');
+
+      socket.emit('register_user', {
+        userId: state.currentUser.id || 'u_shiina',
+        userName: state.currentUser.name
+      });
+
+      // Join current rooms
+      Object.keys(state.chats).forEach(chatId => {
+        socket.emit('join_chat', { chatId });
+      });
+    });
+
+    socket.on('connect_error', () => {
+      updateLiveStatus('connecting');
+    });
+
+    socket.on('disconnect', () => {
+      updateLiveStatus('offline');
+    });
+
+    socket.on('new_message', ({ chatId, message }) => {
+      handleIncomingRealtimeMessage(chatId, message);
+    });
+
+    socket.on('messages_pruned', ({ chatId, prunedCount, retentionLimit }) => {
+      handleMessagesPruned(chatId, prunedCount, retentionLimit);
+    });
+
+    socket.on('user_typing', ({ chatId, userName }) => {
+      if (state.currentChatId === chatId && userName !== state.currentUser.name) {
+        showTypingIndicator(userName);
+      }
+    });
+
+    socket.on('user_stopped_typing', ({ chatId }) => {
+      if (state.currentChatId === chatId) {
+        hideTypingIndicator();
+      }
+    });
+
+    socket.on('member_updated', ({ chatId, action, memberName, members }) => {
+      if (state.chats[chatId]) {
+        if (members) state.chats[chatId].members = members;
+        renderSidebarChats();
+        if (state.currentChatId === chatId) renderCurrentChat();
+      }
+    });
+
+    socket.on('chat_renamed', ({ chatId, newTitle }) => {
+      if (state.chats[chatId]) {
+        state.chats[chatId].title = newTitle;
+        if (state.currentChatId === chatId && elements.activeChatTitle) {
+          elements.activeChatTitle.textContent = newTitle;
+        }
+        renderSidebarChats();
+      }
+    });
+
+    socket.on('new_chat_created', (newChat) => {
+      if (newChat && newChat.id && !state.chats[newChat.id]) {
+        state.chats[newChat.id] = {
+          title: newChat.title,
+          type: newChat.type,
+          members: newChat.members || [],
+          membersCount: newChat.membersCount || `${(newChat.members || []).length} thành viên`,
+          unread: 0,
+          messages: []
+        };
+        if (socket && socket.connected) {
+          socket.emit('join_chat', { chatId: newChat.id });
+        }
+        renderSidebarChats();
+      }
+    });
+  } catch (err) {
+    console.error('Socket init error:', err);
+    updateLiveStatus('offline');
+  }
+}
+
+async function syncDataFromServer() {
+  try {
+    const [chatsRes, usersRes] = await Promise.all([
+      fetch('/api/chats').then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch('/api/users').then(r => r.ok ? r.json() : null).catch(() => null)
+    ]);
+
+    if (usersRes && usersRes.success && Array.isArray(usersRes.data)) {
+      usersRes.data.forEach(u => {
+        const existing = CONTACTS_DIRECTORY.find(c => c.name.toLowerCase() === u.displayName.toLowerCase());
+        if (!existing) {
+          CONTACTS_DIRECTORY.push({
+            name: u.displayName,
+            role: u.role,
+            status: 'Online',
+            avatar: u.displayName.split(' ').map(w => w[0]).slice(-2).join('').toUpperCase()
+          });
+        }
+      });
+      updateHeroDropdownItems();
+    }
+
+    if (chatsRes && chatsRes.success && Array.isArray(chatsRes.data)) {
+      for (const c of chatsRes.data) {
+        if (!state.chats[c.id]) {
+          state.chats[c.id] = {
+            title: c.title,
+            type: c.type,
+            members: c.members || [],
+            membersCount: c.membersCount,
+            unread: 0,
+            messages: []
+          };
+        } else {
+          state.chats[c.id].title = c.title;
+          state.chats[c.id].members = c.members || state.chats[c.id].members;
+          state.chats[c.id].membersCount = c.membersCount;
+        }
+
+        // Fetch messages for each chat from backend
+        fetch(`/api/chats/${c.id}/messages`).then(r => r.ok ? r.json() : null).then(msgRes => {
+          if (msgRes && msgRes.success && Array.isArray(msgRes.data)) {
+            state.chats[c.id].messages = msgRes.data;
+            saveState();
+            if (state.currentChatId === c.id) {
+              renderCurrentChat();
+            }
+          }
+        }).catch(() => {});
+      }
+
+      saveState();
+      renderSidebarChats();
+      renderProjectsGrid();
+    }
+  } catch (e) {
+    console.warn('Backend sync failed, continuing with local state:', e);
+  }
+}
+
+// Initialize Application
+function init() {
+  applyTheme(state.settings.theme);
+  updateGreeting();
+  setupEventListeners();
+  renderSidebarChats();
+  updateHeroDropdownItems();
+  showHeroView(); // Mới vào hiển thị phiên chat trống trơn như Claude
+  autoResizeTextarea(elements.heroChatInput);
+  autoResizeTextarea(elements.activeChatInput);
+
+  initSocket();
+  syncDataFromServer();
+}
+
+// Switch Views
+function showHeroView(isCreatingGroup = false) {
+  state.currentChatId = null;
+  state.isCreatingNewGroup = isCreatingGroup;
+
+  elements.heroView?.classList.remove('hidden');
+  elements.chatView?.classList.add('hidden');
+  elements.projectsView?.classList.add('hidden');
+  
+  document.querySelectorAll('.sidebar-nav .nav-item').forEach(item => item.classList.remove('active'));
+  document.querySelectorAll('.chat-item').forEach(item => item.classList.remove('active'));
+  
+  if (elements.sessionDropdownBtn) elements.sessionDropdownBtn.style.display = 'none';
+  if (elements.sessionQuickMenu) elements.sessionQuickMenu.classList.add('hidden');
+
+  const banner = document.getElementById('heroHelperBanner');
+  if (isCreatingGroup) {
+    state.heroMode = 'cowork';
+    state.heroSelectedRecipient = '✨ Nhóm mới';
+    elements.modeCoworkBtn?.classList.add('active');
+    elements.modeChatBtn?.classList.remove('active');
+    banner?.classList.remove('hidden');
+    if (elements.heroChatInput) {
+      elements.heroChatInput.placeholder = 'Nhập tin nhắn khởi tạo... (Dùng @Tên để thêm bạn bè vào nhóm)';
+      elements.heroChatInput.value = '';
+      elements.heroChatInput.focus();
+    }
+  } else {
+    banner?.classList.add('hidden');
+    if (elements.heroChatInput) {
+      elements.heroChatInput.placeholder = 'How can I help you today? Nhập tin nhắn gửi đến bạn bè hoặc nhóm...';
+      elements.heroChatInput.value = '';
+      elements.heroChatInput.focus();
+    }
+  }
+
+  updateHeroDropdownItems();
+}
+
+function showNewGroupHeroView() {
+  showHeroView(true);
+}
+
+function showChatView(chatId) {
+  if (!state.chats[chatId]) return;
+  state.currentChatId = chatId;
+  
+  state.chats[chatId].unread = 0;
+  saveState();
+
+  elements.heroView?.classList.add('hidden');
+  elements.projectsView?.classList.add('hidden');
+  elements.chatView?.classList.remove('hidden');
+  
+  if (elements.sessionDropdownBtn) elements.sessionDropdownBtn.style.display = 'flex';
+  if (elements.sessionQuickMenu) elements.sessionQuickMenu.classList.add('hidden');
+
+  document.querySelectorAll('.sidebar-nav .nav-item').forEach(item => item.classList.remove('active'));
+  document.querySelectorAll('.chat-item').forEach(item => {
+    item.classList.toggle('active', item.getAttribute('data-id') === chatId);
+  });
+
+  const chat = state.chats[chatId];
+  if (chat && elements.activeChatTitle) {
+    elements.activeChatTitle.textContent = chat.title;
+  }
+
+  renderCurrentChat();
+  renderSidebarChats();
+  if (elements.activeChatInput) elements.activeChatInput.focus();
+}
+
+function showProjectsView() {
+  elements.heroView?.classList.add('hidden');
+  elements.chatView?.classList.add('hidden');
+  elements.projectsView?.classList.remove('hidden');
+
+  if (elements.sessionDropdownBtn) elements.sessionDropdownBtn.style.display = 'none';
+  if (elements.sessionQuickMenu) elements.sessionQuickMenu.classList.add('hidden');
+
+  document.querySelectorAll('.sidebar-nav .nav-item').forEach(i => i.classList.remove('active'));
+  elements.navProjects?.classList.add('active');
+  document.querySelectorAll('.chat-item').forEach(i => i.classList.remove('active'));
+
+  renderProjectsGrid('all');
+}
+
+// Render Sidebar Chats List with Rename and Delete Actions
+function renderSidebarChats() {
+  if (!elements.sidebarChatsList) return;
+  elements.sidebarChatsList.innerHTML = '';
+
+  Object.keys(state.chats).forEach(chatId => {
+    const chat = state.chats[chatId];
+    const item = document.createElement('div');
+    item.className = 'chat-item' + (state.currentChatId === chatId ? ' active' : '');
+    item.setAttribute('data-id', chatId);
+
+    const isGroup = chat.type === 'channel' || chat.type === 'group';
+
+    item.innerHTML = `
+      <span class="chat-item-bullet">${isGroup ? '·' : '·'}</span>
+      <span class="chat-item-title" id="title_${chatId}" title="${escapeHtml(chat.title)}">${escapeHtml(chat.title)}</span>
+      ${!isGroup ? '<span class="online-indicator" title="Online"></span>' : ''}
+      <div class="chat-item-actions" onclick="event.stopPropagation()">
+        <button class="chat-action-btn rename-btn" title="Đổi tên session">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
           </svg>
-          Sửa hồ sơ & Ảnh
+        </button>
+        <button class="chat-action-btn delete-btn" title="Xóa session">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+          </svg>
         </button>
       </div>
     `;
 
-    // Position popover card relative to container
-    const container = document.getElementById('constellation-view-container');
-    if (!container) return;
+    // Click item to view chat
+    item.addEventListener('click', () => {
+      showChatView(chatId);
+    });
 
-    const rect = container.getBoundingClientRect();
-    const nodeElem = document.getElementById(`star-node-${memberId}`);
+    // Rename Button Action
+    const renameBtn = item.querySelector('.rename-btn');
+    const titleEl = item.querySelector('.chat-item-title');
     
-    if (nodeElem) {
-      const nodeRect = nodeElem.getBoundingClientRect();
-      let left = nodeRect.left - rect.left + 20;
-      let top = nodeRect.top - rect.top - 20;
+    const startRename = () => {
+      const currentName = chat.title;
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.className = 'chat-rename-input';
+      input.value = currentName;
       
-      // Boundary safety checks
-      if (left + 300 > rect.width) left = nodeRect.left - rect.left - 300;
-      if (left < 10) left = 10;
-      if (top + 280 > rect.height) top = rect.height - 290;
-      if (top < 10) top = 10;
+      titleEl.replaceWith(input);
+      input.focus();
+      input.select();
 
-      popover.style.left = `${left}px`;
-      popover.style.top = `${top}px`;
-      requestAnimationFrame(() => {
-        popover.classList.add('visible');
-      });
-    }
-  }
-
-  hideStarPopover(event, memberId) {
-    const popover = document.getElementById('constellation-popover');
-    if (popover) {
-      popover.classList.remove('visible');
-      if (this.popoverHideTimer) clearTimeout(this.popoverHideTimer);
-      this.popoverHideTimer = setTimeout(() => {
-        if (popover && !popover.classList.contains('visible')) {
-          popover.innerHTML = '';
+      const finishRename = () => {
+        const newName = input.value.trim() || currentName;
+        state.chats[chatId].title = newName;
+        saveState();
+        if (state.currentChatId === chatId && elements.activeChatTitle) {
+          elements.activeChatTitle.textContent = newName;
         }
-      }, 350);
-    }
-  }
+        renderSidebarChats();
+        showToast(`Đã đổi tên thành "${newName}"!`, '✏️');
+      };
 
-  renderDirectoryGrid() {
-    const container = document.getElementById('team-directory-grid');
-    if (!container) return;
-    container.innerHTML = '';
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          finishRename();
+        } else if (e.key === 'Escape') {
+          renderSidebarChats();
+        }
+      });
 
-    this.members.forEach(member => {
-      const avatarHTML = this.renderAvatarMarkup(member, 'member-avatar-lg');
-      const skillsHTML = (member.skills || '').split(',').map(s => `<span class="skill-tag">${escapeHtml(s.trim())}</span>`).join('');
+      input.addEventListener('blur', finishRename);
+    };
 
-      const cardHTML = `
-        <div class="glass-card member-card">
-          ${avatarHTML}
-          <h3 class="member-name" style="margin-top: 1rem;">${escapeHtml(member.name || '')}</h3>
-          <span class="member-role">${escapeHtml(member.role || '')}</span>
-          
-          <div class="member-skills-section">
-            <div class="skills-title">Kỹ năng chuyên môn</div>
-            <div class="skills-list-wrap">${skillsHTML}</div>
-          </div>
-          
-          <div class="member-actions">
-            <button class="btn-secondary member-btn-edit" onclick="portal.openEditModal('${member.id}')">
-              <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width: 14px; height: 14px;">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
-              </svg>
-              Sửa hồ sơ & Ảnh
-            </button>
-          </div>
+    renameBtn?.addEventListener('click', startRename);
+    titleEl?.addEventListener('dblclick', startRename);
+
+    // Delete Button Action
+    const deleteBtn = item.querySelector('.delete-btn');
+    deleteBtn?.addEventListener('click', () => {
+      if (confirm(`Bạn có chắc chắn muốn xóa cuộc trò chuyện "${chat.title}" không?`)) {
+        delete state.chats[chatId];
+        saveState();
+        if (state.currentChatId === chatId) {
+          showHeroView();
+        }
+        renderSidebarChats();
+        showToast(`Đã xóa "${chat.title}"!`, '🗑️');
+      }
+    });
+
+    elements.sidebarChatsList.appendChild(item);
+  });
+}
+
+// Update Hero Dropdown Items based on Mode (Chat vs Cowork)
+function updateHeroDropdownItems() {
+  const menu = elements.modelDropdownMenu;
+  const label = elements.selectedModelLabel;
+  if (!menu || !label) return;
+
+  menu.innerHTML = '';
+
+  if (state.heroMode === 'chat') {
+    // Chat Mode -> Select a Person to Direct Message
+    const catHeader = document.createElement('div');
+    catHeader.className = 'dropdown-category';
+    catHeader.textContent = 'Gửi tin nhắn trực tiếp đến:';
+    menu.appendChild(catHeader);
+
+    CONTACTS_DIRECTORY.forEach(contact => {
+      const item = document.createElement('div');
+      item.className = 'dropdown-item' + (state.heroSelectedRecipient === contact.name ? ' selected' : '');
+      item.innerHTML = `
+        <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+          <span>👤 ${escapeHtml(contact.name)}</span>
+          <span style="font-size: 11px; opacity: 0.6;">${contact.role}</span>
         </div>
       `;
-      container.insertAdjacentHTML('beforeend', cardHTML);
-    });
-  }
-
-
-  renderKanbanBoard() {
-    const select = document.getElementById('kanban-comp-select');
-    if (select.children.length === 0) {
-      select.innerHTML = '';
-      COMPETITIONS.forEach(comp => {
-        select.insertAdjacentHTML('beforeend', `<option value="${comp.id}" ${this.activeKanbanComp === comp.id ? 'selected' : ''}>${comp.name}</option>`);
+      item.addEventListener('click', (e) => {
+        e.stopPropagation();
+        state.heroSelectedRecipient = contact.name;
+        label.textContent = contact.name;
+        menu.classList.remove('show');
       });
-    }
+      menu.appendChild(item);
+    });
 
-    const boardRoot = document.getElementById('kanban-board-root');
-    boardRoot.innerHTML = '';
+    // Custom person entry
+    const divider = document.createElement('div');
+    divider.className = 'dropdown-divider';
+    divider.style.borderTop = '1px solid var(--border-subtle)';
+    divider.style.margin = '4px 0';
+    menu.appendChild(divider);
 
-    const columnsConfig = [
-      { id: 'todo', title: 'Cần làm', color: 'var(--accent-blue)' },
-      { id: 'inprogress', title: 'Đang làm', color: 'var(--accent-amber)' },
-      { id: 'review', title: 'Đánh giá (Review)', color: 'var(--accent-purple)' },
-      { id: 'done', title: 'Hoàn thành', color: 'var(--accent-emerald)' }
-    ];
+    const customItem = document.createElement('div');
+    customItem.className = 'dropdown-item';
+    customItem.innerHTML = `<span>➕ Nhập tên / ID người mới...</span>`;
+    customItem.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const customName = prompt('Nhập tên hoặc mã ID người bạn muốn nhắn tin:');
+      if (customName && customName.trim()) {
+        state.heroSelectedRecipient = customName.trim();
+        label.textContent = customName.trim();
+      }
+      menu.classList.remove('show');
+    });
+    menu.appendChild(customItem);
 
-    const tasks = this.kanbanTasks[this.activeKanbanComp] || [];
+    label.textContent = state.heroSelectedRecipient || 'Lương Thanh Hậu';
 
-    columnsConfig.forEach(col => {
-      const colTasks = tasks.filter(t => t.column === col.id);
+  } else {
+    // Cowork Mode -> Select an existing group OR create a new group
+    const catHeader = document.createElement('div');
+    catHeader.className = 'dropdown-category';
+    catHeader.textContent = 'Chọn nhóm hoặc tạo nhóm mới:';
+    menu.appendChild(catHeader);
 
-      const colHTML = `
-        <div class="kanban-column" data-column-id="${col.id}">
-          <div class="kanban-column-header">
-            <span class="kanban-column-title" style="color: ${col.color};">
-              <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:${col.color}; margin-right:4px;"></span>
-              ${col.title}
-            </span>
-            <span class="kanban-column-count">${colTasks.length}</span>
+    // Existing groups
+    Object.keys(state.chats).forEach(id => {
+      const c = state.chats[id];
+      if (c.type === 'channel' || c.type === 'group') {
+        const item = document.createElement('div');
+        item.className = 'dropdown-item' + (state.heroSelectedRecipient === c.title ? ' selected' : '');
+        item.innerHTML = `
+          <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+            <span>🏠 ${escapeHtml(c.title)}</span>
+            <span style="font-size: 11px; opacity: 0.6;">${c.membersCount || ''}</span>
           </div>
-          <div class="kanban-cards-list" data-column-id="${col.id}">
-            ${colTasks.map(t => this.renderKanbanCardMarkup(t)).join('')}
-          </div>
-        </div>
-      `;
-      boardRoot.insertAdjacentHTML('beforeend', colHTML);
-    });
-
-    this.attachKanbanDragHandlers();
-  }
-
-  renderKanbanCardMarkup(task) {
-    const assignee = this.getMemberById(task.assignee);
-    const avatarBadge = assignee ? this.renderAvatarMarkup(assignee, 'kanban-card-assignee-bubble') : '<div class="kanban-card-assignee-bubble">?</div>';
-
-    return `
-      <div class="kanban-card" draggable="true" data-task-id="${task.id}">
-        <h4 class="kanban-card-title">${task.title}</h4>
-        <p class="kanban-card-desc">${task.desc || 'Không có mô tả chi tiết.'}</p>
-        
-        <div class="kanban-card-footer">
-          <div class="kanban-card-assignee" title="${assignee ? assignee.name : 'Chưa gán'}">
-            ${avatarBadge}
-            <span class="kanban-card-assignee-name">${assignee ? assignee.name : 'Unassigned'}</span>
-          </div>
-          <div class="kanban-card-actions">
-            <button class="kanban-move-btn" onclick="portal.moveKanbanTask('${task.id}', 'prev')" title="Sang trái">◀</button>
-            <button class="kanban-move-btn" onclick="portal.moveKanbanTask('${task.id}', 'next')" title="Sang phải">▶</button>
-            
-            <button class="kanban-action-btn delete" onclick="portal.deleteKanbanTask('${task.id}')" title="Xóa thẻ">
-              <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width: 13px; height: 13px;">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-              </svg>
-            </button>
-          </div>
-        </div>
-      </div>
-    `;
-  }
-
-  // ==========================================================================
-  // PROFILE EDIT MODAL ACTIONS (modified for custom Base64 image upload)
-  // ==========================================================================
-
-  openEditModal(memberId) {
-    if (!this.collaboration?.requireLogin()) return;
-    const member = this.getMemberById(memberId);
-    if (!member) return;
-
-    this.modalTitle.innerText = `Chỉnh sửa thành viên: ${member.name}`;
-    this.modalInputId.value = member.id;
-    this.modalInputName.value = member.name;
-    this.modalInputRole.value = member.role;
-    this.modalInputSkills.value = member.skills;
-
-    // Load custom avatar cache
-    this.tempAvatar = member.avatar || '';
-    const preview = document.getElementById('edit-avatar-preview');
-    const emojiInput = document.getElementById('edit-member-emoji');
-    document.getElementById('avatar-file-input').value = ''; // Reset file input selector
-
-    // Initialize inputs and preview markup
-    emojiInput.value = (member.avatar && !member.avatar.startsWith('data:')) ? member.avatar : '';
-    if (member.avatar) {
-      if (member.avatar.startsWith('data:')) {
-        preview.innerHTML = `<img src="${member.avatar}" class="member-avatar-img" alt="Avatar">`;
-      } else {
-        preview.innerText = member.avatar;
+        `;
+        item.addEventListener('click', (e) => {
+          e.stopPropagation();
+          state.heroSelectedRecipient = c.title;
+          label.textContent = c.title;
+          menu.classList.remove('show');
+        });
+        menu.appendChild(item);
       }
-    } else {
-      preview.innerText = member.name.split(' ').map(n => n[0]).join('');
-    }
-
-    this.modal.classList.add('active');
-  }
-
-  closeModal() {
-    this.modal.classList.remove('active');
-  }
-
-  async saveMemberProfile() {
-    const id = this.modalInputId.value;
-    const name = this.modalInputName.value.trim();
-    const role = this.modalInputRole.value.trim();
-    const skills = this.modalInputSkills.value.trim();
-
-    if (!name || !role || !skills) {
-      alert('Vui lòng điền đầy đủ các trường thông tin!');
-      return;
-    }
-
-    const updatedMember = { ...this.getMemberById(id), name, role, skills, avatar: this.tempAvatar };
-    this.members = this.members.map(m => {
-      if (m.id === id) {
-        return updatedMember;
-      }
-      return m;
     });
 
-    try {
-      await this.collaboration.saveMember(updatedMember);
-      this.closeModal();
-      this.render();
-      this.collaboration.toast('Đã cập nhật thành viên.', 'success');
-    } catch (error) {
-      this.collaboration.toast(error.message || 'Không thể cập nhật thành viên.', 'error');
-      await this.collaboration.loadSnapshot();
-    }
-  }
+    // Create New Group Action
+    const divider = document.createElement('div');
+    divider.className = 'dropdown-divider';
+    divider.style.borderTop = '1px solid var(--border-subtle)';
+    divider.style.margin = '4px 0';
+    menu.appendChild(divider);
 
-  // ==========================================================================
-  // KANBAN ACTIONS & UTILS
-  // ==========================================================================
-
-  async updateKanbanTaskColumn(taskId, targetColId) {
-    if (!this.collaboration?.requireLogin()) return;
-    const compTasks = this.kanbanTasks[this.activeKanbanComp] || [];
-    const task = compTasks.find(t => t.id === taskId);
-    if (task) {
-      task.column = targetColId;
-      this.render();
-      try { await this.collaboration.updateTask(taskId, { column: targetColId }); }
-      catch (error) { this.collaboration.toast(error.message, 'error'); await this.collaboration.loadSnapshot(); }
-    }
-  }
-
-  async moveKanbanTask(taskId, direction) {
-    if (!this.collaboration?.requireLogin()) return;
-    const compTasks = this.kanbanTasks[this.activeKanbanComp] || [];
-    const task = compTasks.find(t => t.id === taskId);
-    if (!task) return;
-
-    const cols = ['todo', 'inprogress', 'review', 'done'];
-    const currIdx = cols.indexOf(task.column);
-    let nextIdx = direction === 'next' ? currIdx + 1 : currIdx - 1;
-
-    if (nextIdx >= 0 && nextIdx < cols.length) {
-      task.column = cols[nextIdx];
-      this.render();
-      try { await this.collaboration.updateTask(taskId, { column: task.column }); }
-      catch (error) { this.collaboration.toast(error.message, 'error'); await this.collaboration.loadSnapshot(); }
-    }
-  }
-
-  async deleteKanbanTask(taskId) {
-    if (!this.collaboration?.requireLogin()) return;
-    if (!confirm('Bạn có chắc chắn muốn xóa thẻ nhiệm vụ này?')) return;
-
-    const compTasks = this.kanbanTasks[this.activeKanbanComp] || [];
-    this.kanbanTasks[this.activeKanbanComp] = compTasks.filter(t => t.id !== taskId);
-    this.render();
-    try { await this.collaboration.deleteTask(taskId); }
-    catch (error) { this.collaboration.toast(error.message, 'error'); await this.collaboration.loadSnapshot(); }
-  }
-
-  openTaskModal() {
-    if (!this.collaboration?.requireLogin()) return;
-    this.taskInputTitle.value = '';
-    this.taskInputDesc.value = '';
-    this.taskInputAssignee.innerHTML = '';
-    this.members.forEach(m => {
-      this.taskInputAssignee.insertAdjacentHTML('beforeend', `<option value="${m.id}">${m.name} (${m.role})</option>`);
+    const newGroupItem = document.createElement('div');
+    newGroupItem.className = 'dropdown-item';
+    newGroupItem.style.color = 'var(--accent-coral)';
+    newGroupItem.style.fontWeight = '600';
+    newGroupItem.innerHTML = `<span>✨ + Tạo nhóm chat mới...</span>`;
+    newGroupItem.addEventListener('click', (e) => {
+      e.stopPropagation();
+      menu.classList.remove('show');
+      showNewGroupHeroView();
     });
-    this.taskInputColumn.value = 'todo';
-    this.taskModal.classList.add('active');
-  }
+    menu.appendChild(newGroupItem);
 
-  closeTaskModal() {
-    this.taskModal.classList.remove('active');
-  }
-
-  async saveNewKanbanTask() {
-    if (!this.collaboration?.requireLogin()) return;
-    const title = this.taskInputTitle.value.trim();
-    const desc = this.taskInputDesc.value.trim();
-    const assignee = this.taskInputAssignee.value;
-    const column = this.taskInputColumn.value;
-
-    if (!title) {
-      alert('Vui lòng điền tiêu đề nhiệm vụ!');
-      return;
-    }
-
-    const newTask = {
-      id: `task-${Date.now()}`,
-      title,
-      desc,
-      assignee,
-      column
-    };
-
-    if (!this.kanbanTasks[this.activeKanbanComp]) {
-      this.kanbanTasks[this.activeKanbanComp] = [];
-    }
-    this.kanbanTasks[this.activeKanbanComp].push(newTask);
-    try {
-      await this.collaboration.createTask(this.activeKanbanComp, newTask);
-      this.closeTaskModal();
-      this.render();
-      this.collaboration.toast('Đã tạo nhiệm vụ.', 'success');
-    } catch (error) {
-      this.collaboration.toast(error.message || 'Không thể tạo nhiệm vụ.', 'error');
-      await this.collaboration.loadSnapshot();
-    }
-  }
-
-  attachDragAndDropHandlers() {
-    const draggables = document.querySelectorAll('.draggable-member');
-    const dropzones = document.querySelectorAll('.subteam-box');
-
-    draggables.forEach(draggable => {
-      draggable.addEventListener('dragstart', (e) => {
-        this.activeDragElement = draggable;
-        draggable.style.opacity = '0.5';
-        e.dataTransfer.setData('text/plain', draggable.getAttribute('data-member-id'));
-      });
-
-      draggable.addEventListener('dragend', () => {
-        draggable.style.opacity = '1';
-        this.activeDragElement = null;
-      });
-    });
-
-    dropzones.forEach(zone => {
-      zone.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        zone.classList.add('drag-over');
-      });
-
-      zone.addEventListener('dragleave', () => {
-        zone.classList.remove('drag-over');
-      });
-
-      zone.addEventListener('drop', (e) => {
-        e.preventDefault();
-        zone.classList.remove('drag-over');
-        const memberId = e.dataTransfer.getData('text/plain');
-        const compId = zone.getAttribute('data-comp-id');
-        const teamType = zone.getAttribute('data-team-type');
-
-        this.addMemberToAllocation(compId, teamType, memberId);
-      });
-    });
-  }
-
-  attachKanbanDragHandlers() {
-    const cards = document.querySelectorAll('.kanban-card');
-    const lists = document.querySelectorAll('.kanban-cards-list');
-
-    cards.forEach(card => {
-      card.addEventListener('dragstart', (e) => {
-        e.dataTransfer.setData('text/plain', card.getAttribute('data-task-id'));
-        card.style.opacity = '0.5';
-      });
-
-      card.addEventListener('dragend', () => {
-        card.style.opacity = '1';
-      });
-    });
-
-    lists.forEach(list => {
-      list.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        list.parentElement.classList.add('drag-over');
-      });
-
-      list.addEventListener('dragleave', () => {
-        list.parentElement.classList.remove('drag-over');
-      });
-
-      list.addEventListener('drop', (e) => {
-        e.preventDefault();
-        list.parentElement.classList.remove('drag-over');
-        const taskId = e.dataTransfer.getData('text/plain');
-        const targetColId = list.getAttribute('data-column-id');
-        this.updateKanbanTaskColumn(taskId, targetColId);
-      });
-    });
-  }
-
-  // ==========================================================================
-  // SETTINGS & SUPABASE DB SYNC IMPLEMENTATIONS
-  // ==========================================================================
-
-  renderSettings() {
-    this.collaboration?.renderAccount();
-  }
-
-  isXoArenaVisible() {
-    const config = window.PINGPING_CONFIG || {};
-    const memberId = this.collaboration?.session?.member?.id;
-    return Boolean(config.xoArenaEnabled || (memberId && (config.xoArenaTesterIds || []).includes(memberId)));
-  }
-
-  applyFeatureFlags() {
-    const visible = this.isXoArenaVisible();
-    document.querySelectorAll('[data-tab="xo"]').forEach(el => { el.hidden = !visible; });
-    const panel = document.getElementById('tab-xo');
-    if (panel) panel.hidden = !visible;
-    if (this.aboutUpdateButton) this.aboutUpdateButton.hidden = !visible;
-    if (!visible && this.currentTab === 'xo') this.switchTab('dashboard', true);
-  }
-
-  openAboutUpdate() {
-    if (!this.isXoArenaVisible()) return;
-    this.aboutUpdateModal.hidden = false;
-    this.aboutUpdateModal.classList.add('active');
-    document.getElementById('about-update-close')?.focus();
-  }
-
-  closeAboutUpdate() {
-    this.aboutUpdateModal?.classList.remove('active');
-    if (this.aboutUpdateModal) this.aboutUpdateModal.hidden = true;
-    this.aboutUpdateButton?.focus();
-  }
-
-  renderXoArena() {
-    if (!this.isXoArenaVisible()) return;
-    this.renderXoBoard();
-    this.renderXoPanels();
-  }
-
-  xoCredentials(extra = {}) {
-    return {
-      p_member_id: this.collaboration.session.member.id,
-      p_login_code: this.collaboration.session.code,
-      ...extra
-    };
-  }
-
-  async loadXoCasino() {
-    if (!this.isXoArenaVisible() || !this.collaboration?.session?.member) {
-      this.renderXoArena();
-      return;
-    }
-    try {
-      const [grantResult, matchesResult, ratingsResult, walletsResult, checkinResult] = await Promise.all([
-        this.collaboration.client.rpc('xo_grant_monthly_citizen_points', this.xoCredentials()),
-        this.collaboration.client.from('xo_matches').select('*').order('created_at', { ascending: false }).limit(30),
-        this.collaboration.client.from('xo_ratings').select('*').order('rating', { ascending: false }),
-        this.collaboration.client.from('citizen_wallets').select('member_id, balance').order('balance', { ascending: false }),
-        this.collaboration.client.rpc('xo_daily_checkin', { ...this.xoCredentials(), p_claim: false })
-      ]);
-      const error = grantResult.error || matchesResult.error || ratingsResult.error || walletsResult.error || checkinResult.error;
-      if (error) throw error;
-      const memberId = this.collaboration.session.member.id;
-      const currentBalance = grantResult.data?.[0]?.balance
-        ?? walletsResult.data?.find(row => row.member_id === memberId)?.balance
-        ?? 0;
-      this.xoMatches = matchesResult.data || [];
-      this.xoRatings = ratingsResult.data || [];
-      this.xoWallets = (walletsResult.data || []).map(row => row.member_id === memberId ? { ...row, balance: currentBalance } : row);
-      this.xoCheckin = checkinResult.data?.[0] || null;
-      this.xoWalletBalance = currentBalance;
-
-      const selected = this.xoMatches.find(match => match.id === this.xoSelectedMatchId);
-      const preferred = selected || this.xoMatches.find(match =>
-        match.status === 'active' && [match.challenger_id, match.opponent_id].includes(memberId)
-      ) || this.xoMatches.find(match => match.status === 'active') || this.xoMatches[0];
-      this.xoSelectedMatchId = preferred?.id || null;
-      this.xoBets = [];
-      this.renderXoPanels();
-
-      if (preferred) {
-        const [gameResult, betsResult] = await Promise.all([
-          this.collaboration.client.from('xo_games').select('*').eq('match_id', preferred.id).order('game_number', { ascending: false }).limit(1).maybeSingle(),
-          this.collaboration.client.from('xo_bets').select('*').eq('match_id', preferred.id)
-        ]);
-        if (gameResult.error || betsResult.error) throw gameResult.error || betsResult.error;
-        this.xoActiveGame = gameResult.data;
-        this.xoBets = betsResult.data || [];
-        this.xoState = this.xoActiveGame
-          ? { bounds: this.xoActiveGame.bounds, moves: this.xoActiveGame.moves || [] }
-          : createEmptyBoard();
-      } else {
-        this.xoActiveGame = null;
-        this.xoBets = [];
-        this.xoState = createEmptyBoard();
-      }
-      this.notifyXoThreat();
-      this.subscribeXoCasino();
-      this.renderXoArena();
-    } catch (error) {
-      this.collaboration.toast(error.message || 'Không thể tải Sòng X-O.', 'error');
-    }
-  }
-
-  notifyXoThreat() {
-    const memberId = this.collaboration?.session?.member?.id;
-    const lastMove = this.xoState.moves.at(-1);
-    if (!this.xoActiveGame || !lastMove || this.xoActiveGame.status !== 'active' || this.xoActiveGame.next_member_id !== memberId || lastMove.member_id === memberId) return;
-    const noticeKey = `${this.xoActiveGame.id}:${this.xoState.moves.length}`;
-    if (noticeKey === this.xoThreatNoticeKey) return;
-    const threat = getFourThreat(this.xoState, lastMove?.mark);
-    if (!threat.level) return;
-    this.xoThreatNoticeKey = noticeKey;
-    const flash = document.getElementById('xo-threat-flash');
-    if (!flash) return;
-    clearTimeout(this.xoThreatTimer);
-    flash.hidden = false;
-    flash.textContent = threat.level === 'unblockable' ? '💀 Mày chết rồi' : '⚠️ Mày sắp chết rồi';
-    flash.className = `xo-threat-flash ${threat.level}`;
-    void flash.offsetWidth;
-    flash.classList.add('active');
-    this.xoThreatTimer = setTimeout(() => {
-      flash.classList.remove('active');
-      flash.hidden = true;
-    }, 3600);
-  }
-
-  subscribeXoCasino() {
-    if (this.xoChannel) return;
-    const reload = () => {
-      clearTimeout(this.xoReloadTimer);
-      this.xoReloadTimer = setTimeout(() => this.loadXoCasino(), 120);
-    };
-    this.xoChannel = this.collaboration.client.channel('xo-casino-live');
-    for (const table of ['xo_matches', 'xo_games', 'xo_ratings', 'citizen_wallets', 'xo_bets']) {
-      this.xoChannel.on('postgres_changes', { event: '*', schema: 'public', table }, reload);
-    }
-    this.xoChannel.subscribe();
-  }
-
-  async createXoChallenge() {
-    if (!this.collaboration?.requireLogin()) return;
-    const opponentId = document.getElementById('xo-opponent')?.value;
-    const wager = Number(document.getElementById('xo-wager')?.value);
-    try {
-      const { data, error } = await this.collaboration.client.rpc('xo_create_challenge', this.xoCredentials({
-        p_opponent_id: opponentId,
-        p_wager: wager
-      }));
-      if (error) throw error;
-      this.xoSelectedMatchId = data;
-      this.collaboration.toast('Kèo đã mở. Chờ đối thủ nhận lời!', 'success');
-      await this.loadXoCasino();
-    } catch (error) {
-      this.collaboration.toast(this.xoErrorMessage(error), 'error');
-    }
-  }
-
-  async respondXoChallenge(matchId, accept) {
-    if (!this.collaboration?.requireLogin()) return;
-    try {
-      const { error } = await this.collaboration.client.rpc('xo_respond_challenge', this.xoCredentials({
-        p_match_id: matchId,
-        p_accept: accept
-      }));
-      if (error) throw error;
-      this.xoSelectedMatchId = matchId;
-      this.collaboration.toast(accept ? 'Đã nhận kèo. Vào bàn!' : 'Đã từ chối kèo.', 'success');
-      await this.loadXoCasino();
-    } catch (error) {
-      this.collaboration.toast(this.xoErrorMessage(error), 'error');
-    }
-  }
-
-  async placeXoBet() {
-    if (!this.collaboration?.requireLogin() || !this.xoSelectedMatchId) return;
-    try {
-      const { error } = await this.collaboration.client.rpc('xo_place_bet', this.xoCredentials({
-        p_match_id: this.xoSelectedMatchId,
-        p_pick_member_id: document.getElementById('xo-bet-pick')?.value,
-        p_stake: Number(document.getElementById('xo-bet-stake')?.value)
-      }));
-      if (error) throw error;
-      this.collaboration.toast('Đã xuống điểm!', 'success');
-      await this.loadXoCasino();
-    } catch (error) {
-      this.collaboration.toast(this.xoErrorMessage(error), 'error');
-    }
-  }
-
-  async claimCitizenCheckin() {
-    if (!this.collaboration?.requireLogin()) return;
-    const button = document.getElementById('citizen-checkin-button');
-    if (button) button.disabled = true;
-    try {
-      const { data, error } = await this.collaboration.client.rpc('xo_daily_checkin', {
-        ...this.xoCredentials(),
-        p_claim: true
-      });
-      if (error) throw error;
-      const result = data?.[0];
-      if (Number(result?.points) === -360) this.openCheckinPenalty();
-      else this.collaboration.toast(`Điểm danh thành công: +${result.points} điểm!`, 'success');
-      await this.loadXoCasino();
-    } catch (error) {
-      this.collaboration.toast(error.message || 'Không thể điểm danh.', 'error');
-      if (button) button.disabled = false;
-    }
-  }
-
-  openCheckinPenalty() {
-    const modal = document.getElementById('checkin-penalty-modal');
-    if (!modal) return;
-    modal.hidden = false;
-    modal.classList.add('active');
-    document.getElementById('checkin-penalty-close')?.focus();
-  }
-
-  closeCheckinPenalty() {
-    const modal = document.getElementById('checkin-penalty-modal');
-    modal?.classList.remove('active');
-    if (modal) modal.hidden = true;
-    document.getElementById('citizen-checkin-button')?.focus();
-  }
-
-  selectXoMatch(matchId) {
-    this.xoSelectedMatchId = matchId;
-    this.loadXoCasino();
-  }
-
-  xoErrorMessage(error) {
-    const code = String(error?.message || '');
-    const messages = {
-      CHALLENGE_YOURSELF: 'Không thể tự thách đấu chính mình.',
-      INVALID_OPPONENT: 'Đối thủ không hợp lệ.',
-      PLAYER_BUSY: 'Một trong hai người đang có kèo chưa xong.',
-      INSUFFICIENT_BALANCE: 'Không đủ điểm công dân.',
-      CHALLENGE_NOT_AVAILABLE: 'Kèo này không còn khả dụng.',
-      NOT_YOUR_TURN: 'Chưa đến lượt của bạn.',
-      BETTING_LOCKED: 'Cược đã khóa sau nước đi đầu tiên.',
-      PLAYERS_CANNOT_POOL_BET: 'Hai người chơi đã có tiền kèo, không cược pool.',
-      OCCUPIED_CELL: 'Ô này đã được đánh.'
-    };
-    return Object.entries(messages).find(([key]) => code.includes(key))?.[1] || code || 'Không thể thực hiện thao tác X-O.';
-  }
-
-  renderXoBoard() {
-    const board = document.getElementById('xo-board');
-    const status = document.getElementById('xo-board-status');
-    const spectatorStatus = document.getElementById('xo-spectator-status');
-    if (!board || !status) return;
-
-    const size = boardSize(this.xoState.bounds);
-    const selectedMatch = this.xoMatches.find(match => match.id === this.xoSelectedMatchId);
-    const memberId = this.collaboration?.session?.member?.id;
-    const isSpectator = selectedMatch && ![selectedMatch.challenger_id, selectedMatch.opponent_id].includes(memberId);
-    const occupied = new Map(this.xoState.moves.map(move => [`${move.row},${move.col}`, move]));
-    const lastMove = this.xoState.moves.at(-1);
-    board.style.setProperty('--xo-size', String(size.cols));
-    board.innerHTML = '';
-
-    for (let row = this.xoState.bounds.minRow; row <= this.xoState.bounds.maxRow; row += 1) {
-      for (let col = this.xoState.bounds.minCol; col <= this.xoState.bounds.maxCol; col += 1) {
-        const move = occupied.get(`${row},${col}`);
-        const cell = document.createElement('button');
-        cell.type = 'button';
-        const isLastMove = move && move.row === lastMove?.row && move.col === lastMove?.col;
-        cell.className = `xo-cell${move ? ` ${move.mark}` : ''}${isLastMove ? ' last' : ''}`;
-        cell.textContent = move?.mark?.toUpperCase() || '';
-        cell.setAttribute('aria-label', `Ô ${row}, ${col}${isLastMove ? ', nước đi mới nhất' : ''}`);
-        cell.disabled = Boolean(move || !this.xoActiveGame || selectedMatch?.status !== 'active' || this.xoActiveGame.next_member_id !== memberId);
-        cell.addEventListener('click', () => this.playXoMove(row, col));
-        board.appendChild(cell);
-      }
-    }
-
-    if (spectatorStatus) {
-      spectatorStatus.hidden = !isSpectator;
-      if (isSpectator) {
-        if (selectedMatch.status === 'active') {
-          spectatorStatus.textContent = selectedMatch.locked_at
-            ? 'Bạn đang xem trực tiếp với tư cách khán giả · cược đã khóa.'
-            : 'Bạn đang xem trực tiếp với tư cách khán giả · cược mở đến nước đi đầu tiên.';
-        } else if (selectedMatch.status === 'completed') {
-          spectatorStatus.textContent = 'Bạn đang xem lại trận với tư cách khán giả.';
-        } else {
-          spectatorStatus.textContent = 'Bạn đang theo dõi kèo đang chờ đối thủ nhận lời.';
-        }
-      }
-    }
-
-    if (!selectedMatch) status.textContent = 'Chọn một kèo để xem bàn';
-    else if (selectedMatch.status === 'pending') status.textContent = 'Đang chờ đối thủ nhận kèo';
-    else if (selectedMatch.status === 'completed') status.textContent = `${this.getMemberName(selectedMatch.winner_id)} thắng kèo`;
-    else status.textContent = `${isSpectator ? 'Đang xem · ' : ''}BO1 · lượt ${this.getMemberName(this.xoActiveGame?.next_member_id)}`;
-  }
-
-  async playXoMove(row, col) {
-    if (!this.xoActiveGame || !this.collaboration?.requireLogin()) return;
-    try {
-      const { error } = await this.collaboration.client.rpc('xo_make_move', this.xoCredentials({
-        p_game_id: this.xoActiveGame.id,
-        p_row: row,
-        p_col: col
-      }));
-      if (error) throw error;
-      await this.loadXoCasino();
-    } catch (error) {
-      this.collaboration.toast(this.xoErrorMessage(error), 'error');
-    }
-  }
-
-  renderXoPanels() {
-    const openMatches = document.getElementById('xo-open-matches');
-    const recentMatches = document.getElementById('xo-recent-matches');
-    const leaderboard = document.getElementById('xo-leaderboard');
-    const citizenLeaderboard = document.getElementById('citizen-points-leaderboard');
-    const wallet = document.getElementById('xo-wallet');
-    const checkinButton = document.getElementById('citizen-checkin-button');
-    const checkinStatus = document.getElementById('citizen-checkin-status');
-    const bets = document.getElementById('xo-bets');
-    const selectedMatch = this.xoMatches.find(match => match.id === this.xoSelectedMatchId);
-    const memberId = this.collaboration?.session?.member?.id;
-    const title = document.getElementById('xo-match-title');
-    const opponent = document.getElementById('xo-opponent');
-    if (opponent) {
-      const current = opponent.value;
-      opponent.innerHTML = this.members.filter(member => member.id !== memberId)
-        .map(member => `<option value="${member.id}">${escapeHtml(member.name)}</option>`).join('');
-      if ([...opponent.options].some(option => option.value === current)) opponent.value = current;
-    }
-    if (title) title.textContent = selectedMatch
-      ? `${this.getMemberName(selectedMatch.challenger_id)} ⚔ ${this.getMemberName(selectedMatch.opponent_id)} · ${selectedMatch.wager} điểm`
-      : 'Chưa chọn kèo';
-
-    const matchMarkup = match => {
-      const incoming = match.status === 'pending' && match.opponent_id === memberId;
-      const outgoing = match.status === 'pending' && match.challenger_id === memberId;
-      const participant = [match.challenger_id, match.opponent_id].includes(memberId);
-      const viewLabel = match.status === 'active' && !match.locked_at && !participant ? 'Xem & cược' : 'Xem';
-      return `<div class="xo-row"><span class="xo-row-main"><strong>${escapeHtml(this.getMemberName(match.challenger_id))} ⚔ ${escapeHtml(this.getMemberName(match.opponent_id))}</strong><small>${match.wager} điểm · ${match.status === 'pending' ? 'chờ nhận kèo' : 'BO1 · LIVE'}</small></span><span class="xo-row-actions">${incoming ? `<button class="btn-primary" data-xo-action="accept" data-match-id="${match.id}">Nhận</button><button class="btn-secondary" data-xo-action="reject" data-match-id="${match.id}">Từ chối</button>` : ''}${outgoing ? `<button class="btn-secondary" data-xo-action="cancel" data-match-id="${match.id}">Hủy</button>` : ''}<button class="btn-secondary" data-xo-action="view" data-match-id="${match.id}">${viewLabel}</button></span></div>`;
-    };
-    if (openMatches) {
-      const rows = this.xoMatches.filter(match => ['pending', 'active'].includes(match.status));
-      openMatches.innerHTML = rows.length ? rows.map(matchMarkup).join('') : '<span>Chưa có kèo nào. Mở bát đi!</span>';
-    }
-    if (recentMatches) {
-      const rows = this.xoMatches.filter(match => match.status === 'completed').slice(0, 8);
-      recentMatches.innerHTML = rows.length ? rows.map(match => `<button class="xo-row" data-match-id="${match.id}"><span>${escapeHtml(this.getMemberName(match.challenger_id))} ${match.challenger_wins}-${match.opponent_wins} ${escapeHtml(this.getMemberName(match.opponent_id))}</span><span><strong>${escapeHtml(this.getMemberName(match.winner_id))}</strong><small>Xem lại</small></span></button>`).join('') : '<span>Chưa có kết quả.</span>';
-    }
-    if (leaderboard) {
-      const ratings = this.members.map(member => ({ member, ...(this.xoRatings.find(row => row.member_id === member.id) || {}) }))
-        .sort((a, b) => Number(b.rating || 0) - Number(a.rating || 0));
-      leaderboard.innerHTML = ratings.map((row, index) => `<div class="xo-row"><span>${index + 1}. ${escapeHtml(row.member.name)}</span><strong>${row.rating || 0}</strong></div>`).join('');
-    }
-    if (citizenLeaderboard) {
-      const wallets = this.members.map(member => ({ member, balance: this.xoWallets.find(row => row.member_id === member.id)?.balance || 0 }))
-        .sort((a, b) => b.balance - a.balance);
-      citizenLeaderboard.innerHTML = wallets.map((row, index) => `<div class="xo-row"><span>${index + 1}. ${escapeHtml(row.member.name)}</span><strong>${row.balance} điểm</strong></div>`).join('');
-    }
-    if (wallet) {
-      wallet.textContent = memberId ? `${this.xoWalletBalance ?? 0} điểm` : 'Đăng nhập để nhận điểm';
-    }
-    if (checkinButton && checkinStatus) {
-      const claimed = Boolean(this.xoCheckin?.claimed);
-      checkinButton.disabled = !memberId || !this.xoCheckin || this.xoCheckin.claimed;
-      checkinButton.textContent = claimed ? 'Đã điểm danh' : `Điểm danh +${this.xoCheckin?.points || 18}`;
-      checkinStatus.classList.toggle('bait', claimed);
-      checkinStatus.textContent = claimed
-        ? '🙏 Xin đừng dùng F12 🛠️ để bật lại nút này. 🏠 Đây là trang nội bộ nên không quá để tâm đến vấn đề security 🔐. 🤝 MỌI NGƯỜI TIN TƯỞNG VÀO NHÂN PHẨM CỦA BẠN 👀'
-        : `Hôm nay nhận ${this.xoCheckin?.points || 18} điểm · cuối tuần nhận 36 điểm.`;
-    }
-    if (bets) {
-      const pool = id => this.xoBets.filter(bet => bet.pick_member_id === id).reduce((sum, bet) => sum + Number(bet.stake), 0);
-      const ownBet = this.xoBets.find(bet => bet.member_id === memberId);
-      const betNote = ownBet
-        ? `<p class="xo-bet-note">Vé của bạn: <strong>${ownBet.stake} điểm</strong> cho ${escapeHtml(this.getMemberName(ownBet.pick_member_id))}</p>`
-        : selectedMatch?.status === 'active' && selectedMatch.locked_at
-          ? '<p class="xo-bet-note">Cược đã khóa sau nước đi đầu tiên.</p>'
-          : '';
-      bets.innerHTML = selectedMatch ? `<div class="xo-row"><span>${escapeHtml(this.getMemberName(selectedMatch.challenger_id))}</span><strong>${pool(selectedMatch.challenger_id)} điểm</strong></div><div class="xo-row"><span>${escapeHtml(this.getMemberName(selectedMatch.opponent_id))}</span><strong>${pool(selectedMatch.opponent_id)} điểm</strong></div>${betNote}` : 'Chọn một kèo để xem pool.';
-    }
-    const betForm = document.getElementById('xo-bet-form');
-    const alreadyBet = this.xoBets.some(bet => bet.member_id === memberId);
-    const canBet = selectedMatch?.status === 'active' && !selectedMatch.locked_at && !alreadyBet && ![selectedMatch.challenger_id, selectedMatch.opponent_id].includes(memberId);
-    if (betForm) betForm.hidden = !canBet;
-    const betPick = document.getElementById('xo-bet-pick');
-    if (betPick && selectedMatch) {
-      betPick.innerHTML = [selectedMatch.challenger_id, selectedMatch.opponent_id]
-        .map(id => `<option value="${id}">${escapeHtml(this.getMemberName(id))}</option>`).join('');
-    }
-  }
-
-  // ==========================================================================
-  // DATA HELPER ACCESSORS
-  // ==========================================================================
-
-  getMemberById(id) {
-    return this.members.find(m => m.id === id);
-  }
-
-  getMemberName(id) {
-    const m = this.getMemberById(id);
-    return m ? m.name : '';
+    label.textContent = state.heroSelectedRecipient || 'trại bò cơ sở 1';
   }
 }
 
-// Instantiate Portal globally
-const portal = new TeamPortal();
-window.portal = portal;
+// Function to Switch to New Chat Hero view with Group Tag prompt
+function createNewGroupDirect() {
+  showNewGroupHeroView();
+}
+
+// Render Active Chat Messages Stream
+function renderCurrentChat() {
+  if (!state.currentChatId || !state.chats[state.currentChatId]) return;
+  const chat = state.chats[state.currentChatId];
+  const container = elements.chatMessagesContainer;
+  if (!container) return;
+
+  const isGroup = chat.type === 'channel' || chat.type === 'group';
+  container.innerHTML = '';
+
+  // If chat is empty
+  if (chat.messages.length === 0) {
+    const emptyState = document.createElement('div');
+    emptyState.style.textAlign = 'center';
+    emptyState.style.padding = '80px 20px';
+    emptyState.style.color = 'var(--text-muted)';
+    emptyState.innerHTML = `
+      <div style="font-size: 28px; margin-bottom: 8px;">✨</div>
+      <div style="font-size: 15px; font-weight: 500; color: var(--text-primary); margin-bottom: 4px;">Bắt đầu cuộc trò chuyện trong ${escapeHtml(chat.title)}</div>
+      <div style="font-size: 13px;">${isGroup ? 'Gõ tin nhắn hoặc dùng @Tên để thêm thành viên tham gia nhóm.' : 'Nhập tin nhắn bên dưới để gửi.'}</div>
+    `;
+    container.appendChild(emptyState);
+    return;
+  }
+
+  chat.messages.forEach(msg => {
+    if (msg.isSystem) {
+      const sysRow = document.createElement('div');
+      sysRow.className = `system-event-pill ${msg.eventType || 'info'}`;
+      sysRow.innerHTML = `<span>⚙️</span> <span>${escapeHtml(msg.content)}</span>`;
+      container.appendChild(sysRow);
+      return;
+    }
+
+    const isSelf = msg.author === state.currentUser.name;
+    const row = document.createElement('div');
+    row.className = `message-row ${isSelf ? 'is-self' : 'is-other'}`;
+
+    // 1. Build Media Attachment HTML (Image, Video, File, Voice, Code Artifact)
+    let mediaHtml = '';
+
+    if (msg.image) {
+      mediaHtml += `
+        <div class="msg-image-card" onclick="openLightbox('${msg.image}', '${escapeHtml(msg.imageCaption || msg.content || 'Hình ảnh đính kèm')}')">
+          <img src="${msg.image}" alt="Attached Image" class="msg-image-thumb">
+          ${msg.imageCaption ? `<div style="padding: 6px 12px; font-size: 12px; color: var(--text-muted); background: rgba(0,0,0,0.2);">${escapeHtml(msg.imageCaption)}</div>` : ''}
+        </div>
+      `;
+    }
+
+    if (msg.video) {
+      mediaHtml += `
+        <div class="msg-video-card">
+          <video src="${msg.video}" controls class="msg-video-player" poster="https://images.unsplash.com/photo-1500595046743-cd271d694d30?w=600&auto=format&fit=crop&q=80"></video>
+          ${msg.videoCaption ? `<div style="padding: 6px 12px; font-size: 12px; color: var(--text-muted); background: rgba(0,0,0,0.4);">${escapeHtml(msg.videoCaption)}</div>` : ''}
+        </div>
+      `;
+    }
+
+    if (msg.file) {
+      const fileIcon = msg.file.type === 'pdf' ? '📕' : (msg.file.name.endsWith('.bin') ? '💾' : '📄');
+      mediaHtml += `
+        <div class="msg-file-card">
+          <div class="msg-file-info">
+            <span class="msg-file-icon">${fileIcon}</span>
+            <div class="msg-file-details">
+              <span class="msg-file-name" title="${escapeHtml(msg.file.name)}">${escapeHtml(msg.file.name)}</span>
+              <span class="msg-file-size">${escapeHtml(msg.file.size || 'Tài liệu')}</span>
+            </div>
+          </div>
+          <button class="msg-file-download-btn" onclick="downloadSampleFile('${escapeHtml(msg.file.name)}')" title="Tải xuống tệp tin">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+          </button>
+        </div>
+      `;
+    }
+
+    if (msg.voice) {
+      mediaHtml += `
+        <div class="msg-voice-card">
+          <button class="voice-play-btn" onclick="toggleVoicePlay(this)" title="Phát tin nhắn thoại">▶</button>
+          <div class="voice-waveform">
+            <span class="waveform-bar" style="height: 10px;"></span>
+            <span class="waveform-bar" style="height: 16px;"></span>
+            <span class="waveform-bar" style="height: 8px;"></span>
+            <span class="waveform-bar" style="height: 14px;"></span>
+            <span class="waveform-bar" style="height: 12px;"></span>
+            <span class="waveform-bar" style="height: 18px;"></span>
+            <span class="waveform-bar" style="height: 7px;"></span>
+          </div>
+          <span class="voice-duration">${msg.voice.duration || '0:15'}</span>
+        </div>
+      `;
+    }
+
+    if (msg.hasArtifact) {
+      mediaHtml += `
+        <div class="code-card">
+          <div class="code-card-header">
+            <div class="code-card-header-left">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="16 18 22 12 16 6"></polyline>
+                <polyline points="8 6 2 12 8 18"></polyline>
+              </svg>
+              <span>${escapeHtml(msg.artifactTitle || 'Code Snippet')}</span>
+            </div>
+            <button class="code-card-btn" onclick="openArtifact('${escapeHtml(msg.artifactTitle)}', \`${encodeURIComponent(msg.artifactCode)}\`)">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="9" y1="3" x2="9" y2="21"></line>
+              </svg>
+              <span>Mở trong Artifacts</span>
+            </button>
+          </div>
+          <pre class="code-card-body"><code>${escapeHtml(msg.artifactCode || '')}</code></pre>
+        </div>
+      `;
+    }
+
+    let bodyHtml = '';
+
+    if (isSelf) {
+      bodyHtml = `
+        <div class="user-bubble-wrapper">
+          ${msg.content ? formatMessageContent(msg.content) : ''}
+          ${mediaHtml}
+        </div>
+      `;
+    } else {
+      let groupNameHtml = '';
+      if (isGroup && msg.author) {
+        groupNameHtml = `<div class="group-sender-name">${escapeHtml(msg.author)}</div>`;
+      }
+
+      let thoughtHtml = '';
+      if (msg.thought) {
+        thoughtHtml = `
+          <div class="thought-summary-badge" title="Chi tiết luồng suy nghĩ">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"></path>
+            </svg>
+            <span>${escapeHtml(msg.thought)}</span>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </div>
+        `;
+      }
+
+      bodyHtml = `
+        ${groupNameHtml}
+        ${thoughtHtml}
+        <div class="partner-content-wrapper">
+          ${msg.content ? formatMessageContent(msg.content) : ''}
+          ${mediaHtml}
+        </div>
+      `;
+    }
+
+    row.innerHTML = bodyHtml;
+    container.appendChild(row);
+  });
+
+  container.scrollTop = container.scrollHeight;
+}
+
+// Process Mention and Removal Commands (@ and @rm-)
+function processGroupCommands(chat, text) {
+  if (!chat || (chat.type !== 'channel' && chat.type !== 'group')) return;
+  if (!chat.members) chat.members = [state.currentUser.name];
+
+  // 1. Process @rm- commands (e.g. @rm-Hậu, @rm-Nguyễn Quang Tùng)
+  const rmRegex = /@rm-([a-zA-Z0-9_\u00C0-\u1EF9\s]+)/gi;
+  let rmMatch;
+  while ((rmMatch = rmRegex.exec(text)) !== null) {
+    const targetName = rmMatch[1].trim();
+    const foundMember = chat.members.find(m => m.toLowerCase().includes(targetName.toLowerCase()));
+    if (foundMember && foundMember !== state.currentUser.name) {
+      chat.members = chat.members.filter(m => m !== foundMember);
+      chat.membersCount = `${chat.members.length} thành viên`;
+      chat.messages.push({
+        id: 'sys_' + Date.now(),
+        isSystem: true,
+        eventType: 'danger',
+        content: `🚫 ${foundMember} đã được mời rời khỏi nhóm chat.`
+      });
+      showToast(`Đã xóa ${foundMember} khỏi nhóm.`, '🚫');
+    }
+  }
+
+  // 2. Process @ Mentions to add new members
+  const mentionRegex = /@([a-zA-Z0-9_\u00C0-\u1EF9\s]+)/gi;
+  let mentionMatch;
+  while ((mentionMatch = mentionRegex.exec(text)) !== null) {
+    const rawName = mentionMatch[1].trim();
+    if (rawName.startsWith('rm-')) continue;
+
+    const matchedContact = CONTACTS_DIRECTORY.find(c => c.name.toLowerCase().includes(rawName.toLowerCase()) || rawName.toLowerCase().includes(c.name.toLowerCase()));
+    const memberName = matchedContact ? matchedContact.name : rawName;
+
+    if (memberName && !chat.members.includes(memberName)) {
+      chat.members.push(memberName);
+      chat.membersCount = `${chat.members.length} thành viên`;
+      chat.messages.push({
+        id: 'sys_' + Date.now(),
+        isSystem: true,
+        eventType: 'success',
+        content: `👥 ${memberName} đã được thêm vào nhóm chat qua thẻ @tag.`
+      });
+      showToast(`Đã thêm ${memberName} vào nhóm!`, '👥');
+    }
+  }
+}
+
+// Autocomplete Popup Handlers for @ in Textarea
+function setupMentionAutocomplete(textarea, popupEl, itemsEl) {
+  if (!textarea || !popupEl || !itemsEl) return;
+
+  let selectedIndex = 0;
+
+  const updateSelection = (items) => {
+    items.forEach((it, idx) => {
+      if (idx === selectedIndex) {
+        it.classList.add('selected');
+        it.scrollIntoView({ block: 'nearest' });
+      } else {
+        it.classList.remove('selected');
+      }
+    });
+  };
+
+  const handleInput = () => {
+    const val = textarea.value;
+    const cursor = textarea.selectionStart || 0;
+    const textBeforeCursor = val.slice(0, cursor);
+    
+    // Match last word before cursor starting with @ or @rm-
+    const match = textBeforeCursor.match(/(@rm-[a-zA-Z0-9_\u00C0-\u1EF9]*|@[a-zA-Z0-9_\u00C0-\u1EF9]*)$/i);
+    
+    if (!match) {
+      popupEl.classList.add('hidden');
+      return;
+    }
+
+    const lastWord = match[0];
+
+    if (lastWord.startsWith('@rm-')) {
+      const currentChat = state.chats[state.currentChatId];
+      if (!currentChat || !currentChat.members) {
+        popupEl.classList.add('hidden');
+        return;
+      }
+      const query = lastWord.slice(4).toLowerCase();
+      const removable = currentChat.members.filter(m => m !== state.currentUser.name && m.toLowerCase().includes(query));
+
+      if (removable.length === 0) {
+        popupEl.classList.add('hidden');
+        return;
+      }
+
+      itemsEl.innerHTML = '';
+      selectedIndex = 0;
+
+      removable.forEach((name, idx) => {
+        const item = document.createElement('div');
+        item.className = 'mention-item' + (idx === 0 ? ' selected' : '');
+        item.innerHTML = `
+          <div class="mention-item-avatar" style="background: rgba(245, 101, 101, 0.2); color: #f87171;">✕</div>
+          <span class="mention-item-name" style="color: #f87171;">Xóa @${escapeHtml(name)}</span>
+        `;
+        item.addEventListener('click', (e) => {
+          e.stopPropagation();
+          insertMention(textarea, lastWord, `@rm-${name} `);
+          popupEl.classList.add('hidden');
+        });
+        itemsEl.appendChild(item);
+      });
+      popupEl.classList.remove('hidden');
+
+    } else if (lastWord.startsWith('@')) {
+      const query = lastWord.slice(1).toLowerCase();
+      const matches = CONTACTS_DIRECTORY.filter(c => c.name.toLowerCase().includes(query) || c.role.toLowerCase().includes(query));
+
+      if (matches.length === 0) {
+        popupEl.classList.add('hidden');
+        return;
+      }
+
+      itemsEl.innerHTML = '';
+      selectedIndex = 0;
+
+      matches.forEach((c, idx) => {
+        const item = document.createElement('div');
+        item.className = 'mention-item' + (idx === 0 ? ' selected' : '');
+        const initials = c.name.split(' ').map(n => n[0]).slice(-2).join('');
+        item.innerHTML = `
+          <div class="mention-item-avatar">${initials}</div>
+          <span class="mention-item-name">${escapeHtml(c.name)}</span>
+          <span class="mention-item-role">${escapeHtml(c.role)}</span>
+        `;
+        item.addEventListener('click', (e) => {
+          e.stopPropagation();
+          insertMention(textarea, lastWord, `@${c.name} `);
+          popupEl.classList.add('hidden');
+        });
+        itemsEl.appendChild(item);
+      });
+      popupEl.classList.remove('hidden');
+    } else {
+      popupEl.classList.add('hidden');
+    }
+  };
+
+  textarea.addEventListener('input', handleInput);
+  textarea.addEventListener('keyup', (e) => {
+    if (e.key === '@') handleInput();
+  });
+  textarea.addEventListener('focus', handleInput);
+
+  // Keyboard navigation inside autocomplete popup
+  textarea.addEventListener('keydown', (e) => {
+    if (popupEl.classList.contains('hidden')) return;
+
+    const items = itemsEl.querySelectorAll('.mention-item');
+    if (items.length === 0) return;
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      selectedIndex = (selectedIndex + 1) % items.length;
+      updateSelection(items);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      selectedIndex = (selectedIndex - 1 + items.length) % items.length;
+      updateSelection(items);
+    } else if (e.key === 'Enter' || e.key === 'Tab') {
+      if (selectedIndex >= 0 && selectedIndex < items.length) {
+        e.preventDefault();
+        items[selectedIndex].click();
+      }
+    } else if (e.key === 'Escape') {
+      popupEl.classList.add('hidden');
+    }
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!popupEl.contains(e.target) && e.target !== textarea) {
+      popupEl.classList.add('hidden');
+    }
+  });
+}
+
+function insertMention(textarea, lastWord, replacement) {
+  const val = textarea.value;
+  const cursor = textarea.selectionStart || val.length;
+  const before = val.slice(0, cursor - lastWord.length);
+  const after = val.slice(cursor);
+  textarea.value = before + replacement + after;
+  const newPos = before.length + replacement.length;
+  textarea.setSelectionRange(newPos, newPos);
+  textarea.focus();
+}
+
+// Media Attachment Staging Renderer
+function renderStagedAttachments() {
+  if (!state.stagedAttachments) state.stagedAttachments = [];
+  const heroStrip = document.getElementById('heroAttachmentStaging');
+  const activeStrip = document.getElementById('activeAttachmentStaging');
+  
+  [heroStrip, activeStrip].forEach(strip => {
+    if (!strip) return;
+    if (state.stagedAttachments.length === 0) {
+      strip.classList.add('hidden');
+      strip.innerHTML = '';
+      return;
+    }
+    strip.classList.remove('hidden');
+    strip.innerHTML = '';
+    state.stagedAttachments.forEach((att, idx) => {
+      const badge = document.createElement('div');
+      badge.className = 'staged-media-badge';
+      let iconOrThumb = att.type === 'image' ? `<img src="${att.url}" class="staged-thumb-img">` : (att.type === 'video' ? '🎬' : (att.type === 'file' ? '📄' : '🎙️'));
+      badge.innerHTML = `
+        ${iconOrThumb}
+        <span style="max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(att.name || att.type)}</span>
+        <span class="staged-remove-btn" onclick="removeStagedAttachment(${idx})" title="Gỡ bỏ">✕</span>
+      `;
+      strip.appendChild(badge);
+    });
+  });
+}
+
+window.removeStagedAttachment = function(idx) {
+  if (state.stagedAttachments) {
+    state.stagedAttachments.splice(idx, 1);
+    renderStagedAttachments();
+  }
+};
+
+// Handle Hero Input Send (Smart Tag @ Routing: Tag 1 person -> 1-1 DM, Tag 2+ -> Group Chat)
+function handleHeroSend() {
+  const text = elements.heroChatInput?.value.trim() || '';
+  const hasStaged = state.stagedAttachments && state.stagedAttachments.length > 0;
+  if (!text && !hasStaged) return;
+
+  const now = new Date();
+  const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  let targetChatId = null;
+
+  // Build message payload
+  const newMsg = {
+    id: 'm_' + Date.now(),
+    author: state.currentUser.name,
+    role: state.currentUser.role || '',
+    time: timeStr,
+    content: text
+  };
+
+  // Attach staged media
+  if (hasStaged) {
+    state.stagedAttachments.forEach(att => {
+      if (att.type === 'image') {
+        newMsg.image = att.url;
+        newMsg.imageCaption = att.caption || att.name;
+      } else if (att.type === 'video') {
+        newMsg.video = att.url;
+        newMsg.videoCaption = att.caption || att.name;
+      } else if (att.type === 'file') {
+        newMsg.file = { name: att.name, size: att.size, type: att.fileType, url: att.url || '#' };
+      } else if (att.type === 'voice') {
+        newMsg.voice = { duration: att.duration, url: att.url || 'sample' };
+      }
+    });
+    state.stagedAttachments = [];
+    renderStagedAttachments();
+  }
+
+  // 1. Extract all @mentions from input text
+  const mentionRegex = /@([a-zA-Z0-9_\u00C0-\u1EF9\s]+)/gi;
+  const taggedUsers = [];
+  let match;
+  while ((match = mentionRegex.exec(text)) !== null) {
+    const raw = match[1].trim();
+    if (raw.startsWith('rm-')) continue;
+    const foundContact = CONTACTS_DIRECTORY.find(c => c.name.toLowerCase().includes(raw.toLowerCase()) || raw.toLowerCase().includes(c.name.toLowerCase()));
+    const finalName = foundContact ? foundContact.name : raw;
+    if (finalName && !taggedUsers.includes(finalName)) {
+      taggedUsers.push(finalName);
+    }
+  }
+
+  if (taggedUsers.length === 1) {
+    // ==========================================
+    // CASE 1: TAG @ 1 PERSON -> 1-1 DIRECT CHAT
+    // ==========================================
+    const recipient = taggedUsers[0];
+    const existingId = Object.keys(state.chats).find(id => state.chats[id].title.toLowerCase() === recipient.toLowerCase() && state.chats[id].type === 'direct');
+
+    if (existingId) {
+      targetChatId = existingId;
+    } else {
+      targetChatId = 'chat_' + Date.now();
+      state.chats[targetChatId] = {
+        title: recipient,
+        type: 'direct',
+        members: [state.currentUser.name, recipient],
+        membersCount: 'Đang trực tuyến',
+        unread: 0,
+        messages: []
+      };
+    }
+
+    state.chats[targetChatId].messages.push(newMsg);
+    showToast(`👤 Tin nhắn trực tiếp tới ${recipient}!`, '💬');
+
+  } else if (taggedUsers.length > 1) {
+    // ==========================================
+    // CASE 2: TAG @ NHIỀU NGƯỜI -> GROUP CHAT
+    // ==========================================
+    const groupTitle = `Nhóm ${taggedUsers.slice(0, 2).join(', ')}${taggedUsers.length > 2 ? ` +${taggedUsers.length - 2}` : ''}`;
+    targetChatId = 'chat_' + Date.now();
+    state.chats[targetChatId] = {
+      title: groupTitle,
+      type: 'group',
+      members: [state.currentUser.name, ...taggedUsers],
+      membersCount: `${taggedUsers.length + 1} thành viên`,
+      unread: 0,
+      messages: [
+        {
+          id: 'sys_' + Date.now(),
+          isSystem: true,
+          type: 'system',
+          content: `Nhóm "${groupTitle}" đã được tạo với các thành viên: ${taggedUsers.join(', ')}.`
+        },
+        newMsg
+      ]
+    };
+    showToast(`👥 Đã tạo nhóm chat với ${taggedUsers.length} người bạn!`, '👥');
+
+  } else {
+    // ==========================================
+    // CASE 3: KHÔNG TAG AI (FALLBACK THEO CHẾ ĐỘ)
+    // ==========================================
+    if (state.heroMode === 'chat') {
+      const recipient = state.heroSelectedRecipient || 'Lương Thanh Hậu';
+      const existingId = Object.keys(state.chats).find(id => state.chats[id].title.toLowerCase() === recipient.toLowerCase() && state.chats[id].type === 'direct');
+
+      if (existingId) {
+        targetChatId = existingId;
+      } else {
+        targetChatId = 'chat_' + Date.now();
+        state.chats[targetChatId] = {
+          title: recipient,
+          type: 'direct',
+          members: [state.currentUser.name, recipient],
+          membersCount: 'Đang trực tuyến',
+          unread: 0,
+          messages: []
+        };
+      }
+
+      state.chats[targetChatId].messages.push(newMsg);
+
+    } else {
+      const groupTarget = state.heroSelectedRecipient || 'trại bò cơ sở 1';
+      const existingId = Object.keys(state.chats).find(id => state.chats[id].title.toLowerCase() === groupTarget.toLowerCase() && (state.chats[id].type === 'channel' || state.chats[id].type === 'group' || state.chats[id].type === 'global_channel'));
+
+      if (existingId) {
+        targetChatId = existingId;
+      } else {
+        targetChatId = 'chat_' + Date.now();
+        state.chats[targetChatId] = {
+          title: groupTarget,
+          type: 'group',
+          members: [state.currentUser.name],
+          membersCount: '1 thành viên',
+          unread: 0,
+          messages: []
+        };
+      }
+
+      state.chats[targetChatId].messages.push(newMsg);
+    }
+  }
+
+  enforceMessageLimits(targetChatId);
+  saveState();
+
+  // Send to Realtime WebSocket
+  if (socket && socket.connected) {
+    socket.emit('join_chat', { chatId: targetChatId });
+    socket.emit('send_message', {
+      ...newMsg,
+      chatId: targetChatId
+    });
+  }
+
+  elements.heroChatInput.value = '';
+  autoResizeTextarea(elements.heroChatInput);
+  elements.heroSendBtn?.classList.remove('active');
+  document.getElementById('heroHelperBanner')?.classList.add('hidden');
+  state.isCreatingNewGroup = false;
+
+  renderSidebarChats();
+  showChatView(targetChatId);
+  playChimeSound('send');
+}
+
+// Handle Active Chat Input Send
+function handleActiveChatSend() {
+  const text = elements.activeChatInput?.value.trim() || '';
+  const hasStaged = state.stagedAttachments && state.stagedAttachments.length > 0;
+  if ((!text && !hasStaged) || !state.currentChatId) return;
+
+  const now = new Date();
+  const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  const currentChat = state.chats[state.currentChatId];
+  if (!currentChat) return;
+
+  // Process @ and @rm- commands for group chats
+  processGroupCommands(currentChat, text);
+
+  const newMsg = {
+    id: 'm_' + Date.now(),
+    author: state.currentUser.name,
+    role: state.currentUser.role || '',
+    time: timeStr,
+    content: text
+  };
+
+  // Attach staged media
+  if (hasStaged) {
+    state.stagedAttachments.forEach(att => {
+      if (att.type === 'image') {
+        newMsg.image = att.url;
+        newMsg.imageCaption = att.caption || att.name;
+      } else if (att.type === 'video') {
+        newMsg.video = att.url;
+        newMsg.videoCaption = att.caption || att.name;
+      } else if (att.type === 'file') {
+        newMsg.file = { name: att.name, size: att.size, type: att.fileType, url: att.url || '#' };
+      } else if (att.type === 'voice') {
+        newMsg.voice = { duration: att.duration, url: att.url || 'sample' };
+      }
+    });
+    state.stagedAttachments = [];
+    renderStagedAttachments();
+  }
+
+  currentChat.messages.push(newMsg);
+  enforceMessageLimits(state.currentChatId);
+  saveState();
+
+  // Send via Socket.io Realtime Engine
+  if (socket && socket.connected) {
+    socket.emit('send_message', {
+      ...newMsg,
+      chatId: state.currentChatId
+    });
+    socket.emit('typing_stop', { chatId: state.currentChatId, userName: state.currentUser.name });
+  }
+
+  elements.activeChatInput.value = '';
+  autoResizeTextarea(elements.activeChatInput);
+
+  renderCurrentChat();
+  renderSidebarChats();
+  playChimeSound('send');
+}
+
+// Simulate realistic incoming teammate response with typing spinner
+function simulatePartnerReply(userPrompt) {
+  if (!elements.typingIndicator) return;
+  const currentChatId = state.currentChatId;
+  const chat = state.chats[currentChatId];
+  if (!chat) return;
+
+  elements.typingIndicator.classList.remove('hidden');
+  if (elements.streamingStatusText) elements.streamingStatusText.textContent = 'Đang nhận phản hồi...';
+
+  const isGroup = chat.type === 'channel' || chat.type === 'group';
+  let partnerName = 'Lương Thanh Hậu';
+  if (isGroup && chat.members && chat.members.length > 1) {
+    const available = chat.members.filter(m => m !== state.currentUser.name);
+    partnerName = available[Math.floor(Math.random() * available.length)] || 'Lương Thanh Hậu';
+  } else {
+    partnerName = chat.title;
+  }
+
+  setTimeout(() => {
+    if (state.currentChatId !== currentChatId) {
+      elements.typingIndicator?.classList.add('hidden');
+      return;
+    }
+
+    elements.typingIndicator?.classList.add('hidden');
+
+    const now = new Date();
+    const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+    let replyContent = `Đã nhận được thông tin từ bạn: "${userPrompt}". Mình đang kiểm tra và sẽ phản hồi chi tiết ngay! 👍`;
+
+    if (userPrompt.toLowerCase().includes('nhiệt độ') || userPrompt.toLowerCase().includes('sensor') || userPrompt.toLowerCase().includes('code')) {
+      replyContent = `Dữ liệu cảm biến mới nhất từ chuồng trại ghi nhận lúc **${timeStr}**:
+- Nhiệt độ trung bình: **26.8°C** (Ổn định)
+- Độ ẩm không khí: **72%** (Đạt chuẩn)
+- Hệ thống thông gió: **Tự động cấp độ 2**`;
+    } else if (userPrompt.toLowerCase().includes('thức ăn') || userPrompt.toLowerCase().includes('cỏ')) {
+      replyContent = `Kế hoạch phân bổ thức ăn hôm nay đã hoàn tất:
+- Khẩu phần sáng: Cỏ voi ủ chua + Cám hỗn hợp (10kg/con)
+- Khẩu phần chiều: Cỏ tươi cắt trong ngày + Khoáng vi lượng`;
+    } else if (userPrompt.includes('@')) {
+      replyContent = `Chào bạn! Mình vừa nhận được thông báo tag vào nhóm. Mình có thể hỗ trợ được gì cho công việc này? 🤝`;
+    }
+
+    chat.messages.push({
+      id: 'm_' + Date.now(),
+      author: partnerName,
+      time: timeStr,
+      content: replyContent
+    });
+
+    saveState();
+    renderCurrentChat();
+    playChimeSound('receive');
+  }, 1200);
+}
+
+// Render Projects Grid View (with filter: all, groups, friends)
+function renderProjectsGrid(filter = 'all') {
+  if (!elements.projectsGrid) return;
+  elements.projectsGrid.innerHTML = '';
+
+  const allChatIds = Object.keys(state.chats);
+  const groupIds = allChatIds.filter(id => state.chats[id].type === 'channel' || state.chats[id].type === 'group');
+  const friendIds = allChatIds.filter(id => state.chats[id].type === 'direct');
+
+  if (elements.allCount) elements.allCount.textContent = allChatIds.length;
+  if (elements.groupsCount) elements.groupsCount.textContent = groupIds.length;
+  if (elements.friendsCount) elements.friendsCount.textContent = friendIds.length;
+
+  let displayIds = allChatIds;
+  if (filter === 'groups') displayIds = groupIds;
+  if (filter === 'friends') displayIds = friendIds;
+
+  if (displayIds.length === 0) {
+    elements.projectsGrid.innerHTML = `
+      <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--text-muted);">
+        Chưa có mục nào trong danh mục này.
+      </div>
+    `;
+    return;
+  }
+
+  displayIds.forEach(chatId => {
+    const chat = state.chats[chatId];
+    const card = document.createElement('div');
+    card.className = 'project-card';
+
+    const isGroup = chat.type === 'channel' || chat.type === 'group';
+    const lastMsg = chat.messages && chat.messages.length > 0 ? chat.messages[chat.messages.length - 1] : null;
+    const lastContent = lastMsg ? (lastMsg.content.length > 80 ? lastMsg.content.substring(0, 80) + '...' : lastMsg.content) : 'Chưa có tin nhắn nào';
+    const lastTime = lastMsg ? lastMsg.time : 'Hôm nay';
+
+    card.innerHTML = `
+      <div class="project-card-top">
+        <div class="project-card-title-group">
+          <span class="project-card-title">${escapeHtml(chat.title)}</span>
+          <span class="project-card-type-tag">${isGroup ? '👥 Nhóm chat' : '🟢 Bạn bè (Online)'}</span>
+        </div>
+      </div>
+      <div class="project-card-snippet">${escapeHtml(lastContent)}</div>
+      <div class="project-card-footer">
+        <span>⏱ ${lastTime} · ${chat.membersCount || ''}</span>
+        <span style="color: var(--accent-coral); font-weight: 500;">${isGroup ? 'Vào nhóm →' : 'Nhắn tin →'}</span>
+      </div>
+    `;
+
+    card.addEventListener('click', () => {
+      showChatView(chatId);
+    });
+
+    elements.projectsGrid.appendChild(card);
+  });
+}
+
+// Populate Quick Session Switcher Dropdown
+function populateQuickSessionMenu() {
+  const list = elements.sessionQuickItems;
+  if (!list) return;
+  list.innerHTML = '';
+
+  Object.keys(state.chats).forEach(chatId => {
+    const chat = state.chats[chatId];
+    const isGroup = chat.type === 'channel' || chat.type === 'group';
+    const item = document.createElement('div');
+    item.className = 'dropdown-item' + (state.currentChatId === chatId ? ' selected' : '');
+    item.innerHTML = `
+      <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+        <span>${isGroup ? '👥 ' : '👤 '}${escapeHtml(chat.title)}</span>
+        <span style="font-size: 11px; opacity: 0.6;">${chat.membersCount || ''}</span>
+      </div>
+    `;
+    item.addEventListener('click', (e) => {
+      e.stopPropagation();
+      elements.sessionQuickMenu?.classList.add('hidden');
+      showChatView(chatId);
+    });
+    list.appendChild(item);
+  });
+}
+
+// Setup All Event Listeners
+function setupEventListeners() {
+  // Sidebar Toggles
+  elements.collapseSidebarBtn?.addEventListener('click', toggleSidebar);
+  elements.openSidebarBtn?.addEventListener('click', toggleSidebar);
+  elements.mobileSidebarToggle?.addEventListener('click', toggleSidebar);
+
+  // Keyboard shortcut: Ctrl + \ to toggle sidebar, Ctrl + K for search
+  document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === '\\') {
+      e.preventDefault();
+      toggleSidebar();
+    }
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+      e.preventDefault();
+      openModal(elements.searchModal);
+      elements.globalSearchInput?.focus();
+    }
+  });
+
+  // Sidebar Brand Logo -> Return to Hero View
+  elements.brandLogo?.addEventListener('click', showHeroView);
+
+  // New Chat Button -> DIRECTLY Return to Clean Empty Hero View like Claude!
+  elements.newChatBtn?.addEventListener('click', (e) => {
+    e.preventDefault();
+    showHeroView();
+  });
+
+  // Mode Toggle (Chat vs Cowork)
+  elements.modeChatBtn?.addEventListener('click', () => {
+    state.heroMode = 'chat';
+    elements.modeChatBtn?.classList.add('active');
+    elements.modeCoworkBtn?.classList.remove('active');
+    state.heroSelectedRecipient = 'Lương Thanh Hậu';
+    updateHeroDropdownItems();
+  });
+
+  elements.modeCoworkBtn?.addEventListener('click', () => {
+    state.heroMode = 'cowork';
+    elements.modeCoworkBtn?.classList.add('active');
+    elements.modeChatBtn?.classList.remove('active');
+    state.heroSelectedRecipient = 'trại bò cơ sở 1';
+    updateHeroDropdownItems();
+  });
+
+  // Model Dropdown Toggle
+  elements.modelDropdownBtn?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    elements.modelDropdownMenu?.classList.toggle('show');
+  });
+
+  document.addEventListener('click', () => {
+    elements.modelDropdownMenu?.classList.remove('show');
+  });
+
+  // Setup Autocomplete for @ in Hero and Active Chat Textareas
+  setupMentionAutocomplete(elements.activeChatInput, elements.activeMentionAutocomplete, elements.activeMentionItems);
+  setupMentionAutocomplete(elements.heroChatInput, document.getElementById('mentionAutocomplete'), document.getElementById('mentionItems'));
+
+  // Close Helper Banner Button
+  document.getElementById('closeHelperBannerBtn')?.addEventListener('click', () => {
+    document.getElementById('heroHelperBanner')?.classList.add('hidden');
+    state.isCreatingNewGroup = false;
+  });
+
+  // Sidebar Navigation Items
+  elements.navProjects?.addEventListener('click', (e) => {
+    e.preventDefault();
+    showProjectsView();
+  });
+
+  elements.navConnect?.addEventListener('click', (e) => {
+    e.preventDefault();
+    openModal(elements.connectModal);
+  });
+
+  elements.navCustomize?.addEventListener('click', (e) => {
+    e.preventDefault();
+    openModal(elements.customizeModal);
+  });
+
+  // Projects View Buttons
+  elements.projectCreateNewBtn?.addEventListener('click', () => {
+    createNewGroupDirect();
+  });
+
+  elements.projectConnectBtn?.addEventListener('click', () => {
+    openModal(elements.connectModal);
+  });
+
+  // Top Header Session Dropdown Quick Menu
+  elements.sessionDropdownBtn?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    populateQuickSessionMenu();
+    elements.sessionQuickMenu?.classList.toggle('hidden');
+  });
+
+  document.addEventListener('click', () => {
+    elements.sessionQuickMenu?.classList.add('hidden');
+  });
+
+  elements.menuCreateNewSession?.addEventListener('click', () => {
+    elements.sessionQuickMenu?.classList.add('hidden');
+    showHeroView();
+  });
+
+  // Plan Banner Close & Upgrade
+  elements.closePlanBannerBtn?.addEventListener('click', () => {
+    if (elements.topPlanBanner) elements.topPlanBanner.style.display = 'none';
+  });
+
+  elements.planUpgradeLink?.addEventListener('click', (e) => {
+    e.preventDefault();
+    showToast('Bạn đang sử dụng phiên bản P2P Miễn phí đầy đủ tính năng!', '🚀');
+  });
+
+  // Filter Tabs in Projects View
+  document.querySelectorAll('.filter-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      const filter = tab.getAttribute('data-filter') || 'all';
+      renderProjectsGrid(filter);
+    });
+  });
+
+  // Attachment Popovers Toggle
+  const heroAttachBtn = document.getElementById('heroAttachBtn');
+  const heroAttachMenu = document.getElementById('heroAttachMenu');
+  const activeAttachBtn = document.getElementById('activeAttachBtn');
+  const activeAttachMenu = document.getElementById('activeAttachMenu');
+  const hiddenFileInput = document.getElementById('hiddenFileInput');
+
+  heroAttachBtn?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    heroAttachMenu?.classList.toggle('hidden');
+  });
+
+  activeAttachBtn?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    activeAttachMenu?.classList.toggle('hidden');
+  });
+
+  document.addEventListener('click', () => {
+    heroAttachMenu?.classList.add('hidden');
+    activeAttachMenu?.classList.add('hidden');
+  });
+
+  // Handle Attachment Menu Item Clicks
+  document.querySelectorAll('.attachment-popover-menu .attach-menu-item').forEach(item => {
+    item.addEventListener('click', (e) => {
+      e.stopPropagation();
+      heroAttachMenu?.classList.add('hidden');
+      activeAttachMenu?.classList.add('hidden');
+      const type = item.getAttribute('data-type');
+
+      if (type === 'image') {
+        if (hiddenFileInput) {
+          hiddenFileInput.accept = 'image/*';
+          hiddenFileInput.setAttribute('data-target-type', 'image');
+          hiddenFileInput.click();
+        }
+      } else if (type === 'video') {
+        if (hiddenFileInput) {
+          hiddenFileInput.accept = 'video/*';
+          hiddenFileInput.setAttribute('data-target-type', 'video');
+          hiddenFileInput.click();
+        }
+      } else if (type === 'file') {
+        if (hiddenFileInput) {
+          hiddenFileInput.accept = '.pdf,.doc,.docx,.txt,.json,.py,.zip';
+          hiddenFileInput.setAttribute('data-target-type', 'file');
+          hiddenFileInput.click();
+        }
+      } else if (type === 'voice') {
+        state.stagedAttachments.push({
+          type: 'voice',
+          name: 'Voice note (0:18)',
+          duration: '0:18'
+        });
+        renderStagedAttachments();
+        showToast('Đã đính kèm ghi âm giọng nói!', '🎙️');
+      }
+    });
+  });
+
+  // Hidden File Input Change Handler
+  hiddenFileInput?.addEventListener('change', async (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+
+    const targetType = hiddenFileInput.getAttribute('data-target-type') || 'file';
+    
+    // Upload to server if available
+    const uploadResult = await uploadFileToServer(file);
+    const serverUrl = uploadResult ? uploadResult.url : null;
+
+    if (targetType === 'image') {
+      const reader = new FileReader();
+      reader.onload = (re) => {
+        state.stagedAttachments.push({
+          type: 'image',
+          name: file.name,
+          url: serverUrl || re.target.result,
+          caption: file.name
+        });
+        renderStagedAttachments();
+        showToast(`Đã đính kèm ảnh "${file.name}"!`, '🖼️');
+      };
+      reader.readAsDataURL(file);
+    } else if (targetType === 'video') {
+      const reader = new FileReader();
+      reader.onload = (re) => {
+        state.stagedAttachments.push({
+          type: 'video',
+          name: file.name,
+          url: serverUrl || re.target.result,
+          caption: file.name
+        });
+        renderStagedAttachments();
+        showToast(`Đã đính kèm video "${file.name}"!`, '🎬');
+      };
+      reader.readAsDataURL(file);
+    } else {
+      const sizeStr = uploadResult ? uploadResult.fileSize : ((file.size / (1024 * 1024)).toFixed(1) + ' MB');
+      state.stagedAttachments.push({
+        type: 'file',
+        name: file.name,
+        size: sizeStr,
+        fileType: file.name.split('.').pop(),
+        url: serverUrl || '#'
+      });
+      renderStagedAttachments();
+      showToast(`Đã đính kèm tài liệu "${file.name}"!`, '📄');
+    }
+
+    hiddenFileInput.value = '';
+  });
+
+  // Lightbox Close
+  document.getElementById('closeLightboxBtn')?.addEventListener('click', () => {
+    document.getElementById('imageLightboxModal')?.classList.add('hidden');
+  });
+
+  document.getElementById('imageLightboxModal')?.addEventListener('click', (e) => {
+    if (e.target.id === 'imageLightboxModal') {
+      document.getElementById('imageLightboxModal')?.classList.add('hidden');
+    }
+  });
+
+  // Clipboard Image Paste (Ctrl + V)
+  document.addEventListener('paste', async (e) => {
+    const items = (e.clipboardData || e.originalEvent?.clipboardData)?.items;
+    if (!items) return;
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf('image') !== -1) {
+        const blob = items[i].getAsFile();
+        const uploadResult = await uploadFileToServer(blob);
+        const serverUrl = uploadResult ? uploadResult.url : null;
+
+        const reader = new FileReader();
+        reader.onload = (re) => {
+          state.stagedAttachments.push({
+            type: 'image',
+            name: `Pasted_Image_${Date.now()}.png`,
+            url: serverUrl || re.target.result,
+            caption: 'Ảnh dán từ clipboard'
+          });
+          renderStagedAttachments();
+          showToast('Đã dán ảnh từ clipboard vào tin nhắn!', '📋');
+        };
+        reader.readAsDataURL(blob);
+      }
+    }
+  });
+
+  // Modal Closures
+  elements.closeConnectModalBtn?.addEventListener('click', () => closeModal(elements.connectModal));
+  elements.doneConnectBtn?.addEventListener('click', () => closeModal(elements.connectModal));
+  elements.closeCustomizeModalBtn?.addEventListener('click', () => closeModal(elements.customizeModal));
+  elements.saveCustomizeBtn?.addEventListener('click', handleSaveCustomize);
+
+  // Search Modal
+  elements.searchChatsBtn?.addEventListener('click', () => {
+    openModal(elements.searchModal);
+    elements.globalSearchInput?.focus();
+  });
+  elements.closeSearchModalBtn?.addEventListener('click', () => closeModal(elements.searchModal));
+  elements.globalSearchInput?.addEventListener('input', handleGlobalSearch);
+
+  // Profile Modal & Switch User Button
+  elements.userProfileBtn?.addEventListener('click', () => {
+    if (elements.profileNameInput) elements.profileNameInput.value = state.currentUser.name;
+    if (elements.profileRoleInput) elements.profileRoleInput.value = state.currentUser.role;
+    if (elements.profileIdInput) elements.profileIdInput.value = state.currentUser.id || 'u_shiina';
+    openModal(elements.profileModal);
+  });
+  elements.closeProfileModalBtn?.addEventListener('click', () => closeModal(elements.profileModal));
+  elements.cancelProfileBtn?.addEventListener('click', () => closeModal(elements.profileModal));
+  elements.saveProfileBtn?.addEventListener('click', handleSaveProfile);
+
+  elements.switchUserBtn?.addEventListener('click', () => {
+    const selectedUserId = elements.quickUserSelect?.value || 'u_shiina';
+    const userMap = {
+      'u_shiina': { name: 'Shiina', role: 'Quản trị viên', initials: 'S' },
+      'u_hau': { name: 'Lương Thanh Hậu', role: 'Quản lý', initials: 'LH' },
+      'u_tung_nq': { name: 'Nguyễn Quang Tùng', role: 'Kỹ thuật viên', initials: 'QT' },
+      'u_tung_nl': { name: 'Nguyễn Lâm Tùng', role: 'Giám sát', initials: 'LT' },
+      'u_alex': { name: 'Alex Rivers', role: 'Chuyên gia Thú y', initials: 'AR' },
+      'u_trang': { name: 'Phạm Thu Trang', role: 'Kế toán kho', initials: 'TT' },
+      'u_manh': { name: 'Trần Văn Mạnh', role: 'Vận hành máy', initials: 'TM' },
+      'u_elena': { name: 'Elena Rostova', role: 'Cố vấn Quốc tế', initials: 'ER' }
+    };
+
+    const targetUser = userMap[selectedUserId] || userMap['u_shiina'];
+    state.currentUser = {
+      id: selectedUserId,
+      name: targetUser.name,
+      role: targetUser.role,
+      initials: targetUser.initials
+    };
+
+    if (elements.profileNameInput) elements.profileNameInput.value = targetUser.name;
+    if (elements.profileRoleInput) elements.profileRoleInput.value = targetUser.role;
+    if (elements.profileIdInput) elements.profileIdInput.value = selectedUserId;
+
+    const currentUserNameEl = document.querySelector('.user-name');
+    const currentUserAvatarEl = document.querySelector('.user-avatar');
+    if (currentUserNameEl) currentUserNameEl.textContent = targetUser.name;
+    if (currentUserAvatarEl) currentUserAvatarEl.textContent = targetUser.initials;
+
+    if (socket && socket.connected) {
+      socket.emit('register_user', { userId: selectedUserId, userName: targetUser.name });
+    }
+
+    closeModal(elements.profileModal);
+    showToast(`Đã chuyển sang tài khoản ${targetUser.name}!`, '👤');
+  });
+
+  // Modal Backdrop click to close
+  document.querySelectorAll('.modal-overlay').forEach(modal => {
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) closeModal(modal);
+    });
+  });
+
+  // Copy My ID
+  elements.copyMyIdBtn?.addEventListener('click', () => {
+    const id = elements.myIdCode?.textContent || 'shiina-p2p-7014';
+    navigator.clipboard?.writeText(id);
+    showToast('Đã sao chép mã P2P ID vào clipboard!', '📋');
+    const btnSpan = elements.copyMyIdBtn.querySelector('span');
+    if (btnSpan) btnSpan.textContent = 'Copied!';
+    setTimeout(() => { if (btnSpan) btnSpan.textContent = 'Copy'; }, 1500);
+  });
+
+  // Connect target ID
+  elements.connectTargetBtn?.addEventListener('click', handleConnectTarget);
+
+  // Test Sound Button
+  elements.testSoundBtn?.addEventListener('click', () => {
+    playChimeSound('chime');
+  });
+
+  // Theme selector radio options in Customize Modal
+  document.querySelectorAll('.theme-option').forEach(opt => {
+    opt.addEventListener('click', () => {
+      document.querySelectorAll('.theme-option').forEach(o => o.classList.remove('active'));
+      opt.classList.add('active');
+      const theme = opt.getAttribute('data-theme');
+      applyTheme(theme);
+      state.settings.theme = theme;
+    });
+  });
+
+  // Hero Chat Input Actions
+  elements.heroChatInput?.addEventListener('input', () => {
+    autoResizeTextarea(elements.heroChatInput);
+    if (elements.heroChatInput.value.trim().length > 0) {
+      elements.heroSendBtn?.classList.add('active');
+    } else {
+      elements.heroSendBtn?.classList.remove('active');
+    }
+  });
+
+  elements.heroChatInput?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleHeroSend();
+    }
+  });
+
+  elements.heroSendBtn?.addEventListener('click', handleHeroSend);
+
+  // Active Chat Input Actions
+  elements.activeChatInput?.addEventListener('input', () => {
+    autoResizeTextarea(elements.activeChatInput);
+    if (socket && socket.connected && state.currentChatId) {
+      socket.emit('typing_start', { chatId: state.currentChatId, userName: state.currentUser.name });
+      clearTimeout(typingDebounceTimer);
+      typingDebounceTimer = setTimeout(() => {
+        socket.emit('typing_stop', { chatId: state.currentChatId, userName: state.currentUser.name });
+      }, 1500);
+    }
+  });
+
+  elements.activeChatInput?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleActiveChatSend();
+    }
+  });
+
+  elements.activeSendBtn?.addEventListener('click', handleActiveChatSend);
+
+  // Quick Action Chips on Hero screen
+  document.querySelectorAll('.quick-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const prompt = chip.getAttribute('data-prompt');
+      if (elements.heroChatInput) {
+        elements.heroChatInput.value = prompt;
+        autoResizeTextarea(elements.heroChatInput);
+        elements.heroChatInput.focus();
+        elements.heroSendBtn?.classList.add('active');
+      }
+    });
+  });
+
+  // Artifacts Panel Controls
+  elements.closeArtifactBtn?.addEventListener('click', closeArtifacts);
+  elements.copyArtifactBtn?.addEventListener('click', () => {
+    const code = elements.artifactCodeBlock?.textContent || '';
+    navigator.clipboard?.writeText(code);
+    showToast('Đã sao chép mã nguồn vào clipboard!', '📋');
+  });
+
+  elements.tabCode?.addEventListener('click', () => switchArtifactTab('code'));
+  elements.tabPreview?.addEventListener('click', () => switchArtifactTab('preview'));
+  elements.tabHistory?.addEventListener('click', () => switchArtifactTab('history'));
+
+  // Download Transcript Button
+  elements.downloadTranscriptBtn?.addEventListener('click', handleDownloadTranscript);
+}
+
+// Handle Connect Target ID
+function handleConnectTarget() {
+  const targetId = elements.targetIdInput?.value.trim();
+  if (!targetId) return;
+
+  const newChatKey = 'chat_' + Date.now();
+  state.chats[newChatKey] = {
+    title: targetId,
+    type: 'direct',
+    members: [state.currentUser.name, targetId],
+    membersCount: 'Đã kết nối P2P',
+    unread: 0,
+    messages: [
+      {
+        id: 'm_' + Date.now(),
+        author: targetId,
+        time: 'Vừa xong',
+        content: `Đã thiết lập kênh kết nối P2P trực tiếp với ID [${targetId}]. Mọi tin nhắn đều được mã hóa an toàn.`
+      }
+    ]
+  };
+
+  saveState();
+  closeModal(elements.connectModal);
+  if (elements.targetIdInput) elements.targetIdInput.value = '';
+  renderSidebarChats();
+  showChatView(newChatKey);
+  showToast(`Đã kết nối P2P thành công với ${targetId}!`, '🔗');
+}
+
+// Handle Save Customization
+function handleSaveCustomize() {
+  state.settings.soundEnabled = elements.soundToggle?.checked ?? true;
+  state.settings.notificationsEnabled = elements.notifToggle?.checked ?? true;
+  saveState();
+  closeModal(elements.customizeModal);
+  showToast('Đã lưu cài đặt giao diện & âm thanh!', '⚙️');
+}
+
+// Handle Save Profile
+function handleSaveProfile() {
+  const name = elements.profileNameInput?.value.trim() || 'Shiina';
+  const role = elements.profileRoleInput?.value.trim() || 'Quản trị viên';
+  state.currentUser.name = name;
+  state.currentUser.role = role;
+  state.currentUser.initials = name.charAt(0).toUpperCase();
+
+  const currentUserNameEl = document.querySelector('.user-name');
+  const currentUserAvatarEl = document.querySelector('.user-avatar');
+  if (currentUserNameEl) currentUserNameEl.textContent = name;
+  if (currentUserAvatarEl) currentUserAvatarEl.textContent = state.currentUser.initials;
+
+  closeModal(elements.profileModal);
+  showToast('Đã cập nhật thông tin hồ sơ!', '👤');
+}
+
+// Handle Global Search
+function handleGlobalSearch() {
+  const query = elements.globalSearchInput?.value.trim().toLowerCase();
+  const list = elements.searchResultsList;
+  if (!list) return;
+
+  if (!query) {
+    list.innerHTML = `
+      <div style="color: var(--text-muted); font-size: 13px; text-align: center; padding: 20px;">
+        Nhập từ khóa để tìm nhanh tin nhắn hoặc bạn bè
+      </div>
+    `;
+    return;
+  }
+
+  const results = [];
+  Object.keys(state.chats).forEach(chatId => {
+    const chat = state.chats[chatId];
+    if (chat.title.toLowerCase().includes(query)) {
+      results.push({
+        chatId: chatId,
+        title: chat.title,
+        snippet: `Hội thoại: ${chat.type === 'channel' || chat.type === 'group' ? 'Nhóm chat' : 'Bạn bè'}`,
+        time: 'Tên phòng'
+      });
+    }
+    chat.messages.forEach(m => {
+      if (m.content && m.content.toLowerCase().includes(query)) {
+        results.push({
+          chatId: chatId,
+          title: chat.title,
+          snippet: `[${m.author}]: ${m.content}`,
+          time: m.time || 'Hôm nay'
+        });
+      }
+    });
+  });
+
+  if (results.length === 0) {
+    list.innerHTML = `
+      <div style="color: var(--text-muted); font-size: 13px; text-align: center; padding: 20px;">
+        Không tìm thấy kết quả phù hợp với "${escapeHtml(query)}"
+      </div>
+    `;
+    return;
+  }
+
+  list.innerHTML = '';
+  results.forEach(res => {
+    const item = document.createElement('div');
+    item.className = 'search-result-item';
+    item.innerHTML = `
+      <div class="search-res-title">
+        <span>${escapeHtml(res.title)}</span>
+        <span style="font-size: 11px; color: var(--text-dim);">${escapeHtml(res.time)}</span>
+      </div>
+      <div class="search-res-snippet">${escapeHtml(res.snippet)}</div>
+    `;
+    item.addEventListener('click', () => {
+      closeModal(elements.searchModal);
+      showChatView(res.chatId);
+    });
+    list.appendChild(item);
+  });
+}
+
+// Download Transcript as Markdown file
+function handleDownloadTranscript() {
+  if (!state.currentChatId || !state.chats[state.currentChatId]) {
+    showToast('Vui lòng chọn một cuộc trò chuyện để tải nhật ký!', '⚠️');
+    return;
+  }
+  const chat = state.chats[state.currentChatId];
+  let md = `# Nhật ký trò chuyện: ${chat.title}\n`;
+  md += `Loại: ${chat.type} | Thành viên: ${chat.membersCount || ''} | Xuất lúc: ${new Date().toLocaleString('vi-VN')}\n\n---\n\n`;
+
+  chat.messages.forEach(m => {
+    if (m.isSystem) {
+      md += `*-- Hệ thống: ${m.content} --*\n\n`;
+      return;
+    }
+    md += `### ${m.author} (${m.time})\n`;
+    if (m.thought) md += `> *${m.thought}*\n\n`;
+    md += `${m.content}\n\n`;
+    if (m.hasArtifact && m.artifactCode) {
+      md += `\`\`\`python\n${m.artifactCode}\n\`\`\`\n\n`;
+    }
+  });
+
+  const blob = new Blob([md], { type: 'text/markdown;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `transcript_${chat.title.replace(/\s+/g, '_')}_${Date.now()}.md`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('Đã tải xuống nhật ký tin nhắn!', '📥');
+}
+
+// Toggle Sidebar
+function toggleSidebar() {
+  state.isSidebarCollapsed = !state.isSidebarCollapsed;
+  elements.sidebar?.classList.toggle('collapsed', state.isSidebarCollapsed);
+  elements.sidebar?.classList.toggle('open', !state.isSidebarCollapsed);
+  document.body.classList.toggle('sidebar-is-collapsed', state.isSidebarCollapsed);
+}
+
+// Modal Helpers
+function openModal(modal) {
+  if (!modal) return;
+  modal.classList.remove('hidden');
+}
+
+function closeModal(modal) {
+  if (!modal) return;
+  modal.classList.add('hidden');
+}
+
+// Apply Theme
+function applyTheme(theme) {
+  document.body.classList.remove('theme-light', 'theme-sepia');
+  if (theme === 'light') {
+    document.body.classList.add('theme-light');
+  } else if (theme === 'sepia') {
+    document.body.classList.add('theme-sepia');
+  }
+}
+
+// Artifacts Drawer functions
+window.openArtifact = function(title, encodedCode) {
+  const code = decodeURIComponent(encodedCode);
+  state.isArtifactsOpen = true;
+  elements.artifactsDrawer?.classList.add('open');
+  if (elements.artifactPanelTitle) elements.artifactPanelTitle.textContent = title;
+  if (elements.artifactCodeBlock) elements.artifactCodeBlock.textContent = code;
+  switchArtifactTab('code');
+};
+
+function closeArtifacts() {
+  state.isArtifactsOpen = false;
+  elements.artifactsDrawer?.classList.remove('open');
+}
+
+function switchArtifactTab(tab) {
+  [elements.tabCode, elements.tabPreview, elements.tabHistory].forEach(t => t?.classList.remove('active'));
+  
+  if (tab === 'code') {
+    elements.tabCode?.classList.add('active');
+    if (elements.artifactsContent) {
+      elements.artifactsContent.innerHTML = `<pre class="code-viewer"><code id="artifactCodeBlock">${escapeHtml(elements.artifactCodeBlock?.textContent || '')}</code></pre>`;
+    }
+  } else if (tab === 'preview') {
+    elements.tabPreview?.classList.add('active');
+    if (elements.artifactsContent) {
+      elements.artifactsContent.innerHTML = `
+        <div style="background: #23221f; border: 1px solid #34332e; border-radius: 8px; padding: 20px; text-align: center;">
+          <div style="width: 48px; height: 48px; border-radius: 50%; background: var(--accent-coral); color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; margin: 0 auto 12px auto; font-size: 18px;">📊</div>
+          <h3 style="margin-bottom: 4px; color: #ecebe8; font-family: var(--font-sans);">Cảm biến chuồng trại CS1</h3>
+          <p style="color: #48bb78; font-size: 13px;">🟢 Đang truyền dữ liệu qua MQTT P2P</p>
+          <div style="margin-top: 14px; padding: 12px; background: rgba(255,255,255,0.04); border-radius: 6px; font-size: 13px; color: #a3a19b; text-align: left; line-height: 1.6;">
+            <div>🌡️ Nhiệt độ: <strong style="color: #fff;">26.8°C</strong></div>
+            <div>💧 Độ ẩm: <strong style="color: #fff;">74.2%</strong></div>
+            <div>💨 Tốc độ gió: <strong style="color: #fff;">1.8 m/s</strong></div>
+          </div>
+        </div>
+      `;
+    }
+  } else if (tab === 'history') {
+    elements.tabHistory?.classList.add('active');
+    if (elements.artifactsContent) {
+      elements.artifactsContent.innerHTML = `
+        <div style="color: #a3a19b; font-size: 13px; display: flex; flex-direction: column; gap: 10px;">
+          <div style="padding: 10px; background: #201f1d; border-radius: 6px; border: 1px solid #2f2e29;">
+            <div style="font-weight: 600; color: #ecebe8;">Version 2 (Hiện tại)</div>
+            <div style="font-size: 11.5px; color: #6e6c66; margin-top: 2px;">Cập nhật logic quạt làm mát tự động</div>
+          </div>
+          <div style="padding: 10px; background: #1a1917; border-radius: 6px; border: 1px solid #282723;">
+            <div style="font-weight: 600; color: #a3a19b;">Version 1 (Ban đầu)</div>
+            <div style="font-size: 11.5px; color: #6e6c66; margin-top: 2px;">Đọc dữ liệu thô nhiệt độ</div>
+          </div>
+        </div>
+      `;
+    }
+  }
+}
+
+// Dynamic Greeting based on time
+function updateGreeting() {
+  const hour = new Date().getHours();
+  let greeting = 'Hello, night owl';
+  
+  if (hour >= 5 && hour < 12) {
+    greeting = 'Good morning';
+  } else if (hour >= 12 && hour < 18) {
+    greeting = 'Good afternoon';
+  } else if (hour >= 18 && hour < 22) {
+    greeting = 'Good evening';
+  }
+
+  const el = document.getElementById('greetingText');
+  if (el) el.textContent = greeting;
+}
+
+// Textarea auto-resize
+function autoResizeTextarea(textarea) {
+  if (!textarea) return;
+  textarea.style.height = 'auto';
+  const newHeight = Math.min(textarea.scrollHeight, 180);
+  textarea.style.height = (newHeight > 28 ? newHeight : 28) + 'px';
+}
+
+// Helper: Generate Open Graph Link Preview Card
+function generateOgCardHtml(url) {
+  let domain = 'WEBSITE';
+  let title = 'Xem liên kết đính kèm';
+  let desc = 'Bấm vào để mở và xem chi tiết trang web được chia sẻ.';
+  let thumb = 'https://images.unsplash.com/photo-1504868584819-f8e8b4b6d7e3?w=600&auto=format&fit=crop&q=80';
+
+  try {
+    const parsed = new URL(url);
+    domain = parsed.hostname.replace('www.', '').toUpperCase();
+  } catch (e) {}
+
+  if (url.includes('nongnghiep.vn')) {
+    title = 'Tiêu chuẩn thiết kế chuồng trại bò sữa công nghệ cao 2026';
+    desc = 'Tổng hợp quy chuẩn kỹ thuật thông gió, máng ăn tự động, và tiêu chuẩn an toàn sinh học phòng dịch quốc gia.';
+    thumb = 'https://images.unsplash.com/photo-1546445317-29f4545e9d53?w=600&auto=format&fit=crop&q=80';
+  } else if (url.includes('github.com')) {
+    title = 'shiina/farm-iot-mqtt - Hệ thống giám sát P2P';
+    desc = 'Mã nguồn mở thu thập dữ liệu cảm biến chuồng nuôi ESP32 và tích hợp máy chủ MQTT.';
+    thumb = 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=600&auto=format&fit=crop&q=80';
+  }
+
+  return `
+    <a href="${url}" target="_blank" rel="noopener noreferrer" class="og-preview-card">
+      <img src="${thumb}" alt="Link Preview" class="og-image-thumb">
+      <div class="og-meta-content">
+        <div class="og-domain">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="2" y1="12" x2="22" y2="12"></line>
+            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+          </svg>
+          <span>${escapeHtml(domain)}</span>
+        </div>
+        <div class="og-title">${escapeHtml(title)}</div>
+        <div class="og-description">${escapeHtml(desc)}</div>
+      </div>
+    </a>
+  `;
+}
+
+function formatMessageContent(content) {
+  if (!content) return '';
+  
+  const paragraphs = content.split(/\n\s*\n/);
+  
+  const parsed = paragraphs.map(p => {
+    let text = escapeHtml(p.trim());
+    if (!text) return '';
+
+    // Bold **text**
+    text = text.replace(/\*\*(.*?)\*\*/g, '<strong class="msg-bold">$1</strong>');
+    
+    // Italic *text*
+    text = text.replace(/\*([^\*]+)\*/g, '<em>$1</em>');
+    
+    // Inline code `code`
+    text = text.replace(/`([^`]+)`/g, '<code class="msg-inline-code">$1</code>');
+    
+    // Highlight @mentions in text
+    text = text.replace(/@([a-zA-Z0-9_\u00C0-\u1EF9\s]+)/g, '<span class="mention-tag">@$1</span>');
+
+    // Detect and highlight URLs
+    let detectedUrl = null;
+    text = text.replace(/(https?:\/\/[^\s]+)/g, (match) => {
+      detectedUrl = match;
+      return `<a href="${match}" target="_blank" rel="noopener noreferrer" style="color: var(--accent-coral); text-decoration: underline; word-break: break-all;">${match}</a>`;
+    });
+
+    // Line breaks inside paragraph
+    text = text.replace(/\n/g, '<br>');
+
+    let ogCardHtml = detectedUrl ? generateOgCardHtml(detectedUrl) : '';
+
+    return `<p class="msg-paragraph">${text}</p>${ogCardHtml}`;
+  }).filter(Boolean);
+
+  return parsed.join('');
+}
+
+// Lightbox Modal Controller
+window.openLightbox = function(src, caption) {
+  const modal = document.getElementById('imageLightboxModal');
+  const img = document.getElementById('lightboxImg');
+  const title = document.getElementById('lightboxTitle');
+  const downloadBtn = document.getElementById('lightboxDownloadBtn');
+  
+  if (!modal || !img) return;
+
+  img.src = src;
+  if (title) title.textContent = caption || 'Xem hình ảnh';
+  modal.classList.remove('hidden');
+
+  if (downloadBtn) {
+    downloadBtn.onclick = () => {
+      const a = document.createElement('a');
+      a.href = src;
+      a.download = `photo_${Date.now()}.jpg`;
+      a.target = '_blank';
+      a.click();
+      showToast('Đang tải hình ảnh xuống...', '📥');
+    };
+  }
+};
+
+// Download Sample File
+window.downloadSampleFile = function(fileName) {
+  const dummyContent = `# File: ${fileName}\nExported from Claude P2P Chat\nDate: ${new Date().toISOString()}\nStatus: Verified`;
+  const blob = new Blob([dummyContent], { type: 'application/octet-stream' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fileName;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast(`Đã tải xuống ${fileName}!`, '📥');
+};
+
+// Voice Note Player Simulation
+window.toggleVoicePlay = function(btn) {
+  const isPlaying = btn.textContent === '⏸';
+  const waveform = btn.parentElement.querySelector('.voice-waveform');
+  const bars = waveform ? waveform.querySelectorAll('.waveform-bar') : [];
+
+  if (isPlaying) {
+    btn.textContent = '▶';
+    bars.forEach(b => b.style.height = '10px');
+  } else {
+    btn.textContent = '⏸';
+    playChimeSound('chime');
+    let count = 0;
+    const interval = setInterval(() => {
+      bars.forEach(b => {
+        b.style.height = (Math.floor(Math.random() * 14) + 6) + 'px';
+      });
+      count++;
+      if (count > 15) {
+        clearInterval(interval);
+        btn.textContent = '▶';
+        bars.forEach(b => b.style.height = '10px');
+      }
+    }, 200);
+  }
+};
+
+// Start application
+document.addEventListener('DOMContentLoaded', init);

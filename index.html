@@ -1,764 +1,815 @@
 <!DOCTYPE html>
-<html lang="vi" data-theme="dark">
-
+<html lang="vi">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#100b1d">
-  <title>PingPing Team Portal - Quản lý 3 Cuộc thi AI & Tech 2026</title>
-  <script>
-    (() => {
-      try {
-        const saved = JSON.parse(localStorage.getItem('pp_theme'));
-        const theme = saved || 'light';
-        document.documentElement.dataset.theme = 'dark';
-      } catch (_) {
-        document.documentElement.dataset.theme = 'dark';
-      }
-    })();
-  </script>
-  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-  <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png">
-  <link rel="shortcut icon" href="/favicon.ico">
-  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
-  <link rel="stylesheet" href="index.css?v=9">
+  <title>PingPing — Claude-style Minimalist Messenger</title>
+  <meta name="description" content="PingPing — Ứng dụng nhắn tin thời gian thực phong cách Claude tối giản, thanh lịch và độ trễ siêu thấp.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script src="/socket.io/socket.io.js"></script>
 </head>
-
 <body>
-  <!-- Particle Background Container -->
-  <div id="tsparticles"
-    style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none;"></div>
-
-  <!-- ==========================================================================
-       SITE HEADER
-       ========================================================================== -->
-  <header class="site-header">
-    <div class="logo-container">
-      <div class="logo-icon">PP</div>
-      <h1 class="logo-text">PingPing Portal</h1>
-      <span class="team-badge">Team 7 Thành viên</span>
-    </div>
-
-    <nav class="nav-tabs" aria-label="Điều hướng chính">
-      <button class="tab-btn active" data-tab="dashboard" aria-label="Bảng điều khiển" title="Bảng điều khiển">
-        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-          <path stroke-linecap="round" stroke-linejoin="round"
-            d="M4 6a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z">
-          </path>
-        </svg>
-        <span class="tab-label">Bảng điều khiển</span>
-      </button>
-      <button class="tab-btn" data-tab="competitions" aria-label="Cuộc thi" title="Cuộc thi">
-        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-          <path stroke-linecap="round" stroke-linejoin="round"
-            d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z">
-          </path>
-        </svg>
-        <span class="tab-label">Cuộc thi</span>
-      </button>
-      <button class="tab-btn" data-tab="planner" aria-label="Phân chia Đội hình" title="Phân chia Đội hình">
-        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-          <path stroke-linecap="round" stroke-linejoin="round"
-            d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z">
-          </path>
-        </svg>
-        <span class="tab-label">Phân chia Đội hình</span>
-      </button>
-      <button class="tab-btn" data-tab="timeline" aria-label="Lịch trình" title="Lịch trình">
-        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-          <path stroke-linecap="round" stroke-linejoin="round"
-            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-        </svg>
-        <span class="tab-label">Lịch trình</span>
-      </button>
-      <button class="tab-btn" data-tab="kanban" aria-label="Tiến độ (Kanban)" title="Tiến độ (Kanban)">
-        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-          <path stroke-linecap="round" stroke-linejoin="round"
-            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4">
-          </path>
-        </svg>
-        <span class="tab-label">Tiến độ (Kanban)</span>
-      </button>
-      <button class="tab-btn" data-tab="directory" aria-label="Thành viên" title="Thành viên">
-        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-          <path stroke-linecap="round" stroke-linejoin="round"
-            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-        </svg>
-        <span class="tab-label">Thành viên</span>
-      </button>
-      <button class="tab-btn" data-tab="chat" aria-label="Trò chuyện" title="Trò chuyện">
-        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-          <path stroke-linecap="round" stroke-linejoin="round"
-            d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a10.2 10.2 0 01-4.44-.99L3 20l1.21-3.63A7.4 7.4 0 013 12c0-4.418 4.03-8 9-8s9 3.582 9 8z">
-          </path>
-        </svg>
-        <span class="tab-label">Trò chuyện</span> <span id="chat-tab-badge" class="tab-unread-badge" hidden>0</span>
-      </button>
-      <button class="tab-btn" data-tab="xo" aria-label="Sòng X-O" title="Sòng X-O" hidden>
-        <span aria-hidden="true">🎲</span>
-        <span class="tab-label">Sòng X-O</span>
-      </button>
-      <button class="tab-btn" data-tab="settings" aria-label="Cấu hình" title="Cấu hình">
-        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-          <path stroke-linecap="round" stroke-linejoin="round"
-            d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z">
-          </path>
-          <circle cx="12" cy="12" r="3"></circle>
-        </svg>
-        <span class="tab-label">Cấu hình</span>
-      </button>
-    </nav>
-
-    <div class="header-actions">
-      <div class="notification-center">
-        <button class="notification-button" id="notification-button" type="button" aria-label="Thông báo"
-          aria-expanded="false" aria-controls="notification-panel">
-          <span aria-hidden="true">🔔</span>
-          <span id="notification-badge" class="notification-badge" hidden>0</span>
+  <div class="app-container" id="app">
+    <!-- SIDEBAR -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="brand-logo" id="brand-logo" title="Trang chủ">
+          <span class="brand-text">Claude</span>
+        </div>
+        <button class="icon-btn toggle-sidebar-btn" id="collapseSidebarBtn" title="Thu gọn sidebar">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+            <line x1="9" y1="3" x2="9" y2="21"></line>
+          </svg>
         </button>
-        <section class="notification-panel" id="notification-panel" aria-label="Thông báo" hidden>
-          <header><strong>Thông báo</strong><button id="notification-mark-all" type="button">Đọc tất cả</button>
-          </header>
-          <div id="notification-list" class="notification-list">
-            <p class="notification-empty">Chưa có thông báo mới.</p>
-          </div>
-        </section>
       </div>
-      <button class="account-button" id="account-button" type="button" aria-haspopup="dialog">
-        <span id="account-avatar">?</span>
-        <span id="account-label">Đăng nhập</span>
-      </button>
-      <button class="theme-toggle-btn" id="theme-toggle" title="Đổi chế độ sáng hoặc tối"
-        aria-label="Chuyển sang chế độ tối" aria-pressed="false" style="display: none !important;">
-        <svg id="theme-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"
-          xmlns="http://www.w3.org/2000/svg" style="width: 20px; height: 20px;">
-          <path stroke-linecap="round" stroke-linejoin="round"
-            d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m0-12.728l.707.707m12.728 12.728l.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z">
-          </path>
-        </svg>
-        <span class="sr-only">Đổi giao diện sáng hoặc tối</span>
-      </button>
-    </div>
-  </header>
 
-  <!-- ==========================================================================
-       MAIN CONTENT PANEL
-       ========================================================================== -->
-  <main class="main-content">
+      <div class="sidebar-actions">
+        <button class="new-chat-btn" id="newChatBtn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          <span>New</span>
+        </button>
+      </div>
 
-    <!-- 1. TAB: DASHBOARD -->
-    <section id="tab-dashboard" class="tab-panel active">
-      <!-- Top Stats -->
-      <div class="stats-grid">
-        <div class="glass-card stat-card">
-          <div class="stat-icon-wrapper" style="background: rgba(139, 92, 246, 0.1); color: var(--accent-purple);">
-            <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg" style="width: 24px; height: 24px;">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z">
-              </path>
-            </svg>
-          </div>
-          <div>
-            <div class="stat-number" id="stat-active-comp">3 / 3</div>
-            <div class="stat-label">Cuộc thi tham gia</div>
-          </div>
+      <nav class="sidebar-nav">
+        <a href="#" class="nav-item" id="navProjects">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="7" height="7" rx="1"></rect>
+            <rect x="14" y="3" width="7" height="7" rx="1"></rect>
+            <rect x="14" y="14" width="7" height="7" rx="1"></rect>
+            <rect x="3" y="14" width="7" height="7" rx="1"></rect>
+          </svg>
+          <span>Projects</span>
+        </a>
+        <a href="#" class="nav-item" id="navConnect">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+          </svg>
+          <span>Connect</span>
+          <span class="badge-status-dot" title="Sẵn sàng kết nối P2P"></span>
+        </a>
+        <a href="#" class="nav-item" id="navCustomize">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+          <span>Customize</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-section-title">
+        <span>Chats and tasks</span>
+        <button class="icon-btn-subtle" id="sortChatBtn" title="Sắp xếp / Tùy chọn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="4" y1="21" x2="4" y2="14"></line>
+            <line x1="4" y1="10" x2="4" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="12"></line>
+            <line x1="12" y1="8" x2="12" y2="3"></line>
+            <line x1="20" y1="21" x2="20" y2="16"></line>
+            <line x1="20" y1="12" x2="20" y2="3"></line>
+            <line x1="1" y1="14" x2="7" y2="14"></line>
+            <line x1="9" y1="8" x2="15" y2="8"></line>
+            <line x1="17" y1="16" x2="23" y2="16"></line>
+          </svg>
+        </button>
+      </div>
+
+      <!-- CHAT CONVERSATIONS LIST -->
+      <div class="sidebar-chats-list" id="chatsList">
+        <div class="chat-item active" data-id="chat-1">
+          <span class="chat-item-bullet">•</span>
+          <span class="chat-item-title">trại bò cơ sở 1</span>
+          <span class="chat-unread-dot"></span>
         </div>
-
-        <div class="glass-card stat-card">
-          <div class="stat-icon-wrapper" style="background: rgba(6, 182, 212, 0.1); color: var(--accent-cyan);">
-            <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg" style="width: 24px; height: 24px;">
-              <path stroke-linecap="round" stroke-linejoin="round"
-                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z">
-              </path>
-            </svg>
-          </div>
-          <div>
-            <div class="stat-number" id="stat-active-teams">9 Nhóm</div>
-            <div class="stat-label">Tổng số đội hình</div>
-          </div>
+        <div class="chat-item" data-id="chat-2">
+          <span class="chat-item-bullet">•</span>
+          <span class="chat-item-title">Lương Thanh Hậu</span>
+          <span class="online-indicator"></span>
         </div>
-
-        <div class="glass-card stat-card">
-          <div class="stat-icon-wrapper" style="background: rgba(245, 158, 11, 0.1); color: var(--accent-amber);">
-            <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg" style="width: 24px; height: 24px;">
-              <path stroke-linecap="round" stroke-linejoin="round"
-                d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z">
-              </path>
-            </svg>
-          </div>
-          <div>
-            <div class="stat-number" id="stat-prize-pool">>1.1 Tỷ</div>
-            <div class="stat-label">Mục tiêu giải thưởng (VNĐ)</div>
-          </div>
+        <div class="chat-item" data-id="chat-3">
+          <span class="chat-item-bullet">•</span>
+          <span class="chat-item-title">Nguyễn Quang Tùng</span>
+          <span class="online-indicator"></span>
         </div>
-
-        <div class="glass-card stat-card">
-          <div class="stat-icon-wrapper" style="background: rgba(16, 184, 129, 0.1); color: var(--accent-emerald);">
-            <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg" style="width: 24px; height: 24px;">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z">
-              </path>
-            </svg>
-          </div>
-          <div>
-            <div class="stat-number" id="stat-nearest-days">-- Ngày</div>
-            <div class="stat-label">Hạn chót gần nhất</div>
-          </div>
+        <div class="chat-item" data-id="chat-4">
+          <span class="chat-item-bullet">•</span>
+          <span class="chat-item-title">Nguyễn Lâm Tùng</span>
+          <span class="online-indicator"></span>
         </div>
       </div>
 
-      <!-- Dashboard Layout Columns -->
-      <div class="dashboard-layout">
-        <!-- Left: Countdown & Allocations Summary -->
-        <div>
-          <!-- Competition countdown rows -->
-          <div class="competition-countdowns" id="competition-countdowns" aria-label="Đếm ngược các cuộc thi"></div>
+      <!-- FOOTER SIDEBAR -->
+      <div class="sidebar-footer">
+        <button class="design-btn" id="designBtn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
+          </svg>
+          <span>Design</span>
+        </button>
 
-          <!-- Dashboard Workload Chart -->
-          <div class="glass-card" style="margin-bottom: 1.5rem;">
-            <h3 class="section-title">
-              <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg" style="width: 20px; height: 20px; color: var(--accent-magenta);">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z">
-                </path>
-                <path stroke-linecap="round" stroke-linejoin="round" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z">
-                </path>
-              </svg>
-              Khối lượng công việc
-            </h3>
-            <div style="position: relative; height: 250px; width: 100%;">
-              <canvas id="workload-chart"></canvas>
+        <div class="user-profile-row" id="userProfileRow">
+          <div class="user-info">
+            <div class="user-avatar" id="currentUserAvatar">S</div>
+            <div class="user-meta">
+              <span class="user-name" id="currentUserName">Shiina</span>
+              <span class="user-status-plan">· Free</span>
             </div>
           </div>
-
-          <!-- Active Allocations Map -->
-          <div class="glass-card" style="margin-bottom: 1.5rem;">
-            <h3 class="section-title">
-              <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg" style="width: 20px; height: 20px; color: var(--accent-cyan);">
-                <path stroke-linecap="round" stroke-linejoin="round"
-                  d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01">
-                </path>
+          <div class="user-actions">
+            <button class="icon-btn-tiny" id="downloadAppBtn" title="Tải ứng dụng">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
               </svg>
-              Sự phân bổ nhân sự hiện tại
-            </h3>
-
-            <div class="comp-meta-table" id="dashboard-allocations-list">
-              <!-- Dynamically rendered by app.js -->
-            </div>
-          </div>
-        </div>
-
-        <!-- Right: Unified Timeline Quick View -->
-        <div class="glass-card">
-          <h3 class="section-title">
-            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg" style="width: 20px; height: 20px; color: var(--accent-purple);">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z">
-              </path>
-            </svg>
-            Mốc thời gian sắp tới
-          </h3>
-          <div class="quick-timeline-list" id="dashboard-timeline-list">
-            <!-- Dynamically rendered by app.js -->
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- 2. TAB: COMPETITIONS -->
-    <section id="tab-competitions" class="tab-panel">
-      <div class="comp-card-grid" id="competitions-list-container">
-        <!-- Dynamically rendered by app.js -->
-      </div>
-    </section>
-
-    <!-- 3. TAB: TEAM PLANNER -->
-    <section id="tab-planner" class="tab-panel">
-      <div class="planner-instructions">
-        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"
-          style="width: 24px; height: 24px; flex-shrink: 0; color: var(--accent-blue);">
-          <path stroke-linecap="round" stroke-linejoin="round"
-            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-        </svg>
-        <div>
-          <strong>Hướng dẫn Phân chia Đội hình:</strong> Bạn có thể thêm hoặc bớt các thành viên vào Nhóm A hoặc Nhóm B
-          của từng cuộc thi dưới đây. Hệ thống sẽ tự động đối chiếu với điều lệ cuộc thi về số lượng thành viên tối
-          thiểu/tối đa và hiển thị cảnh báo nếu vi phạm! Nhấn nút "Lưu Đội Hình" bên phải để lưu cấu hình.
-        </div>
-      </div>
-
-      <div class="planner-layout">
-        <!-- Left: Member Pool -->
-        <div class="glass-card pool-container">
-          <h3 class="section-title" style="margin-bottom: 0.5rem;">Thành viên nhóm</h3>
-          <p style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 1rem;">Danh sách 7 thành viên sẵn
-            sàng gán vai trò.</p>
-          <div class="member-pool-grid" id="planner-member-pool">
-            <!-- Dynamically rendered by app.js -->
-          </div>
-        </div>
-
-        <!-- Right: Workspace for each competition -->
-        <div class="glass-card">
-          <div
-            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; border-bottom: 1px solid rgba(255, 255, 255, 0.08); padding-bottom: 1rem;">
-            <h3 class="section-title" style="margin-bottom: 0;">Sơ đồ chia đội cuộc thi</h3>
-            <button class="btn-primary" id="save-allocations-btn">
-              <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg" style="width: 16px; height: 16px;">
-                <path stroke-linecap="round" stroke-linejoin="round"
-                  d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4">
-                </path>
+            </button>
+            <button class="icon-btn-tiny" id="searchChatsBtn" title="Tìm kiếm nhanh">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
               </svg>
-              Lưu Đội Hình
+            </button>
+            <button class="icon-btn-tiny" id="sidebarExpandBtn" title="Tùy chỉnh">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="15" y1="3" x2="15" y2="21"></line>
+              </svg>
             </button>
           </div>
-          <div class="planner-workspace" id="planner-workspace-root">
-            <!-- Dynamically rendered by app.js -->
+        </div>
+      </div>
+    </aside>
+
+    <!-- MAIN CONTENT AREA -->
+    <main class="main-content" id="mainContent">
+      <!-- TOP NAVIGATION BAR -->
+      <header class="top-header">
+        <div class="header-left">
+          <!-- Nút mở sidebar khi sidebar đang đóng (hoặc trên mobile) -->
+          <button class="icon-btn header-sidebar-toggle" id="openSidebarBtn" title="Mở sidebar">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="9" y1="3" x2="9" y2="21"></line>
+            </svg>
+          </button>
+
+          <button class="mobile-sidebar-toggle" id="mobileSidebarToggle" title="Mở sidebar">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="3" y1="12" x2="21" y2="12"></line>
+              <line x1="3" y1="6" x2="21" y2="6"></line>
+              <line x1="3" y1="18" x2="21" y2="18"></line>
+            </svg>
+          </button>
+
+          <div class="session-dropdown-wrapper" style="position: relative;">
+            <div class="session-dropdown-btn" id="sessionDropdownBtn" style="display: none;">
+              <span class="active-chat-title" id="activeChatTitle"></span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </div>
+            <!-- Quick Session Switcher Dropdown Menu -->
+            <div class="session-quick-menu hidden" id="sessionQuickMenu">
+              <div class="dropdown-category">Chuyển nhanh phiên trò chuyện:</div>
+              <div class="session-quick-items" id="sessionQuickItems"></div>
+              <div class="dropdown-divider"></div>
+              <div class="dropdown-item" id="menuCreateNewSession">➕ Tạo phiên trò chuyện mới...</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="header-center">
+          <div class="plan-banner" id="topPlanBanner">
+            <span>Free plan</span>
+            <span class="dot">·</span>
+            <a href="#" class="upgrade-link" id="planUpgradeLink">Upgrade</a>
+            <button class="plan-close-btn" id="closePlanBannerBtn" title="Đóng">✕</button>
+          </div>
+        </div>
+
+        <div class="header-right">
+          <div class="realtime-status-badge" id="realtimeStatusBadge" title="Trạng thái kết nối thời gian thực">
+            <span class="status-live-dot" id="liveDot"></span>
+            <span class="status-live-text" id="liveText">Realtime</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- VIEW 1: HERO START SCREEN (when in new conversation mode) -->
+      <div class="hero-view" id="heroView">
+        <div class="hero-center-container">
+          <!-- Asterisk logo & Greeting -->
+          <div class="greeting-container">
+            <div class="asterisk-icon" aria-hidden="true">
+              <svg viewBox="0 0 100 100" class="claude-sunburst">
+                <g fill="currentColor">
+                <line x1="50" y1="5" x2="50" y2="95" stroke="currentColor" stroke-width="8" stroke-linecap="round"></line>
+                <line x1="5" y1="50" x2="95" y2="50" stroke="currentColor" stroke-width="8" stroke-linecap="round"></line>
+                <line x1="18" y1="18" x2="82" y2="82" stroke="currentColor" stroke-width="8" stroke-linecap="round"></line>
+                <line x1="82" y1="18" x2="18" y2="82" stroke="currentColor" stroke-width="8" stroke-linecap="round"></line>
+                <line x1="31" y1="8" x2="69" y2="92" stroke="currentColor" stroke-width="8" stroke-linecap="round"></line>
+                <line x1="8" y1="31" x2="92" y2="69" stroke="currentColor" stroke-width="8" stroke-linecap="round"></line>
+                <line x1="69" y1="8" x2="31" y2="92" stroke="currentColor" stroke-width="8" stroke-linecap="round"></line>
+                <line x1="8" y1="69" x2="92" y2="31" stroke="currentColor" stroke-width="8" stroke-linecap="round"></line>
+              </svg>
+            </div>
+            <h1 class="greeting-text" id="greetingText">Hello, night owl</h1>
+          </div>
+
+          <!-- Helper Banner when Creating New Group -->
+          <div class="hero-helper-banner hidden" id="heroHelperBanner">
+            <div class="helper-banner-content">
+              <span class="helper-icon">💡</span>
+              <span><strong>Tạo nhóm mới:</strong> Dùng lệnh <code class="tag-code">@Tên</code> trong tin nhắn để thêm người vào nhóm chat</span>
+            </div>
+            <button class="helper-close-btn" id="closeHelperBannerBtn" title="Đóng nhắc nhở">✕</button>
+          </div>
+
+          <!-- Centered Claude Prompt Card -->
+          <div class="prompt-card">
+            <!-- Staging preview for attached media before sending -->
+            <div class="attachment-staging-strip hidden" id="heroAttachmentStaging">
+              <!-- Rendered preview badges -->
+            </div>
+
+            <div class="prompt-textarea-wrapper">
+              <textarea 
+                class="prompt-textarea" 
+                id="heroChatInput" 
+                placeholder="Tag @ 1 người để nhắn trực tiếp, Tag @ nhiều người để nhắn nhóm..."
+                rows="1"
+              ></textarea>
+              <!-- Autocomplete Mention List -->
+              <div class="mention-autocomplete hidden" id="mentionAutocomplete">
+                <div class="mention-header">Gợi ý liên hệ:</div>
+                <div class="mention-items" id="mentionItems"></div>
+              </div>
+            </div>
+
+            <!-- Toolbar in Claude Prompt Card -->
+            <div class="prompt-toolbar">
+              <div class="toolbar-left" style="position: relative;">
+                <button class="toolbar-btn attach-btn" id="heroAttachBtn" title="Đính kèm ảnh, video, tài liệu">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                  </svg>
+                </button>
+
+                <!-- Attachment Type Popover Menu -->
+                <div class="attachment-popover-menu hidden" id="heroAttachMenu">
+                  <div class="attach-menu-item" data-type="image">
+                    <span>🖼️</span> <span>Gửi hình ảnh</span>
+                  </div>
+                  <div class="attach-menu-item" data-type="video">
+                    <span>🎬</span> <span>Gửi video clip</span>
+                  </div>
+                  <div class="attach-menu-item" data-type="file">
+                    <span>📄</span> <span>Gửi file tài liệu</span>
+                  </div>
+                  <div class="attach-menu-item" data-type="voice">
+                    <span>🎙️</span> <span>Ghi âm voice note</span>
+                  </div>
+                </div>
+
+                <div class="mode-toggle-group">
+                  <button class="mode-pill active" id="modeChatBtn" data-mode="chat" title="Chat 1-1 với một người">Chat</button>
+                  <button class="mode-pill" id="modeCoworkBtn" data-mode="cowork" title="Nhắn tin nhóm hoặc Tạo nhóm mới">Cowork</button>
+                </div>
+              </div>
+
+              <div class="toolbar-right">
+                <div class="model-dropdown-wrapper">
+                  <button class="model-dropdown-btn" id="modelDropdownBtn" title="Chọn người nhận hoặc nhóm chat">
+                    <span id="selectedModelLabel">Lương Thanh Hậu</span>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                  </button>
+                  <div class="model-dropdown-menu" id="modelDropdownMenu">
+                    <div class="dropdown-category">Người nhận:</div>
+                    <div class="dropdown-item selected" data-value="trại bò cơ sở 1">🏠 trại bò cơ sở 1</div>
+                    <div class="dropdown-item" data-value="Lương Thanh Hậu">👤 Lương Thanh Hậu</div>
+                    <div class="dropdown-item" data-value="Nguyễn Quang Tùng">👤 Nguyễn Quang Tùng</div>
+                    <div class="dropdown-item" data-value="Nguyễn Lâm Tùng">👤 Nguyễn Lâm Tùng</div>
+                  </div>
+                </div>
+
+                <!-- Voice / Send Action Button -->
+                <button class="toolbar-btn mic-btn" id="heroMicBtn" title="Nhập liệu giọng nói">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                    <line x1="12" y1="19" x2="12" y2="23"></line>
+                    <line x1="8" y1="23" x2="16" y2="23"></line>
+                  </svg>
+                </button>
+                <button class="toolbar-btn send-btn" id="heroSendBtn" title="Gửi tin nhắn (Enter)">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                    <line x1="12" y1="19" x2="12" y2="23"></line>
+                    <line x1="8" y1="23" x2="16" y2="23"></line>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick Actions / Prompts Below Input -->
+          <div class="quick-chips-row">
+            <button class="quick-chip" data-prompt="Chia sẻ đoạn code giao diện vừa hoàn thiện">
+              <span class="chip-icon">&lt;/&gt;</span>
+              <span>Code</span>
+            </button>
+            <button class="quick-chip" data-prompt="Thảo luận về kiến trúc hệ thống và luồng dữ liệu">
+              <span class="chip-icon">🎓</span>
+              <span>Learn</span>
+            </button>
+            <button class="quick-chip" data-prompt="Cuối tuần này team có kế hoạch gì chưa mọi người ơi?">
+              <span class="chip-icon">☕</span>
+              <span>Life stuff</span>
+            </button>
+            <button class="quick-chip" data-prompt="Viết nháp bản mô tả tính năng mới cho dự án">
+              <span class="chip-icon">✏️</span>
+              <span>Write</span>
+            </button>
+            <button class="quick-chip" data-prompt="Hỏi ý kiến mọi người về bản phác thảo giao diện mới">
+              <span class="chip-icon">💡</span>
+              <span>Claude's choice</span>
+            </button>
           </div>
         </div>
       </div>
-    </section>
 
-    <!-- 4. TAB: TIMELINE -->
-    <section id="tab-timeline" class="tab-panel">
-      <div class="glass-card">
-        <div
-          style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
-          <h3 class="section-title" style="margin-bottom: 0;">Lịch trình hợp nhất 2026</h3>
-          <button class="btn-primary" id="export-calendar-btn-timeline">
-            <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg" style="width: 16px; height: 16px;">
-              <path stroke-linecap="round" stroke-linejoin="round"
-                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+      <!-- VIEW 2: ACTIVE CHAT THREAD (Multi-turn Human Messages) -->
+      <div class="chat-view hidden" id="chatView">
+        <div class="chat-messages-container" id="messagesContainer">
+          <!-- Messages will be rendered here dynamically -->
+        </div>
+
+        <!-- Sticky Floating Bottom Input Bar for Active Chat (Exact Claude Pill Bar) -->
+        <div class="chat-bottom-input-container">
+          <div class="claude-input-card" id="activeChatInputCard">
+            <!-- Staging preview for attached media before sending in active chat -->
+            <div class="attachment-staging-strip hidden" id="activeAttachmentStaging">
+              <!-- Rendered preview badges -->
+            </div>
+
+            <!-- Typing / Sifting indicator bar if partner is typing -->
+            <div class="streaming-status-bar hidden" id="typingIndicator">
+              <div class="asterisk-mini-spinner">
+                <svg viewBox="0 0 100 100" class="claude-sunburst-spin">
+                  <line x1="50" y1="5" x2="50" y2="95" stroke="currentColor" stroke-width="8" stroke-linecap="round"></line>
+                  <line x1="5" y1="50" x2="95" y2="50" stroke="currentColor" stroke-width="8" stroke-linecap="round"></line>
+                  <line x1="18" y1="18" x2="82" y2="82" stroke="currentColor" stroke-width="8" stroke-linecap="round"></line>
+                  <line x1="82" y1="18" x2="18" y2="82" stroke="currentColor" stroke-width="8" stroke-linecap="round"></line>
+                  <line x1="31" y1="8" x2="69" y2="92" stroke="currentColor" stroke-width="8" stroke-linecap="round"></line>
+                  <line x1="8" y1="31" x2="92" y2="69" stroke="currentColor" stroke-width="8" stroke-linecap="round"></line>
+                  <line x1="69" y1="8" x2="31" y2="92" stroke="currentColor" stroke-width="8" stroke-linecap="round"></line>
+                  <line x1="8" y1="69" x2="92" y2="31" stroke="currentColor" stroke-width="8" stroke-linecap="round"></line>
+                </svg>
+              </div>
+              <span class="streaming-status-text" id="streamingStatusText">Đang nhận phản hồi...</span>
+            </div>
+
+            <div class="claude-input-inner" style="position: relative;">
+              <button class="claude-input-btn attach-icon-btn" id="activeAttachBtn" title="Đính kèm ảnh, video, tài liệu">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+              </button>
+
+              <!-- Active Chat Attachment Popover Menu -->
+              <div class="attachment-popover-menu hidden" id="activeAttachMenu" style="bottom: calc(100% + 12px); left: 0;">
+                <div class="attach-menu-item" data-type="image">
+                  <span>🖼️</span> <span>Gửi hình ảnh</span>
+                </div>
+                <div class="attach-menu-item" data-type="video">
+                  <span>🎬</span> <span>Gửi video clip</span>
+                </div>
+                <div class="attach-menu-item" data-type="file">
+                  <span>📄</span> <span>Gửi file tài liệu</span>
+                </div>
+                <div class="attach-menu-item" data-type="voice">
+                  <span>🎙️</span> <span>Ghi âm voice note</span>
+                </div>
+              </div>
+
+              <textarea 
+                id="activeChatInput" 
+                class="claude-clean-textarea" 
+                placeholder="Write a message... (Có thể dán link URL, kéo thả file hoặc gõ @ để tag)"
+                rows="1"
+              ></textarea>
+
+              <div class="claude-input-right-actions">
+                <button class="claude-input-btn" id="activeVoiceBtn" title="Voice note">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="8"></circle>
+                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                  </svg>
+                </button>
+                <button class="claude-input-btn" id="activeMicBtn" title="Ghi âm">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                    <line x1="12" y1="19" x2="12" y2="23"></line>
+                    <line x1="8" y1="23" x2="16" y2="23"></line>
+                  </svg>
+                </button>
+                <button class="claude-input-btn send-enter-btn" id="activeSendBtn" title="Gửi tin nhắn (Enter)">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <line x1="12" y1="19" x2="12" y2="5"></line>
+                    <polyline points="5 12 12 5 19 12"></polyline>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+          <!-- Autocomplete Mention List for Group Chats -->
+          <div class="mention-autocomplete hidden" id="activeMentionAutocomplete">
+            <div class="mention-header">Gợi ý thành viên:</div>
+            <div class="mention-items" id="activeMentionItems"></div>
+          </div>
+
+          <div class="chat-bottom-disclaimer">
+            <span class="disclaimer-text">Claude is AI and can make mistakes. Please double-check responses.</span>
+            <span class="disclaimer-model">Sonnet 3.5 Medium</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- VIEW 3: PROJECTS GRID VIEW (Danh sách bạn bè & nhóm chat dạng Grid/Tabs) -->
+      <div class="projects-view hidden" id="projectsView">
+        <div class="projects-container">
+          <div class="projects-header">
+            <div class="projects-title-group">
+              <h2 class="projects-title">Projects</h2>
+              <p class="projects-subtitle">Danh sách bạn bè và nhóm trò chuyện của bạn</p>
+            </div>
+            <div class="projects-header-actions">
+              <button class="secondary-btn" id="projectConnectBtn">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="8.5" cy="7.5" r="4"></circle>
+                  <line x1="20" y1="8" x2="20" y2="14"></line>
+                  <line x1="23" y1="11" x2="17" y2="11"></line>
+                </svg>
+                <span>Kết bạn qua ID</span>
+              </button>
+              <button class="primary-btn" id="projectCreateNewBtn">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                <span>Tạo nhóm mới</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Projects Category Filter Tabs -->
+          <div class="projects-filter-bar">
+            <button class="filter-tab active" data-filter="all">Tất cả (<span id="allCount">4</span>)</button>
+            <button class="filter-tab" data-filter="groups">👥 Nhóm chat (<span id="groupsCount">1</span>)</button>
+            <button class="filter-tab" data-filter="friends">👤 Bạn bè (<span id="friendsCount">3</span>)</button>
+          </div>
+
+          <div class="projects-grid" id="projectsGrid">
+            <!-- Grid cards rendered dynamically -->
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- RIGHT SIDE PANEL: ARTIFACTS & SHARED CODE SPLIT-VIEW -->
+    <aside class="artifacts-drawer" id="artifactsDrawer">
+      <div class="artifacts-header">
+        <div class="artifacts-title">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+            <polyline points="2 17 12 22 22 17"></polyline>
+            <polyline points="2 12 12 17 22 12"></polyline>
+          </svg>
+          <span id="artifactPanelTitle">Shared Artifact</span>
+        </div>
+        <div class="artifacts-header-actions">
+          <button class="icon-btn-tiny" id="copyArtifactBtn" title="Sao chép toàn bộ code">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
             </svg>
-            Xuất Lịch (.ics)
+          </button>
+          <button class="icon-btn-tiny" id="closeArtifactBtn" title="Đóng panel">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
           </button>
         </div>
-
-        <div class="timeline-filters" id="timeline-filters-container">
-          <!-- Dynamically rendered by app.js -->
-        </div>
-
-        <div class="timeline-axis-container">
-          <div class="timeline-axis-line"></div>
-          <div id="timeline-events-list">
-            <!-- Dynamically rendered by app.js -->
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- 5. TAB: TEAM DIRECTORY -->
-    <section id="tab-directory" class="tab-panel">
-      <div class="directory-header-bar"
-        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 1rem;">
-        <div>
-          <h3 class="section-title" style="margin-bottom: 0.25rem;">Thành viên nhóm</h3>
-        </div>
-        <div class="view-mode-toggle" id="directory-view-toggle">
-          <button class="toggle-btn active" data-mode="constellation" title="Chế độ Chòm sao">✨</button>
-          <button class="toggle-btn" data-mode="grid" title="Chế độ Danh sách">🎴</button>
-        </div>
       </div>
 
-      <div id="constellation-view-container" class="constellation-map-wrap">
-        <!-- Interactive SVG Map rendered by app.js -->
-        <div id="constellation-popover" class="constellation-popover-card" style="display: none; opacity: 0;"></div>
+      <div class="artifacts-tab-bar">
+        <button class="artifact-tab active" id="tabCode">Code</button>
+        <button class="artifact-tab" id="tabPreview">Live Preview</button>
+        <button class="artifact-tab" id="tabHistory">History</button>
       </div>
 
-      <div class="team-grid" id="team-directory-grid" style="display: none;">
-        <!-- Dynamically rendered grid by app.js -->
+      <div class="artifacts-content" id="artifactsContent">
+        <pre class="code-viewer"><code id="artifactCodeBlock"></code></pre>
       </div>
-    </section>
+    </aside>
+  </div>
 
-    <!-- 6. TAB: KANBAN PROGRESS BOARD -->
-    <section id="tab-kanban" class="tab-panel">
-      <div class="glass-card">
-        <div
-          style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; border-bottom: 1px solid rgba(255, 255, 255, 0.08); padding-bottom: 1rem; flex-wrap: wrap; gap: 1rem;">
-          <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
-            <h3 class="section-title" style="margin-bottom: 0;">Bảng quản lý Tiến độ</h3>
-            <select class="form-control" id="kanban-comp-select" style="max-width: 250px; background: rgba(0,0,0,0.4);">
-              <!-- Options dynamically loaded by app.js -->
+  <!-- MODAL 1: NEW (Nhắn tin bạn bè, Nhắn vào nhóm, hoặc Tạo nhóm mới) -->
+  <div class="modal-overlay hidden" id="newChatModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title">✨ Bắt đầu cuộc trò chuyện mới</h3>
+        <button class="modal-close-btn" id="closeNewChatModalBtn">✕</button>
+      </div>
+      <div class="modal-body">
+        <!-- Tab selector for New modal -->
+        <div class="segmented-control new-modal-tabs">
+          <button class="segment-btn active" id="tabNewDirect" data-type="direct">👤 Nhắn cho người</button>
+          <button class="segment-btn" id="tabNewExistingGroup" data-type="existing-group">💬 Vào nhóm có sẵn</button>
+          <button class="segment-btn" id="tabNewGroup" data-type="create-group">👥 Tạo nhóm mới</button>
+        </div>
+
+        <!-- FORM 1: Direct message to person -->
+        <div class="new-modal-form-section" id="formDirectSection">
+          <div class="form-group">
+            <label class="form-label">Chọn người nhận trong danh bạ:</label>
+            <select id="quickFriendSelect" class="form-input">
+              <option value="Lương Thanh Hậu">👤 Lương Thanh Hậu (Quản lý - Online)</option>
+              <option value="Nguyễn Quang Tùng">👤 Nguyễn Quang Tùng (Kỹ thuật viên - Online)</option>
+              <option value="Nguyễn Lâm Tùng">👤 Nguyễn Lâm Tùng (Giám sát - Online)</option>
             </select>
           </div>
-          <button class="btn-primary" id="add-task-btn">
-            <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg" style="width: 16px; height: 16px;">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"></path>
-            </svg>
-            Thêm nhiệm vụ
-          </button>
+          <div class="form-group">
+            <label class="form-label">Hoặc nhập tên / ID người mới:</label>
+            <input type="text" id="newDirectRecipientInput" class="form-input" placeholder="Ví dụ: Alex Rivers, user-882...">
+          </div>
         </div>
 
-        <div class="kanban-board-container" id="kanban-board-root">
-          <!-- Dynamic columns and cards rendered by app.js -->
+        <!-- FORM 2: Message to existing group -->
+        <div class="new-modal-form-section hidden" id="formExistingGroupSection">
+          <div class="form-group">
+            <label class="form-label">Chọn nhóm chat hiện có:</label>
+            <select id="existingGroupSelect" class="form-input">
+              <option value="chat-1">🏠 trại bò cơ sở 1 (4 thành viên)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- FORM 3: Create a new group -->
+        <div class="new-modal-form-section hidden" id="formCreateGroupSection">
+          <div class="form-group">
+            <label class="form-label">Tên nhóm mới:</label>
+            <input type="text" id="newGroupNameInput" class="form-input" placeholder="Ví dụ: Đội Kỹ Thuật CS2, Ban Quản Lý...">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Chọn thành viên tham gia:</label>
+            <div class="member-checkbox-list">
+              <label class="checkbox-item"><input type="checkbox" value="Lương Thanh Hậu" checked> <span>👤 Lương Thanh Hậu</span></label>
+              <label class="checkbox-item"><input type="checkbox" value="Nguyễn Quang Tùng" checked> <span>👤 Nguyễn Quang Tùng</span></label>
+              <label class="checkbox-item"><input type="checkbox" value="Nguyễn Lâm Tùng"> <span>👤 Nguyễn Lâm Tùng</span></label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Message input for all 3 options -->
+        <div class="form-group" style="margin-top: 6px;">
+          <label class="form-label">Tin nhắn mở đầu:</label>
+          <textarea id="newInitialMsgInput" class="form-textarea" placeholder="Nhập nội dung tin nhắn bạn muốn gửi..." rows="2"></textarea>
         </div>
       </div>
-    </section>
-
-    <!-- 7. TAB: CHAT -->
-    <section id="tab-chat" class="tab-panel">
-      <div class="chat-shell glass-card">
-        <aside class="chat-sidebar" aria-label="Danh sách phòng trò chuyện">
-          <div class="chat-sidebar-heading">
-            <span>Phòng trò chuyện</span>
-            <span class="connection-indicator online" id="realtime-status">Đang kết nối</span>
-          </div>
-          <div id="chat-room-list" class="chat-room-list">
-            <button class="chat-room active" data-room="general"><span>💬 Trò chuyện chung</span><span
-                class="room-unread-badge" hidden>0</span></button>
-            <button class="chat-room" data-room="onevoice"><span>OneVoice</span><span class="room-unread-badge"
-                hidden>0</span></button>
-            <button class="chat-room" data-room="thucchien"><span>AI Thực Chiến</span><span class="room-unread-badge"
-                hidden>0</span></button>
-            <button class="chat-room" data-room="viettel"><span>Viettel AI Race</span><span class="room-unread-badge"
-                hidden>0</span></button>
-          </div>
-        </aside>
-        <div class="chat-main">
-          <header class="chat-header">
-            <div id="chat-room-avatar" class="chat-room-avatar" aria-hidden="true">PP</div>
-            <div class="chat-header-copy">
-              <h2 id="chat-room-title">Trò chuyện chung</h2>
-              <span id="chat-room-status">7 thành viên · Đang hoạt động</span>
-            </div>
-          </header>
-          <div id="chat-message-list" class="chat-message-list" aria-live="polite">
-            <div class="chat-empty">Chưa có tin nhắn. Hãy bắt đầu cuộc trò chuyện.</div>
-          </div>
-          <button id="chat-new-message-btn" class="chat-new-message-btn" type="button" hidden>Có tin nhắn mới ↓</button>
-          <form id="chat-compose-form" class="chat-compose-form">
-            <div id="chat-reply-preview" class="chat-reply-preview" hidden>
-              <div class="chat-reply-preview-content" id="chat-reply-preview-content"></div>
-              <button id="chat-reply-preview-remove" class="chat-reply-preview-remove" type="button"
-                aria-label="Hủy trả lời">×</button>
-            </div>
-            <div id="chat-file-preview" class="chat-file-preview" hidden>
-              <div class="chat-file-preview-content"></div>
-              <button id="chat-file-preview-remove" class="chat-file-preview-remove" type="button"
-                aria-label="Bỏ file đã chọn">×</button>
-            </div>
-            <div id="chat-mention-autocomplete" class="chat-mention-autocomplete" hidden></div>
-            <label class="chat-file-button" for="chat-file-input" title="Đính kèm file"
-              aria-label="Đính kèm file">＋</label>
-            <input id="chat-file-input" type="file"
-              accept=".png,.jpg,.jpeg,.gif,.webp,.mp4,.webm,.mov,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip" hidden>
-            <div class="chat-compose-pill">
-              <textarea id="chat-message-input" rows="1" maxlength="4000" placeholder="Aa"
-                aria-label="Tin nhắn"></textarea>
-              <button id="chat-send-btn" class="chat-send-button" type="submit" aria-label="Gửi tin nhắn">➤</button>
-            </div>
-            <div id="chat-upload-status" class="chat-upload-status" aria-live="polite"></div>
-            <div id="chat-typing-indicator" class="chat-typing-indicator" aria-live="polite" hidden></div>
-            <div id="chat-mute-status" class="chat-mute-status" aria-live="polite" hidden></div>
-          </form>
-        </div>
-      </div>
-    </section>
-
-    <!-- 8. TAB: X-O CASINO -->
-    <section id="tab-xo" class="tab-panel" hidden>
-      <div class="xo-arena" id="xo-arena-root">
-        <header class="xo-hero glass-card">
-          <div>
-            <span class="stat-label">Bản thử nghiệm, chưa release chính thức</span>
-            <h2>🎲 Sòng X-O</h2>
-            <p>Chọn đối thủ, mở kèo và đấu BO1 nối 5. Thắng +36 rating, thua -18 rating.</p>
-          </div>
-          <div class="xo-actions">
-            <button class="btn-secondary" id="xo-refresh-btn" type="button">Làm mới sòng</button>
-          </div>
-        </header>
-
-        <section class="glass-card citizen-checkin-card">
-          <div>
-            <span class="stat-label">Điểm danh công dân hôm nay</span>
-            <div id="xo-wallet" class="xo-wallet">Chưa đăng nhập</div>
-            <small id="citizen-checkin-status" class="citizen-checkin-status">Đang tải trạng thái...</small>
-          </div>
-          <button id="citizen-checkin-button" class="btn-primary citizen-checkin-button" type="button" disabled>Điểm
-            danh</button>
-        </section>
-
-        <section class="glass-card xo-challenge-card">
-          <div>
-            <h3 class="section-title">Mở kèo mới</h3>
-            <p>Đối thủ sẽ ký quỹ cùng số điểm khi nhận kèo.</p>
-          </div>
-          <form id="xo-challenge-form" class="xo-challenge-form">
-            <label class="sr-only" for="xo-opponent">Đối thủ</label>
-            <select class="form-control" id="xo-opponent" required></select>
-            <label class="sr-only" for="xo-wager">Tiền cược</label>
-            <input class="form-control" id="xo-wager" type="number" min="1" step="1" value="6" required
-              aria-label="Tiền cược">
-            <button class="btn-primary" type="submit">Mở kèo</button>
-          </form>
-        </section>
-
-        <div class="xo-grid">
-          <section class="glass-card xo-board-card">
-            <div class="xo-section-heading">
-              <h3 class="section-title" id="xo-match-title">Chưa chọn kèo</h3>
-              <span id="xo-board-status">Đang chờ hai tay chơi</span>
-            </div>
-            <p id="xo-spectator-status" class="xo-spectator-status" hidden></p>
-            <div class="xo-board-scroll">
-              <div id="xo-board" class="xo-board" aria-label="Bàn X-O nối 5"></div>
-            </div>
-          </section>
-
-          <aside class="xo-side">
-            <section class="glass-card">
-              <h3 class="section-title">Cược khán giả</h3>
-              <form id="xo-bet-form" class="xo-bet-form" hidden>
-                <select class="form-control" id="xo-bet-pick" aria-label="Chọn người thắng"></select>
-                <input class="form-control" id="xo-bet-stake" type="number" min="1" step="1" value="3"
-                  aria-label="Điểm cược">
-                <button class="btn-primary" type="submit">Đặt cược</button>
-              </form>
-              <div id="xo-bets" class="xo-list">Cược khóa sau nước đi đầu tiên.</div>
-            </section>
-          </aside>
-        </div>
-
-        <div class="xo-grid xo-grid-lower">
-          <section class="glass-card">
-            <h3 class="section-title">Kèo đang mở</h3>
-            <div id="xo-open-matches" class="xo-list"></div>
-          </section>
-          <section class="glass-card">
-            <h3 class="section-title">Trận gần đây</h3>
-            <div id="xo-recent-matches" class="xo-list"></div>
-          </section>
-          <section class="glass-card">
-            <h3 class="section-title">BXH X-O</h3>
-            <div id="xo-leaderboard" class="xo-list"></div>
-          </section>
-          <section class="glass-card">
-            <h3 class="section-title">BXH điểm công dân</h3>
-            <div id="citizen-points-leaderboard" class="xo-list"></div>
-          </section>
-        </div>
-      </div>
-    </section>
-
-    <!-- 9. TAB: SETTINGS -->
-    <section id="tab-settings" class="tab-panel">
-      <div class="glass-card settings-layout">
-        <h3 class="section-title">Kết nối nhóm</h3>
-        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1.5rem;">
-          Dữ liệu, Kanban và trò chuyện đang được đồng bộ thời gian thực cho cả 7 thành viên.
-        </p>
-        <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 2rem;">
-          <span id="supabase-status-badge" class="connection-indicator online">Supabase Online</span>
-          <button class="btn-primary" id="settings-login-btn">Quản lý đăng nhập</button>
-        </div>
-        <div class="notification-setting">
-          <div><strong>Thông báo trình duyệt</strong>
-            <p>Nhận popup cho tin nhắn và cập nhật liên quan khi tab đang ẩn.</p>
-          </div>
-          <button class="btn-secondary" id="browser-notification-toggle" type="button">Bật thông báo</button>
-          <span id="browser-notification-status" aria-live="polite">Chưa bật</span>
-        </div>
-      </div>
-    </section>
-
-  </main>
-
-  <div class="modal-overlay auth-modal" id="login-modal" role="dialog" aria-modal="true" aria-labelledby="login-title">
-    <div class="modal-content auth-card">
-      <button class="modal-close-btn" id="login-close" type="button" aria-label="Đóng">×</button>
-      <div class="auth-mark">PP</div>
-      <p class="eyebrow">PingPing Team</p>
-      <h2 id="login-title">Đăng nhập để tương tác</h2>
-      <p class="auth-description">Nhập mã riêng của bạn để cập nhật dữ liệu, trò chuyện và gửi file.</p>
-      <form id="login-form">
-        <label class="form-label" for="login-code">Mã đăng nhập</label>
-        <input class="form-control" id="login-code" type="password" maxlength="64" autocomplete="current-password"
-          required placeholder="Nhập mã của bạn">
-        <p class="form-error" id="login-error" aria-live="polite"></p>
-        <button class="btn-primary auth-submit" id="login-submit" type="submit">Đăng nhập</button>
-      </form>
-      <div class="account-panel" id="account-panel" hidden>
-        <div id="account-summary"></div>
-        <button class="btn-secondary" id="change-code-btn" type="button">Đổi mã đăng nhập</button>
-        <button class="btn-secondary danger" id="logout-btn" type="button">Đăng xuất</button>
+      <div class="modal-footer">
+        <button class="secondary-btn" id="cancelNewChatBtn">Hủy</button>
+        <button class="primary-btn" id="submitNewChatBtn">Bắt đầu trò chuyện</button>
       </div>
     </div>
   </div>
 
-  <!-- ==========================================================================
-       MODAL: EDIT PROFILE
-       ========================================================================== -->
-  <div class="modal-overlay" id="edit-member-modal">
-    <div class="modal-content">
-      <button class="modal-close-btn" id="modal-close-x">
-        <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"
-          style="width: 20px; height: 20px;">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path>
-        </svg>
-      </button>
+  <!-- MODAL 2: CONNECT (Tìm và kết nối qua ID) -->
+  <div class="modal-overlay hidden" id="connectModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title">🔗 Kết nối P2P qua ID</h3>
+        <button class="modal-close-btn" id="closeConnectModalBtn">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="my-id-card">
+          <div class="my-id-label">ID của bạn (Chia sẻ để người khác kết nối):</div>
+          <div class="my-id-display">
+            <code id="myIdCode">shiina-p2p-7014</code>
+            <button class="copy-id-btn" id="copyMyIdBtn" title="Sao chép ID">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+              </svg>
+              <span>Copy</span>
+            </button>
+          </div>
+        </div>
 
-      <h3 class="section-title" style="margin-bottom: 1.5rem;" id="modal-title-text">Chỉnh sửa thành viên</h3>
+        <div class="form-group" style="margin-top: 16px;">
+          <label class="form-label">Nhập ID của người bạn muốn kết nối:</label>
+          <div class="input-with-action">
+            <input type="text" id="targetIdInput" class="form-input" placeholder="Ví dụ: hau-cs1, alex-9921, tung-tech...">
+            <button class="primary-btn" id="connectTargetBtn">Kết nối</button>
+          </div>
+        </div>
 
-      <input type="hidden" id="edit-member-id">
+        <div class="connect-status-box" id="connectStatusBox">
+          <span class="status-dot-active"></span>
+          <span>Mạng ngang hàng P2P: <strong>Sẵn sàng</strong></span>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="secondary-btn" id="doneConnectBtn">Đóng</button>
+      </div>
+    </div>
+  </div>
 
-      <div class="avatar-edit-container">
-        <div class="avatar-preview-box" id="edit-avatar-preview">T</div>
-        <div style="flex-grow: 1;">
-          <label class="form-label">Ảnh đại diện thành viên</label>
-          <div style="display: flex; gap: 0.5rem; align-items: center; margin-top: 0.25rem; flex-wrap: wrap;">
-            <label class="avatar-upload-label" for="avatar-file-input">
-              Tải ảnh lên
+  <!-- MODAL 3: CUSTOMIZE (Theme sáng tối, Thông báo, Âm thanh) -->
+  <div class="modal-overlay hidden" id="customizeModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title">⚙️ Tùy chỉnh & Cài đặt</h3>
+        <button class="modal-close-btn" id="closeCustomizeModalBtn">✕</button>
+      </div>
+      <div class="modal-body">
+        <!-- Section: Theme -->
+        <div class="settings-section">
+          <h4 class="settings-section-title">Giao diện (Theme)</h4>
+          <div class="theme-options-row">
+            <label class="theme-option active" data-theme="dark">
+              <input type="radio" name="theme" value="dark" checked>
+              <div class="theme-preview dark-preview"></div>
+              <span>Dark (Claude)</span>
             </label>
-            <input type="file" id="avatar-file-input" accept="image/*" style="display: none;">
-            <input type="text" class="form-control" id="edit-member-emoji" placeholder="Hoặc Emoji (ví dụ: 🚀, 💻)"
-              style="max-width: 170px; padding: 0.5rem 0.75rem; font-size: 0.8rem;" autocomplete="off">
+            <label class="theme-option" data-theme="light">
+              <input type="radio" name="theme" value="light">
+              <div class="theme-preview light-preview"></div>
+              <span>Light Minimal</span>
+            </label>
+            <label class="theme-option" data-theme="sepia">
+              <input type="radio" name="theme" value="sepia">
+              <div class="theme-preview sepia-preview"></div>
+              <span>Warm Sepia</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Section: Notifications -->
+        <div class="settings-section">
+          <h4 class="settings-section-title">Thông báo (Notifications)</h4>
+          <div class="toggle-setting-row">
+            <div class="toggle-label-group">
+              <div class="toggle-main-label">Bật thông báo đẩy</div>
+              <div class="toggle-sub-label">Hiển thị thông báo khi có tin nhắn mới tới</div>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="notificationToggle" checked>
+              <span class="slider"></span>
+            </label>
+          </div>
+          <div class="toggle-setting-row">
+            <div class="toggle-label-group">
+              <div class="toggle-main-label">Xem trước nội dung</div>
+              <div class="toggle-sub-label">Hiển thị nội dung tin nhắn trên banner thông báo</div>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="previewToggle" checked>
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Section: Sound -->
+        <div class="settings-section">
+          <h4 class="settings-section-title">Âm thanh thông báo (Sound)</h4>
+          <div class="toggle-setting-row">
+            <div class="toggle-label-group">
+              <div class="toggle-main-label">Âm thanh tin nhắn đến</div>
+              <div class="toggle-sub-label">Phát tiếng chuông nhẹ khi nhận tin nhắn</div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <button class="test-sound-btn" id="testSoundBtn" title="Nghe thử âm thanh">🔊 Thử</button>
+              <label class="switch">
+                <input type="checkbox" id="soundToggle" checked>
+                <span class="slider"></span>
+              </label>
+            </div>
           </div>
         </div>
       </div>
-
-      <div class="form-group">
-        <label class="form-label" for="edit-member-name">Họ và Tên</label>
-        <input type="text" class="form-control" id="edit-member-name" required>
+  <!-- MODAL 4: SEARCH CHATS & MESSAGES -->
+  <div class="modal-overlay hidden" id="searchModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title">🔍 Tìm kiếm cuộc trò chuyện & Tin nhắn</h3>
+        <button class="modal-close-btn" id="closeSearchModalBtn">✕</button>
       </div>
-
-      <div class="form-group">
-        <label class="form-label" for="edit-member-role">Vai trò chính</label>
-        <input type="text" class="form-control" id="edit-member-role"
-          placeholder="Ví dụ: AI/ML Engineer, Frontend Dev..." required>
+      <div class="modal-body">
+        <div class="form-group">
+          <input type="text" id="globalSearchInput" class="form-input" placeholder="Gõ từ khóa cần tìm (ví dụ: nhiệt độ, thức ăn, lịch giao, Hậu...)" autofocus>
+        </div>
+        <div class="search-results-list" id="searchResultsList">
+          <!-- Search results dynamically rendered -->
+          <div style="color: var(--text-muted); font-size: 13px; text-align: center; padding: 20px;">
+            Nhập từ khóa để tìm nhanh tin nhắn hoặc bạn bè
+          </div>
+        </div>
       </div>
+    </div>
+  </div>
 
-      <div class="form-group">
-        <label class="form-label" for="edit-member-skills">Kỹ năng (Phân tách bằng dấu phẩy)</label>
-        <input type="text" class="form-control" id="edit-member-skills"
-          placeholder="Ví dụ: PyTorch, NLP, React, Node.js..." required>
+  <!-- MODAL 5: USER PROFILE & IDENTITY -->
+  <div class="modal-overlay hidden" id="profileModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title">👤 Hồ sơ & Tài khoản</h3>
+        <button class="modal-close-btn" id="closeProfileModalBtn">✕</button>
       </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Chuyển nhanh tài khoản để test nhiều bên:</label>
+          <div style="display: flex; gap: 8px;">
+            <select id="quickUserSelect" class="form-select" style="flex: 1;">
+              <option value="u_shiina">👑 Shiina (Quản trị viên)</option>
+              <option value="u_hau">💼 Lương Thanh Hậu (Quản lý)</option>
+              <option value="u_tung_nq">🔧 Nguyễn Quang Tùng (Kỹ thuật viên)</option>
+              <option value="u_tung_nl">📡 Nguyễn Lâm Tùng (Giám sát)</option>
+              <option value="u_alex">🩺 Alex Rivers (Chuyên gia Thú y)</option>
+              <option value="u_trang">📊 Phạm Thu Trang (Kế toán kho)</option>
+              <option value="u_manh">⚙️ Trần Văn Mạnh (Vận hành máy)</option>
+              <option value="u_elena">🌐 Elena Rostova (Cố vấn Quốc tế)</option>
+            </select>
+            <button class="secondary-btn" id="switchUserBtn" style="white-space: nowrap;">Đổi tài khoản</button>
+          </div>
+        </div>
 
+        <div class="dropdown-divider" style="margin: 16px 0;"></div>
+
+        <div class="form-group">
+          <label class="form-label">Tên hiển thị của bạn:</label>
+          <input type="text" id="profileNameInput" class="form-input" value="Shiina">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Chức vụ / Vai trò:</label>
+          <input type="text" id="profileRoleInput" class="form-input" value="Quản trị viên">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Mã ID tài khoản:</label>
+          <input type="text" id="profileIdInput" class="form-input" value="u_shiina" readonly style="opacity: 0.7; background: rgba(0,0,0,0.2);">
+        </div>
+      </div>
       <div class="modal-footer">
-        <button class="btn-secondary" id="modal-cancel-btn">Hủy bỏ</button>
-        <button class="btn-primary" id="modal-save-btn">Cập nhật</button>
+        <button class="secondary-btn" id="cancelProfileBtn">Hủy</button>
+        <button class="primary-btn" id="saveProfileBtn">Cập nhật hồ sơ</button>
       </div>
     </div>
   </div>
 
-  <div id="chat-media-lightbox" class="chat-media-lightbox" role="dialog" aria-modal="true"
-    aria-label="Xem nội dung đính kèm" hidden>
-    <button id="chat-media-lightbox-close" class="chat-media-lightbox-close" type="button"
-      aria-label="Đóng trình xem">×</button>
-    <div id="chat-media-lightbox-content" class="chat-media-lightbox-content"></div>
-  </div>
-
-  <!-- MODAL: ADD KANBAN TASK -->
-  <div class="modal-overlay" id="add-task-modal">
-    <div class="modal-content">
-      <button class="modal-close-btn" id="task-modal-close-x">
-        <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"
-          style="width: 20px; height: 20px;">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path>
-        </svg>
-      </button>
-
-      <h3 class="section-title" style="margin-bottom: 1.5rem;" id="task-modal-title">Thêm nhiệm vụ mới</h3>
-
-      <div class="form-group">
-        <label class="form-label" for="task-title">Tiêu đề nhiệm vụ</label>
-        <input type="text" class="form-control" id="task-title" required placeholder="Ví dụ: Thiết kế Pitch Deck..."
-          autocomplete="off">
+  <!-- MODAL 6: IMAGE & MEDIA LIGHTBOX -->
+  <div class="modal-overlay hidden" id="imageLightboxModal" style="background-color: rgba(0, 0, 0, 0.88); backdrop-filter: blur(8px);">
+    <div class="lightbox-container">
+      <div class="lightbox-header">
+        <span class="lightbox-title" id="lightboxTitle">Hình ảnh</span>
+        <div class="lightbox-actions">
+          <button class="lightbox-btn" id="lightboxDownloadBtn" title="Tải xuống hình ảnh">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+          </button>
+          <button class="lightbox-btn" id="closeLightboxBtn" title="Đóng (Esc)">✕</button>
+        </div>
       </div>
-
-      <div class="form-group">
-        <label class="form-label" for="task-desc">Mô tả ngắn</label>
-        <textarea class="form-control" id="task-desc" style="resize: vertical; height: 80px;"
-          placeholder="Mô tả cụ thể công việc cần làm..."></textarea>
-      </div>
-
-      <div class="form-group">
-        <label class="form-label" for="task-assignee">Người chịu trách nhiệm</label>
-        <select class="form-control" id="task-assignee">
-          <!-- Dynamically filled with the 7 members -->
-        </select>
-      </div>
-
-      <div class="form-group">
-        <label class="form-label" for="task-column">Trạng thái ban đầu</label>
-        <select class="form-control" id="task-column">
-          <option value="todo">Cần làm</option>
-          <option value="inprogress">Đang làm</option>
-          <option value="review">Đánh giá (Review)</option>
-          <option value="done">Hoàn thành</option>
-        </select>
-      </div>
-
-      <div class="modal-footer">
-        <button class="btn-secondary" id="task-modal-cancel-btn">Hủy bỏ</button>
-        <button class="btn-primary" id="task-modal-save-btn">Tạo thẻ nhiệm vụ</button>
+      <div class="lightbox-body">
+        <img src="" alt="Preview" class="lightbox-img" id="lightboxImg">
       </div>
     </div>
   </div>
 
-  <button id="about-update-button" class="about-update-button" type="button" hidden>About new update</button>
-  <div class="modal-overlay about-update-modal" id="about-update-modal" role="dialog" aria-modal="true"
-    aria-labelledby="about-update-title" hidden>
-    <div class="modal-content">
-      <button class="modal-close-btn" id="about-update-close" type="button" aria-label="Đóng">×</button>
-      <h2 id="about-update-title" class="section-title">About new update</h2>
-      <p><strong>Bản cập nhật Giao diện mới & Tối ưu Trải nghiệm (UI/UX Refresh)</strong></p>
-      <p>✨ <strong>Nâng cấp giao diện Chòm sao (Constellation View):</strong> Tự động tương thích và mở rộng linh hoạt theo mọi kích thước màn hình (Responsive design).</p>
-      <p>🎨 <strong>Tối ưu thương hiệu & Trải nghiệm:</strong> Thêm icon PingPing mới trên tab trình duyệt, cải tiến hiệu ứng hiển thị mượt mà hơn.</p>
-      <p>🎮 <strong>Sòng X-O & Tính năng portal:</strong> Hệ thống hoạt động ổn định và sẵn sàng cho các trận đấu kịch tính của các thành viên.</p>
-    </div>
-  </div>
+  <!-- TOAST NOTIFICATION CONTAINER -->
+  <div class="toast-container" id="toastContainer"></div>
 
-  <div class="modal-overlay checkin-penalty-modal" id="checkin-penalty-modal" role="alertdialog" aria-modal="true"
-    aria-labelledby="checkin-penalty-title" hidden>
-    <div class="modal-content checkin-penalty-content">
-      <div class="checkin-penalty-emoji" aria-hidden="true">🚨</div>
-      <h2 id="checkin-penalty-title">Mày đã bị trừ 360 điểm</h2>
-      <p>F12 không thắng được database đâu bạn ơi 😌</p>
-      <button id="checkin-penalty-close" class="btn-primary" type="button">Tôi chừa 🥲</button>
-    </div>
-  </div>
+  <!-- Hidden File Input for Attachments -->
+  <input type="file" id="hiddenFileInput" style="display: none;" accept="image/*,video/*,.pdf,.doc,.docx,.txt,.json,.py,.zip">
 
-  <div id="xo-threat-flash" class="xo-threat-flash" role="status" aria-live="assertive" aria-atomic="true" hidden></div>
-
-  <!-- ==========================================================================
-       FOOTER
-       ========================================================================== */ -->
-  <footer class="site-footer">
-    <div class="footer-content">
-      <div class="footer-links">
-        <a href="https://luma.com/g1rwi7ag?brid=YWdncwGD4tzxqhiTNvLEc1Pm5LcW" target="_blank"
-          class="footer-link">OneVoice</a>
-        <a href="https://thucchien.ai/" target="_blank" class="footer-link">AI Thực Chiến</a>
-        <a href="https://competition.viettel.vn/" target="_blank" class="footer-link">Viettel AI Race</a>
-      </div>
-      <p>© 2026 PingPing Team. Tất cả thông tin cuộc thi được tổng hợp tự động phục vụ phối hợp nội bộ.</p>
-    </div>
-  </footer>
-
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="https://cdn.jsdelivr.net/npm/tsparticles-preset-stars@2/tsparticles.preset.stars.bundle.min.js"></script>
-  <script>
-    tsParticles.load("tsparticles", {
-      preset: "stars",
-      background: { color: "transparent" },
-      particles: {
-        number: { value: window.innerWidth < 768 ? 40 : 100 },
-        color: { value: "#ffffff" },
-        opacity: { value: 0.5 },
-        size: { value: 2 },
-        move: { enable: true, speed: 0.5 }
-      }
-    });
-  </script>
-  <script type="module" src="app.js?v=9"></script>
+  <script src="app.js"></script>
 </body>
-
 </html>

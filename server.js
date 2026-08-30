@@ -17,8 +17,9 @@ const server = http.createServer(app);
 const PORT = process.env.PORT || 8080;
 const JWT_SECRET = process.env.JWT_SECRET || 'pingping_super_secret_jwt_key_2026';
 
-// 📁 Uploads Directory Setup
-const uploadsDir = path.join(__dirname, 'uploads');
+// 📁 Uploads Directory Setup (supports Vercel Serverless /tmp)
+const isVercel = !!process.env.VERCEL;
+const uploadsDir = isVercel ? '/tmp/uploads' : path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
@@ -44,6 +45,16 @@ app.use(cors());
 app.use(compression());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Ensure DB is initialized before handling requests
+app.use(async (req, res, next) => {
+  try {
+    await db.initDatabase();
+    next();
+  } catch (err) {
+    next(err);
+  }
+});
 
 // Global Rate Limiter
 const apiLimiter = rateLimit({
@@ -552,17 +563,22 @@ const shutdown = () => {
 process.on('SIGTERM', shutdown);
 process.on('SIGINT', shutdown);
 
-// Initialize DB and Start Server
-db.initDatabase().then(() => {
-  server.listen(PORT, () => {
-    console.log(`\n=================================================`);
-    console.log(`🚀 PingPing Server is running on http://localhost:${PORT}`);
-    console.log(`⚡ Engine: Node.js + Express + Socket.io + SQLite DB`);
-    console.log(`📁 Uploads directory: ${uploadsDir}`);
-    console.log(`=================================================\n`);
+// Initialize DB and Start Server (when running standalone)
+if (!process.env.VERCEL && require.main === module) {
+  db.initDatabase().then(() => {
+    server.listen(PORT, () => {
+      console.log(`\n=================================================`);
+      console.log(`🚀 PingPing Server is running on http://localhost:${PORT}`);
+      console.log(`⚡ Engine: Node.js + Express + Socket.io + SQLite DB`);
+      console.log(`📁 Uploads directory: ${uploadsDir}`);
+      console.log(`=================================================\n`);
+    });
+  }).catch(err => {
+    console.error('❌ Failed to initialize database:', err);
+    process.exit(1);
   });
-}).catch(err => {
-  console.error('❌ Failed to initialize database:', err);
-  process.exit(1);
-});
+}
+
+module.exports = app;
+module.exports.server = server;
 

@@ -52,9 +52,28 @@ npm run dev
 
 Mở trình duyệt truy cập: **`http://localhost:8080`**
 
+## ⚡ 3. Triển khai lên Vercel (1-Click & CLI)
+
+Dự án đã được cấu hình sẵn file [`vercel.json`](vercel.json) và Serverless Functions tại [`api/index.js`](api/index.js).
+
+### Cách 1: Deploy qua Vercel Dashboard (Khuyên dùng)
+1. Đăng nhập vào [vercel.com](https://vercel.com).
+2. Nhấn **Add New Project** $\rightarrow$ Chọn repository **`shiina613/pingping`**.
+3. Giữ nguyên toàn bộ cấu hình mặc định (Root Directory: `./`) và nhấn **Deploy**.
+4. Vercel sẽ tự động build và cấp tên miền `https://pingping-xxx.vercel.app` miễn phí!
+
+### Cách 2: Deploy qua Vercel CLI
+```bash
+# Cài đặt Vercel CLI nếu chưa có
+npm install -g vercel
+
+# Đăng nhập và deploy lên production
+vercel --prod
+```
+
 ---
 
-## 🛡️ 3. Triển khai Production (PM2 & Nginx)
+## 🛡️ 4. Triển khai VPS riêng (PM2 & Nginx)
 
 ### Quản lý tiến trình bằng PM2
 ```bash

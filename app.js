@@ -1494,13 +1494,21 @@ function handleHeroSend() {
   enforceMessageLimits(targetChatId);
   saveState();
 
-  // Send to Realtime WebSocket
+  // Send to Realtime WebSocket or REST fallback
   if (socket && socket.connected) {
     socket.emit('join_chat', { chatId: targetChatId });
     socket.emit('send_message', {
       ...newMsg,
       chatId: targetChatId
     });
+  } else {
+    fetch(`/api/chats/${targetChatId}/messages`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newMsg)
+    }).catch(() => {});
+
+    if (text) simulatePartnerReply(text);
   }
 
   elements.heroChatInput.value = '';
@@ -1559,13 +1567,22 @@ function handleActiveChatSend() {
   enforceMessageLimits(state.currentChatId);
   saveState();
 
-  // Send via Socket.io Realtime Engine
+  // Send via Socket.io Realtime Engine or REST API fallback
   if (socket && socket.connected) {
     socket.emit('send_message', {
       ...newMsg,
       chatId: state.currentChatId
     });
     socket.emit('typing_stop', { chatId: state.currentChatId, userName: state.currentUser.name });
+  } else {
+    // REST API fallback for Vercel / serverless deployments
+    fetch(`/api/chats/${state.currentChatId}/messages`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newMsg)
+    }).catch(() => {});
+
+    if (text) simulatePartnerReply(text);
   }
 
   elements.activeChatInput.value = '';

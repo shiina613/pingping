@@ -2,12 +2,14 @@ const fs = require('fs');
 const path = require('path');
 const initSqlJs = require('sql.js');
 
-// Ensure database directory exists
-const dbDir = path.join(__dirname, 'database');
+// Ensure database directory exists (supports Vercel Serverless /tmp)
+const isVercel = !!process.env.VERCEL;
+const dbDir = isVercel ? '/tmp' : path.join(__dirname, 'database');
 if (!fs.existsSync(dbDir)) {
   fs.mkdirSync(dbDir, { recursive: true });
 }
 
+const bundledDbPath = path.join(__dirname, 'database', 'pingping.db');
 const dbPath = path.join(dbDir, 'pingping.db');
 
 let db = null;
@@ -51,9 +53,17 @@ async function initDatabase() {
       try {
         const fileBuffer = fs.readFileSync(dbPath);
         db = new SQL.Database(fileBuffer);
-        console.log('📂 Loaded existing SQLite database from database/pingping.db');
+        console.log('📂 Loaded existing SQLite database from ' + dbPath);
       } catch (e) {
-        console.warn('⚠️ Could not load existing db file, creating new one:', e.message);
+        console.warn('⚠️ Could not load db file, creating new one:', e.message);
+        db = new SQL.Database();
+      }
+    } else if (fs.existsSync(bundledDbPath)) {
+      try {
+        const fileBuffer = fs.readFileSync(bundledDbPath);
+        db = new SQL.Database(fileBuffer);
+        console.log('📂 Loaded bundled SQLite database from ' + bundledDbPath);
+      } catch (e) {
         db = new SQL.Database();
       }
     } else {

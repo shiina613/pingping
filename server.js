@@ -67,6 +67,44 @@ app.use('/api/', apiLimiter);
 // Serve static uploads
 app.use('/uploads', express.static(uploadsDir, { maxAge: '7d' }));
 
+// Explicit static routes with in-memory caching to guarantee Vercel bundler inclusion and exact MIME types
+let styleContent = '';
+let appContent = '';
+
+const stylePaths = [path.join(__dirname, 'style.css'), path.join(__dirname, '..', 'style.css')];
+for (const sp of stylePaths) {
+  if (fs.existsSync(sp)) {
+    try { styleContent = fs.readFileSync(sp, 'utf8'); break; } catch (e) {}
+  }
+}
+
+const appPaths = [path.join(__dirname, 'app.js'), path.join(__dirname, '..', 'app.js')];
+for (const ap of appPaths) {
+  if (fs.existsSync(ap)) {
+    try { appContent = fs.readFileSync(ap, 'utf8'); break; } catch (e) {}
+  }
+}
+
+app.get('/style.css', (req, res) => {
+  res.setHeader('Content-Type', 'text/css; charset=UTF-8');
+  res.setHeader('Cache-Control', 'public, max-age=3600');
+  if (styleContent) {
+    res.send(styleContent);
+  } else {
+    res.sendFile(path.join(__dirname, 'style.css'));
+  }
+});
+
+app.get('/app.js', (req, res) => {
+  res.setHeader('Content-Type', 'application/javascript; charset=UTF-8');
+  res.setHeader('Cache-Control', 'public, max-age=3600');
+  if (appContent) {
+    res.send(appContent);
+  } else {
+    res.sendFile(path.join(__dirname, 'app.js'));
+  }
+});
+
 // Serve frontend static assets
 app.use(express.static(__dirname, {
   extensions: ['html', 'htm']

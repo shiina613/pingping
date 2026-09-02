@@ -8,8 +8,13 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=2.2">
-  <script src="/socket.io/socket.io.js"></script>
+  <link rel="stylesheet" href="style.css?v=2.3">
+  <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+  <script>
+    if (typeof io === 'undefined') {
+      document.write('<script src="/socket.io/socket.io.js"><\/script>');
+    }
+  </script>
 </head>
 <body>
   <div class="app-container" id="app">
@@ -82,7 +87,7 @@
       </div>
 
       <!-- CHAT CONVERSATIONS LIST -->
-      <div class="sidebar-chats-list" id="chatsList">
+      <div class="sidebar-chats-list" id="sidebarChatsList">
         <div class="chat-item active" data-id="chat-1">
           <span class="chat-item-bullet">•</span>
           <span class="chat-item-title">Dự Án Chung 🚀</span>
@@ -181,6 +186,7 @@
               <div class="session-quick-items" id="sessionQuickItems"></div>
               <div class="dropdown-divider"></div>
               <div class="dropdown-item" id="menuCreateNewSession">➕ Tạo phiên trò chuyện mới...</div>
+              <div class="dropdown-item" id="downloadTranscriptBtn">📥 Xuất nhật ký trò chuyện (.md)</div>
             </div>
           </div>
         </div>
@@ -364,7 +370,7 @@
 
       <!-- VIEW 2: ACTIVE CHAT THREAD (Multi-turn Human Messages) -->
       <div class="chat-view hidden" id="chatView">
-        <div class="chat-messages-container" id="messagesContainer">
+        <div class="chat-messages-container" id="chatMessagesContainer">
           <!-- Messages will be rendered here dynamically -->
         </div>
 
@@ -689,6 +695,13 @@
           </div>
         </div>
       </div>
+      <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 10px; padding: 16px 24px; border-top: 1px solid var(--border-subtle); background: var(--bg-card-header, transparent);">
+        <button class="secondary-btn" id="closeCustomizeModalBtn2">Đóng</button>
+        <button class="primary-btn" id="saveCustomizeBtn">Lưu cài đặt</button>
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL 4: SEARCH CHATS & MESSAGES -->
   <div class="modal-overlay hidden" id="searchModal">
     <div class="modal-card">
@@ -774,7 +787,8 @@
   <!-- AUTH MODAL: LOGIN & REGISTER PORTAL -->
   <div class="modal-overlay hidden" id="authModal" style="backdrop-filter: blur(14px); background: rgba(0, 0, 0, 0.78); z-index: 10000;">
     <div class="modal-card auth-modal-card" style="max-width: 440px; border: 1px solid var(--border-color); box-shadow: 0 25px 70px rgba(0,0,0,0.5);">
-      <div class="modal-header" style="text-align: center; display: block; border-bottom: none; padding: 24px 24px 8px 24px;">
+      <div class="modal-header" style="text-align: center; display: block; border-bottom: none; padding: 24px 24px 8px 24px; position: relative;">
+        <button class="modal-close-btn" id="closeAuthModalBtn" title="Đóng modal" style="position: absolute; top: 16px; right: 16px;">✕</button>
         <div style="display: inline-flex; align-items: center; justify-content: center; width: 50px; height: 50px; border-radius: 14px; background: linear-gradient(135deg, var(--claude-coral), #d97706); color: white; font-size: 26px; margin-bottom: 12px; box-shadow: 0 6px 18px rgba(217, 119, 6, 0.35);">
           💬
         </div>
@@ -836,6 +850,12 @@
             Tạo tài khoản & Tham gia ngay
           </button>
         </form>
+
+        <div style="margin-top: 14px; text-align: center;">
+          <button type="button" id="guestContinueBtn" style="background: none; border: none; color: var(--text-muted); font-size: 12px; cursor: pointer; text-decoration: underline; padding: 4px 8px;">
+            Tiếp tục xem với tư cách Khách
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -846,6 +866,6 @@
   <!-- Hidden File Input for Attachments -->
   <input type="file" id="hiddenFileInput" style="display: none;" accept="image/*,video/*,.pdf,.doc,.docx,.txt,.json,.py,.zip">
 
-  <script src="app.js?v=2.2"></script>
+  <script src="app.js?v=2.3"></script>
 </body>
 </html>

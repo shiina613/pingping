@@ -30,6 +30,10 @@ function persistToDisk() {
 }
 
 function schedulePersist() {
+  if (isVercel) {
+    persistToDisk();
+    return;
+  }
   if (saveTimeout) clearTimeout(saveTimeout);
   saveTimeout = setTimeout(() => {
     persistToDisk();

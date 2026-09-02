@@ -222,11 +222,13 @@ const elements = {
   mobileSidebarToggle: document.getElementById('mobileSidebarToggle'),
   brandLogo: document.getElementById('brand-logo'),
   newChatBtn: document.getElementById('newChatBtn'),
-  sidebarChatsList: document.getElementById('sidebarChatsList'),
+  sidebarChatsList: document.getElementById('sidebarChatsList') || document.getElementById('chatsList'),
   navProjects: document.getElementById('navProjects'),
   navConnect: document.getElementById('navConnect'),
   navCustomize: document.getElementById('navCustomize'),
   authModal: document.getElementById('authModal'),
+  closeAuthModalBtn: document.getElementById('closeAuthModalBtn'),
+  guestContinueBtn: document.getElementById('guestContinueBtn'),
   loginForm: document.getElementById('loginForm'),
   registerForm: document.getElementById('registerForm'),
   logoutBtn: document.getElementById('logoutBtn'),
@@ -257,7 +259,7 @@ const elements = {
   selectedModelLabel: document.getElementById('selectedModelLabel'),
   
   // Active Chat Stream Inputs
-  chatMessagesContainer: document.getElementById('chatMessagesContainer'),
+  chatMessagesContainer: document.getElementById('chatMessagesContainer') || document.getElementById('messagesContainer'),
   activeChatInput: document.getElementById('activeChatInput'),
   activeSendBtn: document.getElementById('activeSendBtn'),
   typingIndicator: document.getElementById('typingIndicator'),
@@ -284,10 +286,11 @@ const elements = {
   
   customizeModal: document.getElementById('customizeModal'),
   closeCustomizeModalBtn: document.getElementById('closeCustomizeModalBtn'),
+  closeCustomizeModalBtn2: document.getElementById('closeCustomizeModalBtn2'),
   saveCustomizeBtn: document.getElementById('saveCustomizeBtn'),
   testSoundBtn: document.getElementById('testSoundBtn'),
   soundToggle: document.getElementById('soundToggle'),
-  notifToggle: document.getElementById('notifToggle'),
+  notifToggle: document.getElementById('notifToggle') || document.getElementById('notificationToggle'),
   
   searchModal: document.getElementById('searchModal'),
   closeSearchModalBtn: document.getElementById('closeSearchModalBtn'),
@@ -301,24 +304,11 @@ const elements = {
   saveProfileBtn: document.getElementById('saveProfileBtn'),
   profileNameInput: document.getElementById('profileNameInput'),
   profileRoleInput: document.getElementById('profileRoleInput'),
-  userProfileBtn: document.getElementById('userProfileBtn'),
+  userProfileBtn: document.getElementById('userProfileBtn') || document.getElementById('userProfileRow'),
   
-  // Artifacts Panel
-  artifactsDrawer: document.getElementById('artifactsDrawer'),
-  closeArtifactBtn: document.getElementById('closeArtifactBtn'),
-  copyArtifactBtn: document.getElementById('copyArtifactBtn'),
-  artifactPanelTitle: document.getElementById('artifactPanelTitle'),
-  artifactCodeBlock: document.getElementById('artifactCodeBlock'),
-  artifactsContent: document.getElementById('artifactsContent'),
-  tabCode: document.getElementById('tabCode'),
-  tabPreview: document.getElementById('tabPreview'),
-  tabHistory: document.getElementById('tabHistory'),
-  
-  // Header Live Status & Profile Switcher
+  // Header Live Status
   liveDot: document.getElementById('liveDot'),
   liveText: document.getElementById('liveText'),
-  quickUserSelect: document.getElementById('quickUserSelect'),
-  switchUserBtn: document.getElementById('switchUserBtn'),
   profileIdInput: document.getElementById('profileIdInput'),
 
   // Toast & File
@@ -830,6 +820,10 @@ async function checkAuthSession() {
   const savedUser = localStorage.getItem('pingping_user');
 
   if (!token || !savedUser) {
+    updateUserProfileUI();
+    initSocket();
+    syncDataFromServer();
+    startPollingSync();
     showAuthModal();
     return;
   }
@@ -876,38 +870,94 @@ async function checkAuthSession() {
   showAuthModal();
 }
 
-// Smart Polling Sync for real-time messages
+// Smart Polling Sync for real-time messages & chats
 let pollingInterval = null;
+let pollTick = 0;
 function startPollingSync() {
   if (pollingInterval) clearInterval(pollingInterval);
   pollingInterval = setInterval(async () => {
-    if (!state.currentChatId) return;
-    try {
-      const headers = {};
-      if (state.authToken) headers['Authorization'] = `Bearer ${state.authToken}`;
-      const res = await fetch(`/api/chats/${state.currentChatId}/messages?limit=50`, { headers });
-      if (!res.ok) return;
-      const json = await res.json();
-      if (json.success && Array.isArray(json.data)) {
-        const chat = state.chats[state.currentChatId];
-        if (!chat) return;
+    pollTick++;
+    
+    // 1. Sync messages for current active chat
+    if (state.currentChatId) {
+      try {
+        const headers = {};
+        if (state.authToken) headers['Authorization'] = `Bearer ${state.authToken}`;
+        const res = await fetch(`/api/chats/${state.currentChatId}/messages?limit=50`, { headers });
+        if (res.ok) {
+          const json = await res.json();
+          if (json.success && Array.isArray(json.data)) {
+            const chat = state.chats[state.currentChatId];
+            if (chat) {
+              const currentMsgIds = new Set((chat.messages || []).map(m => m.id));
+              let hasNew = false;
+              let isFromOther = false;
 
-        const currentMsgIds = new Set((chat.messages || []).map(m => m.id));
-        let hasNew = false;
-        json.data.forEach(m => {
-          if (!currentMsgIds.has(m.id)) {
-            chat.messages.push(m);
-            hasNew = true;
+              json.data.forEach(m => {
+                if (!currentMsgIds.has(m.id)) {
+                  chat.messages.push(m);
+                  hasNew = true;
+                  if (m.author !== (state.currentUser?.name || 'Shiina')) {
+                    isFromOther = true;
+                  }
+                }
+              });
+
+              if (hasNew) {
+                enforceMessageLimits(state.currentChatId);
+                saveState();
+                renderCurrentChat();
+                renderSidebarChats();
+                if (isFromOther) {
+                  playChimeSound('receive');
+                }
+              }
+            }
           }
-        });
-
-        if (hasNew) {
-          saveState();
-          renderCurrentChat();
-          renderSidebarChats();
         }
-      }
-    } catch (e) {}
+      } catch (e) {}
+    }
+
+    // 2. Periodic sync for room list every ~10 seconds
+    if (pollTick % 3 === 0) {
+      try {
+        const cRes = await fetch('/api/chats');
+        if (cRes.ok) {
+          const cJson = await cRes.json();
+          if (cJson.success && Array.isArray(cJson.data)) {
+            let chatsUpdated = false;
+            cJson.data.forEach(c => {
+              if (!state.chats[c.id]) {
+                state.chats[c.id] = {
+                  title: c.title,
+                  type: c.type,
+                  members: c.members || [],
+                  membersCount: c.membersCount,
+                  unread: 0,
+                  messages: []
+                };
+                chatsUpdated = true;
+              } else {
+                if (state.chats[c.id].title !== c.title) {
+                  state.chats[c.id].title = c.title;
+                  chatsUpdated = true;
+                }
+              }
+            });
+            if (chatsUpdated) {
+              saveState();
+              renderSidebarChats();
+              renderProjectsGrid();
+            }
+          }
+        }
+      } catch (e) {}
+    }
+
+    // 3. Maintain Cloud Sync status if socket is in fallback mode
+    if (!socket || !socket.connected) {
+      updateLiveStatus('cloud');
+    }
   }, 3500);
 }
 
@@ -1450,7 +1500,7 @@ function renderCurrentChat() {
     if (msg.image) {
       mediaHtml += `
         <div class="msg-image-card" onclick="openLightbox('${msg.image}', '${escapeHtml(msg.imageCaption || msg.content || 'Hình ảnh đính kèm')}')">
-          <img src="${msg.image}" alt="Attached Image" class="msg-image-thumb">
+          <img src="${msg.image}" alt="Attached Image" class="msg-image-thumb" onerror="this.parentElement.style.display='none';">
           ${msg.imageCaption ? `<div style="padding: 6px 12px; font-size: 12px; color: var(--text-muted); background: rgba(0,0,0,0.2);">${escapeHtml(msg.imageCaption)}</div>` : ''}
         </div>
       `;
@@ -1516,12 +1566,12 @@ function renderCurrentChat() {
               </svg>
               <span>${escapeHtml(msg.artifactTitle || 'Code Snippet')}</span>
             </div>
-            <button class="code-card-btn" onclick="openArtifact('${escapeHtml(msg.artifactTitle)}', \`${encodeURIComponent(msg.artifactCode)}\`)">
+            <button class="code-card-btn" onclick="openArtifact('${escapeHtml(msg.artifactTitle)}', \`${encodeURIComponent(msg.artifactCode)}\`)" title="Sao chép toàn bộ mã nguồn">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                <line x1="9" y1="3" x2="9" y2="21"></line>
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
               </svg>
-              <span>Mở trong Artifacts</span>
+              <span>Sao chép mã</span>
             </button>
           </div>
           <pre class="code-card-body"><code>${escapeHtml(msg.artifactCode || '')}</code></pre>
@@ -2423,7 +2473,11 @@ function setupEventListeners() {
   elements.closeConnectModalBtn?.addEventListener('click', () => closeModal(elements.connectModal));
   elements.doneConnectBtn?.addEventListener('click', () => closeModal(elements.connectModal));
   elements.closeCustomizeModalBtn?.addEventListener('click', () => closeModal(elements.customizeModal));
+  elements.closeCustomizeModalBtn2?.addEventListener('click', () => closeModal(elements.customizeModal));
   elements.saveCustomizeBtn?.addEventListener('click', handleSaveCustomize);
+  elements.closeAuthModalBtn?.addEventListener('click', hideAuthModal);
+  elements.guestContinueBtn?.addEventListener('click', hideAuthModal);
+  elements.downloadTranscriptBtn?.addEventListener('click', handleDownloadTranscript);
 
   // Search Modal
   elements.searchChatsBtn?.addEventListener('click', () => {
@@ -2802,19 +2856,42 @@ function applyTheme(theme) {
   }
 }
 
-// Artifacts Drawer functions
+// Direct Code Artifact Copy Function
 window.openArtifact = function(title, encodedCode) {
-  const code = decodeURIComponent(encodedCode);
-  state.isArtifactsOpen = true;
-  elements.artifactsDrawer?.classList.add('open');
-  if (elements.artifactPanelTitle) elements.artifactPanelTitle.textContent = title;
-  if (elements.artifactCodeBlock) elements.artifactCodeBlock.textContent = code;
-  switchArtifactTab('code');
+  try {
+    const code = decodeURIComponent(encodedCode);
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(code).then(() => {
+        showToast(`Đã sao chép mã nguồn "${title}"!`, '📋');
+      }).catch(() => {
+        fallbackCopyText(code, title);
+      });
+    } else {
+      fallbackCopyText(code, title);
+    }
+  } catch (e) {
+    showToast('Sao chép thất bại', '⚠️');
+  }
 };
+
+function fallbackCopyText(text, title) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.opacity = '0';
+  document.body.appendChild(ta);
+  ta.select();
+  try {
+    document.execCommand('copy');
+    showToast(`Đã sao chép mã nguồn "${title}"!`, '📋');
+  } catch (err) {
+    showToast('Không thể sao chép!', '⚠️');
+  }
+  document.body.removeChild(ta);
+}
 
 function closeArtifacts() {
   state.isArtifactsOpen = false;
-  elements.artifactsDrawer?.classList.remove('open');
 }
 
 function switchArtifactTab(tab) {
@@ -2940,8 +3017,19 @@ function formatMessageContent(content) {
     // Inline code `code`
     text = text.replace(/`([^`]+)`/g, '<code class="msg-inline-code">$1</code>');
     
-    // Highlight @mentions in text
-    text = text.replace(/@([a-zA-Z0-9_\u00C0-\u1EF9\s]+)/g, '<span class="mention-tag">@$1</span>');
+    // Highlight @mentions in text (e.g. @Shiina, @Lương Thanh Hậu, @tung_nq)
+    const knownNames = (typeof CONTACTS_DIRECTORY !== 'undefined' && Array.isArray(CONTACTS_DIRECTORY))
+      ? CONTACTS_DIRECTORY.map(c => c.name).sort((a, b) => b.length - a.length)
+      : ['Shiina', 'Lương Thanh Hậu', 'Nguyễn Quang Tùng', 'Nguyễn Lâm Tùng', 'Alex Rivers', 'Phạm Thu Trang', 'Trần Văn Mạnh', 'Elena Rostova'];
+    
+    for (const name of knownNames) {
+      if (!name) continue;
+      const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const reg = new RegExp(`(^|\\s)@${escaped}(?=\\s|$|[.,!?])`, 'gi');
+      text = text.replace(reg, (m, prefix) => `${prefix}<span class="mention-tag">@${name}</span>`);
+    }
+    // Generic username/handle @mentions (e.g. @tung_nl, @alex)
+    text = text.replace(/(^|\s)@([a-zA-Z0-9_]+)(?=\s|$|[.,!?])/g, (m, prefix, uname) => `${prefix}<span class="mention-tag">@${uname}</span>`);
 
     // Detect and highlight URLs
     let detectedUrl = null;

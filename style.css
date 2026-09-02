@@ -1197,6 +1197,8 @@ body.sidebar-is-collapsed .header-sidebar-toggle {
   flex-direction: column;
   align-items: center;
   padding: 0 16px 14px 16px;
+}
+
 /* Mention Autocomplete Popover */
 .mention-autocomplete {
   position: absolute;

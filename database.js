@@ -224,10 +224,10 @@ function seedInitialData() {
     );
   });
 
-  // 2. Chat-1: trại bò cơ sở 1
+  // 2. Chat-1: Dự Án Chung 🚀
   db.run(
     'INSERT INTO chats (id, title, type, created_by, members_count_label) VALUES (?, ?, ?, ?, ?)',
-    ['chat-1', 'trại bò cơ sở 1', 'channel', 'u_shiina', '4 thành viên · Tối đa 36 tin']
+    ['chat-1', 'Dự Án Chung 🚀', 'channel', 'u_shiina', '4 thành viên · Tối đa 36 tin']
   );
 
   ['Shiina', 'Lương Thanh Hậu', 'Nguyễn Quang Tùng', 'Nguyễn Lâm Tùng'].forEach((m, idx) => {
@@ -244,7 +244,7 @@ function seedInitialData() {
       sender_id: 'u_shiina',
       author: 'Shiina',
       role: 'Quản trị viên',
-      content: 'xin chào cả đội, tình hình chuồng số 2 thế nào rồi?',
+      content: 'Xin chào cả đội, tiến độ dự án PingPing tuần này thế nào rồi?',
       msg_type: 'text',
       created_at: new Date(now - 3600000 * 2).toISOString()
     },
@@ -254,9 +254,9 @@ function seedInitialData() {
       sender_id: 'u_hau',
       author: 'Lương Thanh Hậu',
       role: 'Quản lý',
-      content: 'Chuồng số 2 đã hoàn thành việc khử trùng và bổ sung máng ăn tự động rồi nhé. Em gửi ảnh kiểm tra thực tế:',
-      image: 'https://images.unsplash.com/photo-1570042225831-d98fa7577f1e?w=800&auto=format&fit=crop&q=80',
-      image_caption: 'Ảnh thực tế khu chuồng số 2 sau vệ sinh khử trùng',
+      content: 'Hệ thống xác thực tài khoản và Socket.io thời gian thực đã hoàn tất kiểm thử nhé! Em gửi ảnh chụp thực tế:',
+      image: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&auto=format&fit=crop&q=80',
+      image_caption: 'Giao diện bảng điều khiển PingPing',
       msg_type: 'image',
       created_at: new Date(now - 3600000 * 1.8).toISOString()
     },
@@ -266,9 +266,9 @@ function seedInitialData() {
       sender_id: 'u_tung_nl',
       author: 'Nguyễn Lâm Tùng',
       role: 'Giám sát',
-      content: 'Em gửi thêm clip camera giám sát hệ thống quạt thông gió và máng nước tự động lúc 20h:',
+      content: 'Em gửi thêm clip kiểm thử thao tác nhắn tin đa phương tiện và đồng bộ trạng thái tức thì:',
       video: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
-      video_caption: 'Video camera CS1 - Khu máng ăn tự động',
+      video_caption: 'Video demo tương tác phòng chat PingPing',
       msg_type: 'video',
       created_at: new Date(now - 3600000 * 1.5).toISOString()
     },
@@ -278,25 +278,13 @@ function seedInitialData() {
       sender_id: 'u_hau',
       author: 'Lương Thanh Hậu',
       role: 'Quản lý',
-      content: 'Mọi người tham khảo tài liệu tiêu chuẩn mới tại https://nongnghiep.vn/tieu-chuan-chuong-trai-hien-dai và xem file báo cáo đính kèm bên dưới:',
-      file_name: 'Bao_cao_kiem_toan_ky_thuat_thang8.pdf',
-      file_size: '3.4 MB',
+      content: 'Mọi người tham khảo tài liệu kỹ thuật tại https://github.com/shiina613/pingping và xem file đính kèm bên dưới:',
+      file_name: 'Tai_lieu_kien_truc_he_thong_PingPing.pdf',
+      file_size: '2.8 MB',
       file_type: 'pdf',
       file_url: '#',
       msg_type: 'file',
       created_at: new Date(now - 3600000 * 1.2).toISOString()
-    },
-    {
-      id: 'm1_5',
-      chat_id: 'chat-1',
-      sender_id: 'u_tung_nq',
-      author: 'Nguyễn Quang Tùng',
-      role: 'Kỹ thuật viên',
-      content: `Được rồi, mình kể bạn nghe câu chuyện này nhé:\n\n**Người canh giữ ngọn hải đăng**\n\nỞ một hòn đảo nhỏ xa xôi, có một ông lão tên Tư sống một mình trong ngọn hải đăng đã hơn ba mươi năm. Mỗi đêm, ông thắp sáng ngọn đèn để dẫn đường cho tàu thuyền qua vùng biển đầy đá ngầm.\n\nSuốt nhiều giờ liền giữa mưa bão, ông vẫn giơ cao ngọn đèn cứu sống con tàu đánh cá. Trái tim ấm áp của ông đã trở thành điểm tựa cho muôn người... 🏮`,
-      thought: 'Đã suy nghĩ trong 2s',
-      thought_time: '2s',
-      msg_type: 'text',
-      created_at: new Date(now - 3600000 * 0.9).toISOString()
     }
   ];
 
@@ -322,18 +310,18 @@ function seedInitialData() {
     db.run('INSERT OR IGNORE INTO chat_members (id, chat_id, user_name, role) VALUES (?, ?, ?, ?)',
       [`cm_c2_${idx}`, 'chat-2', m, idx === 0 ? 'Quản trị viên' : 'Quản lý']);
   });
-  db.run(`INSERT INTO messages (id, chat_id, sender_id, author, role, content, msg_type, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    ['m2_1', 'chat-2', 'u_hau', 'Lương Thanh Hậu', 'Quản lý', 'Chào anh Shiina, đã nhập thêm 20 tấn thức ăn tinh hỗn hợp từ sáng nay nhé. Biên bản nghiệm thu đã ký xong.', 'text', new Date(now - 3600000 * 2).toISOString()]);
+  db.run('INSERT INTO messages (id, chat_id, sender_id, author, role, content, msg_type, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+    ['m2_1', 'chat-2', 'u_hau', 'Lương Thanh Hậu', 'Quản lý', 'Anh kiểm tra giúp em báo cáo phân tích hiệu suất hệ thống tháng này với nhé.', 'text', new Date(now - 3600000 * 4).toISOString()]);
 
   // 4. Chat-3: Nguyễn Quang Tùng (Direct)
   db.run('INSERT INTO chats (id, title, type, created_by, members_count_label) VALUES (?, ?, ?, ?, ?)',
-    ['chat-3', 'Nguyễn Quang Tùng', 'direct', 'u_shiina', 'Kỹ thuật viên - Online']);
+    ['chat-3', 'Nguyễn Quang Tùng', 'direct', 'u_shiina', 'Kỹ thuật viên - Vừa truy cập']);
   ['Shiina', 'Nguyễn Quang Tùng'].forEach((m, idx) => {
     db.run('INSERT OR IGNORE INTO chat_members (id, chat_id, user_name, role) VALUES (?, ?, ?, ?)',
       [`cm_c3_${idx}`, 'chat-3', m, idx === 0 ? 'Quản trị viên' : 'Kỹ thuật viên']);
   });
   db.run(`INSERT INTO messages (id, chat_id, sender_id, author, role, content, voice_duration, voice_url, msg_type, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    ['m3_1', 'chat-3', 'u_tung_nq', 'Nguyễn Quang Tùng', 'Kỹ thuật viên', 'Chào anh, em gửi ghi âm cập nhật nhanh tình trạng nhiệt độ hệ thống cảm biến chuồng A1 chiều nay:', '0:24', 'sample', 'voice', new Date(now - 3600000 * 3).toISOString()]);
+    ['m3_1', 'chat-3', 'u_tung_nq', 'Nguyễn Quang Tùng', 'Kỹ thuật viên', 'Chào anh, em gửi tin nhắn thoại cập nhật nhanh tiến độ tối ưu hóa hiệu năng ứng dụng chiều nay nhé:', '0:24', 'sample', 'voice', new Date(now - 3600000 * 3).toISOString()]);
 
   // 5. Chat-4: Nguyễn Lâm Tùng (Direct)
   db.run('INSERT INTO chats (id, title, type, created_by, members_count_label) VALUES (?, ?, ?, ?, ?)',

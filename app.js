@@ -30,7 +30,7 @@ const DEFAULT_CHATS = {
     ]
   },
   'chat-1': {
-    title: 'trại bò cơ sở 1',
+    title: 'Dự Án Chung 🚀',
     type: 'channel',
     members: ['Shiina', 'Lương Thanh Hậu', 'Nguyễn Quang Tùng', 'Nguyễn Lâm Tùng'],
     membersCount: '4 thành viên · Tối đa 36 tin',
@@ -40,35 +40,35 @@ const DEFAULT_CHATS = {
         id: 'm1_1',
         author: 'Shiina',
         time: '22:40',
-        content: 'xin chào cả đội, tình hình chuồng số 2 thế nào rồi?'
+        content: 'Xin chào cả đội, tiến độ dự án PingPing tuần này thế nào rồi?'
       },
       {
         id: 'm1_2',
         author: 'Lương Thanh Hậu',
         role: 'Quản lý',
         time: '22:41',
-        content: 'Chuồng số 2 đã hoàn thành việc khử trùng và bổ sung máng ăn tự động rồi nhé. Em gửi ảnh kiểm tra thực tế:',
-        image: 'https://images.unsplash.com/photo-1570042225831-d98fa7577f1e?w=800&auto=format&fit=crop&q=80',
-        imageCaption: 'Ảnh thực tế khu chuồng số 2 sau vệ sinh khử trùng'
+        content: 'Hệ thống xác thực tài khoản và Socket.io thời gian thực đã hoàn tất kiểm thử nhé! Em gửi ảnh chụp thực tế:',
+        image: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&auto=format&fit=crop&q=80',
+        imageCaption: 'Giao diện bảng điều khiển PingPing'
       },
       {
         id: 'm1_3',
         author: 'Nguyễn Lâm Tùng',
         role: 'Giám sát',
         time: '22:42',
-        content: 'Em gửi thêm clip camera giám sát hệ thống quạt thông gió và máng nước tự động lúc 20h:',
+        content: 'Em gửi thêm clip kiểm thử thao tác nhắn tin đa phương tiện và đồng bộ trạng thái tức thì:',
         video: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
-        videoCaption: 'Video camera CS1 - Khu máng ăn tự động'
+        videoCaption: 'Video demo tương tác phòng chat PingPing'
       },
       {
         id: 'm1_4',
         author: 'Lương Thanh Hậu',
         role: 'Quản lý',
         time: '22:43',
-        content: 'Mọi người tham khảo tài liệu tiêu chuẩn mới tại https://nongnghiep.vn/tieu-chuan-chuong-trai-hien-dai và xem file báo cáo đính kèm bên dưới:',
+        content: 'Mọi người tham khảo tài liệu kỹ thuật tại https://github.com/shiina613/pingping và xem file đính kèm bên dưới:',
         file: {
-          name: 'Bao_cao_kiem_toan_ky_thuat_thang8.pdf',
-          size: '3.4 MB',
+          name: 'Tai_lieu_kien_truc_he_thong_PingPing.pdf',
+          size: '2.8 MB',
           type: 'pdf'
         }
       },
@@ -1362,7 +1362,7 @@ function updateHeroDropdownItems() {
     });
     menu.appendChild(newGroupItem);
 
-    label.textContent = state.heroSelectedRecipient || 'trại bò cơ sở 1';
+    label.textContent = state.heroSelectedRecipient || 'Dự Án Chung 🚀';
   }
 }
 
@@ -1898,7 +1898,7 @@ function handleHeroSend() {
       state.chats[targetChatId].messages.push(newMsg);
 
     } else {
-      const groupTarget = state.heroSelectedRecipient || 'trại bò cơ sở 1';
+      const groupTarget = state.heroSelectedRecipient || 'Dự Án Chung 🚀';
       const existingId = Object.keys(state.chats).find(id => state.chats[id].title.toLowerCase() === groupTarget.toLowerCase() && (state.chats[id].type === 'channel' || state.chats[id].type === 'group' || state.chats[id].type === 'global_channel'));
 
       if (existingId) {
@@ -2149,7 +2149,7 @@ function setupEventListeners() {
     state.heroMode = 'cowork';
     elements.modeCoworkBtn?.classList.add('active');
     elements.modeChatBtn?.classList.remove('active');
-    state.heroSelectedRecipient = 'trại bò cơ sở 1';
+    state.heroSelectedRecipient = 'Dự Án Chung 🚀';
     updateHeroDropdownItems();
   });
 
@@ -2791,13 +2791,13 @@ function switchArtifactTab(tab) {
     if (elements.artifactsContent) {
       elements.artifactsContent.innerHTML = `
         <div style="background: #23221f; border: 1px solid #34332e; border-radius: 8px; padding: 20px; text-align: center;">
-          <div style="width: 48px; height: 48px; border-radius: 50%; background: var(--accent-coral); color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; margin: 0 auto 12px auto; font-size: 18px;">📊</div>
-          <h3 style="margin-bottom: 4px; color: #ecebe8; font-family: var(--font-sans);">Cảm biến chuồng trại CS1</h3>
-          <p style="color: #48bb78; font-size: 13px;">🟢 Đang truyền dữ liệu qua MQTT P2P</p>
+          <div style="width: 48px; height: 48px; border-radius: 50%; background: var(--accent-coral); color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; margin: 0 auto 12px auto; font-size: 20px;">💬</div>
+          <h3 style="margin-bottom: 4px; color: #ecebe8; font-family: var(--font-sans);">PingPing Network Hub</h3>
+          <p style="color: #10b981; font-size: 13px;">🟢 Đang kết nối WebSockets thời gian thực</p>
           <div style="margin-top: 14px; padding: 12px; background: rgba(255,255,255,0.04); border-radius: 6px; font-size: 13px; color: #a3a19b; text-align: left; line-height: 1.6;">
-            <div>🌡️ Nhiệt độ: <strong style="color: #fff;">26.8°C</strong></div>
-            <div>💧 Độ ẩm: <strong style="color: #fff;">74.2%</strong></div>
-            <div>💨 Tốc độ gió: <strong style="color: #fff;">1.8 m/s</strong></div>
+            <div>⚡ Độ trễ mạng: <strong style="color: #fff;">< 30ms</strong></div>
+            <div>🔒 Xác thực bảo mật: <strong style="color: #fff;">PBKDF2 + JWT</strong></div>
+            <div>👥 Trạng thái hệ thống: <strong style="color: #10b981;">Trực tuyến 100%</strong></div>
           </div>
         </div>
       `;
@@ -2808,12 +2808,12 @@ function switchArtifactTab(tab) {
       elements.artifactsContent.innerHTML = `
         <div style="color: #a3a19b; font-size: 13px; display: flex; flex-direction: column; gap: 10px;">
           <div style="padding: 10px; background: #201f1d; border-radius: 6px; border: 1px solid #2f2e29;">
-            <div style="font-weight: 600; color: #ecebe8;">Version 2 (Hiện tại)</div>
-            <div style="font-size: 11.5px; color: #6e6c66; margin-top: 2px;">Cập nhật logic quạt làm mát tự động</div>
+            <div style="font-weight: 600; color: #ecebe8;">Version 2 (Mạng xã hội thời gian thực)</div>
+            <div style="font-size: 11.5px; color: #6e6c66; margin-top: 2px;">Tích hợp Auth JWT, PBKDF2 và Socket.io 24/7</div>
           </div>
           <div style="padding: 10px; background: #1a1917; border-radius: 6px; border: 1px solid #282723;">
-            <div style="font-weight: 600; color: #a3a19b;">Version 1 (Ban đầu)</div>
-            <div style="font-size: 11.5px; color: #6e6c66; margin-top: 2px;">Đọc dữ liệu thô nhiệt độ</div>
+            <div style="font-weight: 600; color: #a3a19b;">Version 1 (Prototype)</div>
+            <div style="font-size: 11.5px; color: #6e6c66; margin-top: 2px;">Giao diện thử nghiệm ban đầu</div>
           </div>
         </div>
       `;
@@ -2858,14 +2858,10 @@ function generateOgCardHtml(url) {
     domain = parsed.hostname.replace('www.', '').toUpperCase();
   } catch (e) {}
 
-  if (url.includes('nongnghiep.vn')) {
-    title = 'Tiêu chuẩn thiết kế chuồng trại bò sữa công nghệ cao 2026';
-    desc = 'Tổng hợp quy chuẩn kỹ thuật thông gió, máng ăn tự động, và tiêu chuẩn an toàn sinh học phòng dịch quốc gia.';
-    thumb = 'https://images.unsplash.com/photo-1546445317-29f4545e9d53?w=600&auto=format&fit=crop&q=80';
-  } else if (url.includes('github.com')) {
-    title = 'shiina/farm-iot-mqtt - Hệ thống giám sát P2P';
-    desc = 'Mã nguồn mở thu thập dữ liệu cảm biến chuồng nuôi ESP32 và tích hợp máy chủ MQTT.';
-    thumb = 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=600&auto=format&fit=crop&q=80';
+  if (url.includes('github.com')) {
+    title = 'shiina613/pingping - Nền tảng Chat Realtime Full-stack';
+    desc = 'Mạng xã hội trò chuyện thời gian thực Node.js, WebSockets, SQLite bảo mật.';
+    thumb = 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600&auto=format&fit=crop&q=80';
   }
 
   return `

@@ -97,12 +97,12 @@ Tất cả các phản hồi từ API đều tuân theo định dạng JSON tiê
     "data": [
       {
         "id": "chat-1",
-        "title": "trại bò cơ sở 1",
+        "title": "Dự Án Chung 🚀",
         "type": "group",
         "members": ["Shiina", "Lương Thanh Hậu", "Nguyễn Quang Tùng"],
         "membersCount": "3 thành viên",
         "lastMessage": {
-          "content": "Chuồng số 2 đã khử trùng xong",
+          "content": "Tiến độ dự án PingPing tuần này rất tốt",
           "time": "22:41",
           "author": "Lương Thanh Hậu"
         }

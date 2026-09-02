@@ -133,6 +133,15 @@ io.on('connection', (socket) => {
   // Join Room
   socket.on('join_chat', ({ chatId }) => {
     if (!chatId) return;
+    const targetChat = db.getChatById(chatId);
+    if (!targetChat) return;
+    if (targetChat.type !== 'global_channel') {
+      const reg = onlineUsers.get(socket.id);
+      const user = reg ? db.getUserById(reg.userId) : null;
+      if (!db.isUserMemberOfChat(chatId, user)) {
+        return; // Từ chối join room riêng tư nếu không phải thành viên
+      }
+    }
     socket.join(chatId);
   });
 
@@ -151,6 +160,19 @@ io.on('connection', (socket) => {
         return;
       }
 
+      const targetChat = db.getChatById(chatId);
+      if (!targetChat) {
+        if (typeof ackCallback === 'function') ackCallback({ success: false, error: 'Chat not found' });
+        return;
+      }
+
+      const registered = onlineUsers.get(socket.id);
+      const user = registered ? db.getUserById(registered.userId) : null;
+      if (targetChat.type !== 'global_channel' && !db.isUserMemberOfChat(chatId, user)) {
+        if (typeof ackCallback === 'function') ackCallback({ success: false, error: 'Không có quyền gửi tin nhắn vào phòng này' });
+        return;
+      }
+
       let msgType = 'text';
       if (image) msgType = 'image';
       else if (video) msgType = 'video';
@@ -158,9 +180,8 @@ io.on('connection', (socket) => {
       else if (voice) msgType = 'voice';
 
       const msgId = payload.id || `msg_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
-      const registered = onlineUsers.get(socket.id);
-      const finalAuthor = (registered && registered.userName) || author || 'Thành viên';
-      const finalSenderId = (registered && registered.userId) || payload.sender_id || null;
+      const finalAuthor = (registered && registered.userName) || (user && user.displayName) || author || 'Thành viên';
+      const finalSenderId = (registered && registered.userId) || (user && user.id) || payload.sender_id || null;
 
       const messageToSave = {
         id: msgId,
@@ -307,6 +328,21 @@ function handleTagCommands(chatId, author, text) {
 
 // ---------------- REST API ENDPOINTS ---------------- //
 
+// Helper to extract and verify authenticated user from request header
+function getAuthenticatedUser(req) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return null;
+  }
+  try {
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, JWT_SECRET);
+    return db.getUserById(decoded.id);
+  } catch (e) {
+    return null;
+  }
+}
+
 // 1. Authentication & Users
 app.post('/api/auth/register', (req, res) => {
   try {
@@ -451,7 +487,8 @@ app.get('/api/users', (req, res) => {
 // 2. Chats Management
 app.get('/api/chats', (req, res) => {
   try {
-    const chats = db.getAllChats();
+    const user = getAuthenticatedUser(req);
+    const chats = db.getChatsForUser(user);
     res.json({ success: true, data: chats });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -460,8 +497,17 @@ app.get('/api/chats', (req, res) => {
 
 app.get('/api/chats/:id', (req, res) => {
   try {
+    const user = getAuthenticatedUser(req);
     const chat = db.getChatById(req.params.id);
     if (!chat) return res.status(404).json({ success: false, message: 'Không tìm thấy phiên chat' });
+
+    if (!db.isUserMemberOfChat(req.params.id, user)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Bạn không có quyền truy cập cuộc trò chuyện riêng tư này. Vui lòng đăng nhập với tài khoản có quyền.'
+      });
+    }
+
     res.json({ success: true, data: chat });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -470,14 +516,23 @@ app.get('/api/chats/:id', (req, res) => {
 
 app.post('/api/chats', (req, res) => {
   try {
-    const { id, title, type, createdBy, members } = req.body;
+    const user = getAuthenticatedUser(req);
+    if (!user) {
+      return res.status(401).json({ success: false, message: 'Yêu cầu đăng nhập để tạo cuộc trò chuyện' });
+    }
+
+    const { id, title, type, members } = req.body;
     const chatId = id || `chat-${Date.now()}`;
+    const initialMembers = Array.isArray(members) && members.length > 0
+      ? Array.from(new Set([user.displayName, ...members]))
+      : [user.displayName];
+
     const newChat = db.createChat({
       id: chatId,
       title: title || 'Cuộc trò chuyện mới',
       type: type || 'group',
-      createdBy: createdBy || 'u_shiina',
-      members: members || ['Shiina']
+      createdBy: user.id,
+      members: initialMembers
     });
 
     io.emit('new_chat_created', newChat);
@@ -489,6 +544,14 @@ app.post('/api/chats', (req, res) => {
 
 app.patch('/api/chats/:id', (req, res) => {
   try {
+    const user = getAuthenticatedUser(req);
+    if (!user) {
+      return res.status(401).json({ success: false, message: 'Yêu cầu đăng nhập để đổi tên phòng chat' });
+    }
+    if (!db.isUserMemberOfChat(req.params.id, user)) {
+      return res.status(403).json({ success: false, message: 'Bạn không có quyền chỉnh sửa cuộc trò chuyện này' });
+    }
+
     const { title } = req.body;
     if (!title) return res.status(400).json({ success: false, message: 'Vui lòng cung cấp tiêu đề mới' });
     const updated = db.renameChat(req.params.id, title);
@@ -501,6 +564,14 @@ app.patch('/api/chats/:id', (req, res) => {
 
 app.delete('/api/chats/:id', (req, res) => {
   try {
+    const user = getAuthenticatedUser(req);
+    if (!user) {
+      return res.status(401).json({ success: false, message: 'Yêu cầu đăng nhập để xóa phòng chat' });
+    }
+    if (!db.isUserMemberOfChat(req.params.id, user)) {
+      return res.status(403).json({ success: false, message: 'Bạn không có quyền xóa cuộc trò chuyện này' });
+    }
+
     db.deleteChat(req.params.id);
     io.emit('chat_deleted', { chatId: req.params.id });
     res.json({ success: true, message: 'Xóa session thành công' });
@@ -512,8 +583,20 @@ app.delete('/api/chats/:id', (req, res) => {
 // 3. Messages History & Sending
 app.get('/api/chats/:id/messages', (req, res) => {
   try {
+    const user = getAuthenticatedUser(req);
+    const chatId = req.params.id;
+    const chat = db.getChatById(chatId);
+    if (!chat) return res.status(404).json({ success: false, message: 'Không tìm thấy cuộc trò chuyện' });
+
+    if (!db.isUserMemberOfChat(chatId, user)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Bạn không có quyền xem tin nhắn trong cuộc trò chuyện riêng tư này.'
+      });
+    }
+
     const limit = req.query.limit ? parseInt(req.query.limit, 10) : null;
-    const messages = db.getChatMessages(req.params.id, limit);
+    const messages = db.getChatMessages(chatId, limit);
     res.json({ success: true, data: messages });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -523,24 +606,23 @@ app.get('/api/chats/:id/messages', (req, res) => {
 app.post('/api/chats/:id/messages', (req, res) => {
   try {
     const chatId = req.params.id;
+    const user = getAuthenticatedUser(req);
+    const chat = db.getChatById(chatId);
+    if (!chat) return res.status(404).json({ success: false, message: 'Không tìm thấy cuộc trò chuyện' });
+
+    // Enforce authentication & membership for private chats
+    if (!user && chat.type !== 'global_channel') {
+      return res.status(401).json({ success: false, message: 'Vui lòng đăng nhập để gửi tin nhắn' });
+    }
+    if (chat.type !== 'global_channel' && !db.isUserMemberOfChat(chatId, user)) {
+      return res.status(403).json({ success: false, message: 'Bạn không phải thành viên của cuộc trò chuyện này' });
+    }
+
     const { author, role, content, image, video, file, voice, thought, thoughtTime } = req.body;
 
-    let finalAuthor = author || 'Thành viên';
-    let finalRole = role || '';
-    let finalSenderId = req.body.sender_id || null;
-
-    const authHeader = req.headers.authorization;
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      try {
-        const decoded = jwt.verify(authHeader.split(' ')[1], JWT_SECRET);
-        const verifiedUser = db.getUserById(decoded.id);
-        if (verifiedUser) {
-          finalAuthor = verifiedUser.displayName;
-          finalRole = verifiedUser.role;
-          finalSenderId = verifiedUser.id;
-        }
-      } catch (e) {}
-    }
+    let finalAuthor = (user && user.displayName) || author || 'Thành viên';
+    let finalRole = (user && user.role) || role || '';
+    let finalSenderId = (user && user.id) || req.body.sender_id || null;
 
     let msgType = 'text';
     if (image) msgType = 'image';

@@ -39,141 +39,6 @@ const DEFAULT_CHATS = {
         content: 'Phòng chat này được thiết lập tự động lưu giữ **180 tin nhắn** gần nhất và tự động làm sạch các tin cũ. Mọi người có thể thoải mái gửi hình ảnh, video và liên kết nhé!'
       }
     ]
-  },
-  'chat-1': {
-    title: 'Dự Án Chung 🚀',
-    type: 'channel',
-    members: ['Shiina', 'Lương Thanh Hậu', 'Nguyễn Quang Tùng', 'Nguyễn Lâm Tùng'],
-    membersCount: '4 thành viên · Tối đa 36 tin',
-    unread: 0,
-    messages: [
-      {
-        id: 'm1_1',
-        author: 'Shiina',
-        time: '22:40',
-        content: 'Xin chào cả đội, tiến độ dự án PingPing tuần này thế nào rồi?'
-      },
-      {
-        id: 'm1_2',
-        author: 'Lương Thanh Hậu',
-        role: 'Quản lý',
-        time: '22:41',
-        content: 'Hệ thống xác thực tài khoản và Socket.io thời gian thực đã hoàn tất kiểm thử nhé! Em gửi ảnh chụp thực tế:',
-        image: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&auto=format&fit=crop&q=80',
-        imageCaption: 'Giao diện bảng điều khiển PingPing'
-      },
-      {
-        id: 'm1_3',
-        author: 'Nguyễn Lâm Tùng',
-        role: 'Giám sát',
-        time: '22:42',
-        content: 'Em gửi thêm clip kiểm thử thao tác nhắn tin đa phương tiện và đồng bộ trạng thái tức thì:',
-        video: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
-        videoCaption: 'Video demo tương tác phòng chat PingPing'
-      },
-      {
-        id: 'm1_4',
-        author: 'Lương Thanh Hậu',
-        role: 'Quản lý',
-        time: '22:43',
-        content: 'Mọi người tham khảo tài liệu kỹ thuật tại https://github.com/shiina613/pingping và xem file đính kèm bên dưới:',
-        file: {
-          name: 'Tai_lieu_kien_truc_he_thong_PingPing.pdf',
-          size: '2.8 MB',
-          type: 'pdf'
-        }
-      },
-      {
-        id: 'm1_5',
-        author: 'Nguyễn Quang Tùng',
-        role: 'Kỹ thuật viên',
-        time: '22:44',
-        thought: 'Đã suy nghĩ trong 2s',
-        thoughtTime: '2s',
-        content: `Được rồi, mình kể bạn nghe câu chuyện này nhé:
-
-**Người canh giữ ngọn hải đăng**
-
-Ở một hòn đảo nhỏ xa xôi, có một ông lão tên Tư sống một mình trong ngọn hải đăng đã hơn ba mươi năm. Mỗi đêm, ông thắp sáng ngọn đèn để dẫn đường cho tàu thuyền qua vùng biển đầy đá ngầm.
-
-Suốt nhiều giờ liền giữa mưa bão, ông vẫn giơ cao ngọn đèn cứu sống con tàu đánh cá. Trái tim ấm áp của ông đã trở thành điểm tựa cho muôn người... 🏮`
-      }
-    ]
-  },
-  'chat-2': {
-    title: 'Lương Thanh Hậu',
-    type: 'direct',
-    members: ['Shiina', 'Lương Thanh Hậu'],
-    membersCount: 'Quản lý - Online',
-    unread: 1,
-    messages: [
-      {
-        id: 'm2_1',
-        author: 'Lương Thanh Hậu',
-        time: '19:15',
-        content: 'Chào anh Shiina! Em gửi anh hóa đơn vận chuyển 15 tấn thức ăn ủ chua sáng mai:'
-      },
-      {
-        id: 'm2_2',
-        author: 'Lương Thanh Hậu',
-        time: '19:16',
-        file: {
-          name: 'Phieu_xuat_kho_thuc_an_15Tan.pdf',
-          size: '1.2 MB',
-          type: 'pdf'
-        },
-        voice: {
-          duration: '0:22'
-        }
-      },
-      {
-        id: 'm2_3',
-        author: 'Shiina',
-        time: '19:20',
-        content: 'Đã duyệt phiếu. Nhớ nhắc tài xế vào đúng cổng số 2 nhé.'
-      }
-    ]
-  },
-  'chat-3': {
-    title: 'Nguyễn Quang Tùng',
-    type: 'direct',
-    members: ['Shiina', 'Nguyễn Quang Tùng'],
-    membersCount: 'Kỹ thuật viên - Online',
-    unread: 0,
-    messages: [
-      {
-        id: 'm3_1',
-        author: 'Nguyễn Quang Tùng',
-        time: '16:05',
-        content: 'Em vừa cập nhật bản firmware ESP32 mới nhất đọc cảm biến qua MQTT:'
-      },
-      {
-        id: 'm3_2',
-        author: 'Nguyễn Quang Tùng',
-        time: '16:06',
-        hasArtifact: true,
-        artifactTitle: 'sensor_telemetry.py',
-        artifactCode: `import time\nimport json\nimport random\n\ndef read_barn_sensors(barn_id="CS1-ZONE-A"):\n    temp = round(random.uniform(24.5, 29.2), 2)\n    humidity = round(random.uniform(65.0, 78.5), 2)\n    return json.dumps({"temp": temp, "humidity": humidity}, indent=2)\n\nprint(read_barn_sensors())`,
-        content: 'Đã tối ưu thuật toán giảm tiêu hao năng lượng.'
-      }
-    ]
-  },
-  'chat-4': {
-    title: 'Nguyễn Lâm Tùng',
-    type: 'direct',
-    members: ['Shiina', 'Nguyễn Lâm Tùng'],
-    membersCount: 'Giám sát - Online',
-    unread: 0,
-    messages: [
-      {
-        id: 'm4_1',
-        author: 'Nguyễn Lâm Tùng',
-        time: '14:30',
-        content: 'Ảnh chụp đồng hồ tải điện máy phát 150kVA sau khi kiểm tra:',
-        image: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=800&auto=format&fit=crop&q=80',
-        imageCaption: 'Tủ điều khiển tự động ATS và máy phát điện'
-      }
-    ]
   }
 };
 
@@ -187,16 +52,22 @@ const CONTACTS_DIRECTORY = [
   { name: 'Trần Văn Mạnh', role: 'Vận hành máy', status: 'Offline', avatar: 'TM' }
 ];
 
+// Determine initial chats based on session (Guests only see public global channel)
+const initialToken = localStorage.getItem('pingping_token') || null;
+if (!initialToken) {
+  localStorage.removeItem('pingping_chats');
+}
+
 // Global State
 const state = {
-  authToken: localStorage.getItem('pingping_token') || null,
+  authToken: initialToken,
   currentUser: JSON.parse(localStorage.getItem('pingping_user') || 'null'),
   currentChatId: null,
   heroMode: 'chat', // 'chat' (1-1 direct) or 'cowork' (group/channel)
-  heroSelectedRecipient: 'Lương Thanh Hậu',
+  heroSelectedRecipient: 'World Class 🌍',
   isSidebarCollapsed: false,
   isArtifactsOpen: false,
-  chats: JSON.parse(localStorage.getItem('pingping_chats')) || DEFAULT_CHATS,
+  chats: initialToken ? (JSON.parse(localStorage.getItem('pingping_chats')) || JSON.parse(JSON.stringify(DEFAULT_CHATS))) : JSON.parse(JSON.stringify(DEFAULT_CHATS)),
   settings: JSON.parse(localStorage.getItem('pingping_settings')) || {
     theme: 'dark',
     soundEnabled: true,
@@ -204,10 +75,14 @@ const state = {
   }
 };
 
-// Save state helper
+// Save state helper (Only save chats for authenticated user)
 function saveState() {
   try {
-    localStorage.setItem('pingping_chats', JSON.stringify(state.chats));
+    if (state.authToken) {
+      localStorage.setItem('pingping_chats', JSON.stringify(state.chats));
+    } else {
+      localStorage.removeItem('pingping_chats');
+    }
     localStorage.setItem('pingping_settings', JSON.stringify(state.settings));
   } catch (e) {
     console.error('Save error:', e);
@@ -576,9 +451,12 @@ function initSocket() {
 
 async function syncDataFromServer() {
   try {
+    const headers = {};
+    if (state.authToken) headers['Authorization'] = `Bearer ${state.authToken}`;
+
     const [chatsRes, usersRes] = await Promise.all([
-      fetch('/api/chats').then(r => r.ok ? r.json() : null).catch(() => null),
-      fetch('/api/users').then(r => r.ok ? r.json() : null).catch(() => null)
+      fetch('/api/chats', { headers }).then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch('/api/users', { headers }).then(r => r.ok ? r.json() : null).catch(() => null)
     ]);
 
     if (usersRes && usersRes.success && Array.isArray(usersRes.data)) {
@@ -597,6 +475,14 @@ async function syncDataFromServer() {
     }
 
     if (chatsRes && chatsRes.success && Array.isArray(chatsRes.data)) {
+      const allowedIds = new Set(chatsRes.data.map(c => c.id));
+      // Loại bỏ ngay lập tức bất kỳ phòng chat nào mà user hiện tại không được phép truy cập
+      Object.keys(state.chats).forEach(id => {
+        if (!allowedIds.has(id) && id !== 'chat-world-class') {
+          delete state.chats[id];
+        }
+      });
+
       for (const c of chatsRes.data) {
         if (!state.chats[c.id]) {
           state.chats[c.id] = {
@@ -613,8 +499,8 @@ async function syncDataFromServer() {
           state.chats[c.id].membersCount = c.membersCount;
         }
 
-        // Fetch messages for each chat from backend
-        fetch(`/api/chats/${c.id}/messages`).then(r => r.ok ? r.json() : null).then(msgRes => {
+        // Fetch messages for each chat from backend with authorization headers
+        fetch(`/api/chats/${c.id}/messages`, { headers }).then(r => r.ok ? r.json() : null).then(msgRes => {
           if (msgRes && msgRes.success && Array.isArray(msgRes.data)) {
             state.chats[c.id].messages = msgRes.data;
             saveState();
@@ -628,6 +514,7 @@ async function syncDataFromServer() {
       saveState();
       renderSidebarChats();
       renderProjectsGrid();
+      updateHeroDropdownItems();
     }
   } catch (e) {
     console.warn('Backend sync failed, continuing with local state:', e);
@@ -665,6 +552,7 @@ function clearAuthAlert() {
 
 function updateUserProfileUI() {
   const currentUserNameEl = document.getElementById('currentUserName');
+  const currentUserRoleEl = document.getElementById('currentUserRole');
   const currentUserAvatarEl = document.getElementById('currentUserAvatar');
   const headerAuthBtn = document.getElementById('headerAuthBtn');
   const headerUserControls = document.getElementById('headerUserControls');
@@ -672,6 +560,7 @@ function updateUserProfileUI() {
 
   if (state.currentUser && state.authToken) {
     if (currentUserNameEl) currentUserNameEl.textContent = state.currentUser.name;
+    if (currentUserRoleEl) currentUserRoleEl.textContent = '· ' + (state.currentUser.role || 'Thành viên');
     if (currentUserAvatarEl) currentUserAvatarEl.textContent = state.currentUser.name.charAt(0).toUpperCase();
 
     if (headerAuthBtn) headerAuthBtn.classList.add('hidden');
@@ -685,7 +574,8 @@ function updateUserProfileUI() {
     if (usernameText) usernameText.textContent = '@' + (state.currentUser.username || state.currentUser.name.toLowerCase().replace(/\s+/g, ''));
     if (avatarDisplay) avatarDisplay.textContent = state.currentUser.name.charAt(0).toUpperCase();
   } else {
-    if (currentUserNameEl) currentUserNameEl.textContent = 'Khách (Chưa đăng nhập)';
+    if (currentUserNameEl) currentUserNameEl.textContent = 'Khách';
+    if (currentUserRoleEl) currentUserRoleEl.textContent = '· Chưa đăng nhập';
     if (currentUserAvatarEl) currentUserAvatarEl.textContent = '👤';
 
     if (headerAuthBtn) headerAuthBtn.classList.remove('hidden');
@@ -803,12 +693,19 @@ function handleLogout() {
   if (confirm('Bạn có chắc chắn muốn đăng xuất không?')) {
     localStorage.removeItem('pingping_token');
     localStorage.removeItem('pingping_user');
+    localStorage.removeItem('pingping_chats');
     state.authToken = null;
     state.currentUser = null;
+    state.currentChatId = null;
+    state.chats = JSON.parse(JSON.stringify(DEFAULT_CHATS));
     if (socket && socket.connected) {
       socket.disconnect();
     }
     stopPollingSync();
+    updateUserProfileUI();
+    renderSidebarChats();
+    renderProjectsGrid();
+    showHeroView();
     closeAllModals();
     showAuthModal();
     showToast('Đã đăng xuất thành công.');
@@ -921,11 +818,23 @@ function startPollingSync() {
     // 2. Periodic sync for room list every ~10 seconds
     if (pollTick % 3 === 0) {
       try {
-        const cRes = await fetch('/api/chats');
+        const headers = {};
+        if (state.authToken) headers['Authorization'] = `Bearer ${state.authToken}`;
+        const cRes = await fetch('/api/chats', { headers });
         if (cRes.ok) {
           const cJson = await cRes.json();
           if (cJson.success && Array.isArray(cJson.data)) {
+            const allowedIds = new Set(cJson.data.map(c => c.id));
             let chatsUpdated = false;
+
+            // Purge any rooms no longer permitted
+            Object.keys(state.chats).forEach(id => {
+              if (!allowedIds.has(id) && id !== 'chat-world-class') {
+                delete state.chats[id];
+                chatsUpdated = true;
+              }
+            });
+
             cJson.data.forEach(c => {
               if (!state.chats[c.id]) {
                 state.chats[c.id] = {
@@ -948,6 +857,7 @@ function startPollingSync() {
               saveState();
               renderSidebarChats();
               renderProjectsGrid();
+              updateHeroDropdownItems();
             }
           }
         }
@@ -1203,7 +1113,13 @@ function showNewGroupHeroView() {
 }
 
 function showChatView(chatId) {
-  if (!state.chats[chatId]) return;
+  if (!state.chats[chatId]) {
+    if (chatId !== 'chat-world-class' && !state.authToken) {
+      showAuthAlert('Đây là cuộc trò chuyện riêng tư. Vui lòng đăng nhập với tài khoản có quyền!', 'info');
+      showAuthModal();
+    }
+    return;
+  }
   state.currentChatId = chatId;
   
   state.chats[chatId].unread = 0;
@@ -1352,52 +1268,66 @@ function updateHeroDropdownItems() {
   menu.innerHTML = '';
 
   if (state.heroMode === 'chat') {
-    // Chat Mode -> Select a Person to Direct Message
+    // Chat Mode -> Select a Person to Direct Message or World Class
     const catHeader = document.createElement('div');
     catHeader.className = 'dropdown-category';
-    catHeader.textContent = 'Gửi tin nhắn trực tiếp đến:';
+    catHeader.textContent = 'Gửi tin nhắn đến:';
     menu.appendChild(catHeader);
 
-    CONTACTS_DIRECTORY.forEach(contact => {
-      const item = document.createElement('div');
-      item.className = 'dropdown-item' + (state.heroSelectedRecipient === contact.name ? ' selected' : '');
-      item.innerHTML = `
-        <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
-          <span>👤 ${escapeHtml(contact.name)}</span>
-          <span style="font-size: 11px; opacity: 0.6;">${contact.role}</span>
-        </div>
-      `;
-      item.addEventListener('click', (e) => {
-        e.stopPropagation();
-        state.heroSelectedRecipient = contact.name;
-        label.textContent = contact.name;
-        menu.classList.remove('show');
-      });
-      menu.appendChild(item);
-    });
-
-    // Custom person entry
-    const divider = document.createElement('div');
-    divider.className = 'dropdown-divider';
-    divider.style.borderTop = '1px solid var(--border-subtle)';
-    divider.style.margin = '4px 0';
-    menu.appendChild(divider);
-
-    const customItem = document.createElement('div');
-    customItem.className = 'dropdown-item';
-    customItem.innerHTML = `<span>➕ Nhập tên / ID người mới...</span>`;
-    customItem.addEventListener('click', (e) => {
+    // Kênh công khai World Class luôn sẵn sàng cho tất cả người dùng
+    const wcItem = document.createElement('div');
+    wcItem.className = 'dropdown-item' + (state.heroSelectedRecipient === 'World Class 🌍' ? ' selected' : '');
+    wcItem.innerHTML = `<span>🌍 World Class (Kênh công khai)</span>`;
+    wcItem.addEventListener('click', (e) => {
       e.stopPropagation();
-      const customName = prompt('Nhập tên hoặc mã ID người bạn muốn nhắn tin:');
-      if (customName && customName.trim()) {
-        state.heroSelectedRecipient = customName.trim();
-        label.textContent = customName.trim();
-      }
+      state.heroSelectedRecipient = 'World Class 🌍';
+      label.textContent = 'World Class 🌍';
       menu.classList.remove('show');
     });
-    menu.appendChild(customItem);
+    menu.appendChild(wcItem);
 
-    label.textContent = state.heroSelectedRecipient || 'Lương Thanh Hậu';
+    if (state.authToken) {
+      CONTACTS_DIRECTORY.forEach(contact => {
+        const item = document.createElement('div');
+        item.className = 'dropdown-item' + (state.heroSelectedRecipient === contact.name ? ' selected' : '');
+        item.innerHTML = `
+          <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+            <span>👤 ${escapeHtml(contact.name)}</span>
+            <span style="font-size: 11px; opacity: 0.6;">${contact.role}</span>
+          </div>
+        `;
+        item.addEventListener('click', (e) => {
+          e.stopPropagation();
+          state.heroSelectedRecipient = contact.name;
+          label.textContent = contact.name;
+          menu.classList.remove('show');
+        });
+        menu.appendChild(item);
+      });
+
+      // Custom person entry
+      const divider = document.createElement('div');
+      divider.className = 'dropdown-divider';
+      divider.style.borderTop = '1px solid var(--border-subtle)';
+      divider.style.margin = '4px 0';
+      menu.appendChild(divider);
+
+      const customItem = document.createElement('div');
+      customItem.className = 'dropdown-item';
+      customItem.innerHTML = `<span>➕ Nhập tên / ID người mới...</span>`;
+      customItem.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const customName = prompt('Nhập tên hoặc mã ID người bạn muốn nhắn tin:');
+        if (customName && customName.trim()) {
+          state.heroSelectedRecipient = customName.trim();
+          label.textContent = customName.trim();
+        }
+        menu.classList.remove('show');
+      });
+      menu.appendChild(customItem);
+    }
+
+    label.textContent = state.heroSelectedRecipient || 'World Class 🌍';
 
   } else {
     // Cowork Mode -> Select an existing group OR create a new group
@@ -1406,10 +1336,10 @@ function updateHeroDropdownItems() {
     catHeader.textContent = 'Chọn nhóm hoặc tạo nhóm mới:';
     menu.appendChild(catHeader);
 
-    // Existing groups
+    // Existing authorized groups
     Object.keys(state.chats).forEach(id => {
       const c = state.chats[id];
-      if (c.type === 'channel' || c.type === 'group') {
+      if (c.type === 'channel' || c.type === 'group' || c.type === 'global_channel') {
         const item = document.createElement('div');
         item.className = 'dropdown-item' + (state.heroSelectedRecipient === c.title ? ' selected' : '');
         item.innerHTML = `
@@ -1428,31 +1358,38 @@ function updateHeroDropdownItems() {
       }
     });
 
-    // Create New Group Action
-    const divider = document.createElement('div');
-    divider.className = 'dropdown-divider';
-    divider.style.borderTop = '1px solid var(--border-subtle)';
-    divider.style.margin = '4px 0';
-    menu.appendChild(divider);
+    // Create New Group Action (for authenticated users)
+    if (state.authToken) {
+      const divider = document.createElement('div');
+      divider.className = 'dropdown-divider';
+      divider.style.borderTop = '1px solid var(--border-subtle)';
+      divider.style.margin = '4px 0';
+      menu.appendChild(divider);
 
-    const newGroupItem = document.createElement('div');
-    newGroupItem.className = 'dropdown-item';
-    newGroupItem.style.color = 'var(--accent-coral)';
-    newGroupItem.style.fontWeight = '600';
-    newGroupItem.innerHTML = `<span>✨ + Tạo nhóm chat mới...</span>`;
-    newGroupItem.addEventListener('click', (e) => {
-      e.stopPropagation();
-      menu.classList.remove('show');
-      showNewGroupHeroView();
-    });
-    menu.appendChild(newGroupItem);
+      const newGroupItem = document.createElement('div');
+      newGroupItem.className = 'dropdown-item';
+      newGroupItem.style.color = 'var(--accent-coral)';
+      newGroupItem.style.fontWeight = '600';
+      newGroupItem.innerHTML = `<span>✨ + Tạo nhóm chat mới...</span>`;
+      newGroupItem.addEventListener('click', (e) => {
+        e.stopPropagation();
+        menu.classList.remove('show');
+        showNewGroupHeroView();
+      });
+      menu.appendChild(newGroupItem);
+    }
 
-    label.textContent = state.heroSelectedRecipient || 'Dự Án Chung 🚀';
+    label.textContent = state.heroSelectedRecipient || 'World Class 🌍';
   }
 }
 
 // Function to Switch to New Chat Hero view with Group Tag prompt
 function createNewGroupDirect() {
+  if (!state.authToken) {
+    showAuthAlert('Vui lòng đăng nhập để tạo nhóm chat mới', 'info');
+    showAuthModal();
+    return;
+  }
   showNewGroupHeroView();
 }
 
@@ -1490,7 +1427,7 @@ function renderCurrentChat() {
       return;
     }
 
-    const isSelf = msg.author === state.currentUser.name;
+    const isSelf = !!(state.currentUser && msg.author === state.currentUser.name);
     const row = document.createElement('div');
     row.className = `message-row ${isSelf ? 'is-self' : 'is-other'}`;
 

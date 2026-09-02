@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=2.3">
+  <link rel="stylesheet" href="style.css?v=2.4">
   <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
   <script>
     if (typeof io === 'undefined') {
@@ -88,24 +88,9 @@
 
       <!-- CHAT CONVERSATIONS LIST -->
       <div class="sidebar-chats-list" id="sidebarChatsList">
-        <div class="chat-item active" data-id="chat-1">
+        <div class="chat-item active" data-id="chat-world-class">
           <span class="chat-item-bullet">•</span>
-          <span class="chat-item-title">Dự Án Chung 🚀</span>
-          <span class="chat-unread-dot"></span>
-        </div>
-        <div class="chat-item" data-id="chat-2">
-          <span class="chat-item-bullet">•</span>
-          <span class="chat-item-title">Lương Thanh Hậu</span>
-          <span class="online-indicator"></span>
-        </div>
-        <div class="chat-item" data-id="chat-3">
-          <span class="chat-item-bullet">•</span>
-          <span class="chat-item-title">Nguyễn Quang Tùng</span>
-          <span class="online-indicator"></span>
-        </div>
-        <div class="chat-item" data-id="chat-4">
-          <span class="chat-item-bullet">•</span>
-          <span class="chat-item-title">Nguyễn Lâm Tùng</span>
+          <span class="chat-item-title">World Class 🌍</span>
           <span class="online-indicator"></span>
         </div>
       </div>
@@ -121,10 +106,10 @@
 
         <div class="user-profile-row" id="userProfileRow">
           <div class="user-info">
-            <div class="user-avatar" id="currentUserAvatar">S</div>
+            <div class="user-avatar" id="currentUserAvatar">👤</div>
             <div class="user-meta">
-              <span class="user-name" id="currentUserName">Shiina</span>
-              <span class="user-status-plan">· Free</span>
+              <span class="user-name" id="currentUserName">Khách</span>
+              <span class="user-status-plan" id="currentUserRole">· Chưa đăng nhập</span>
             </div>
           </div>
           <div class="user-actions">
@@ -200,20 +185,20 @@
           </div>
         </div>
 
-        <div class="header-right" style="display: flex; align-items: center; gap: 10px;">
-          <div class="realtime-status-badge" id="realtimeStatusBadge" title="Trạng thái kết nối thời gian thực">
+        <div class="header-right" style="display: flex; align-items: center; gap: 12px; flex-shrink: 0;">
+          <div class="realtime-status-badge" id="realtimeStatusBadge" title="Trạng thái kết nối thời gian thực" style="white-space: nowrap; flex-shrink: 0;">
             <span class="status-live-dot" id="liveDot"></span>
             <span class="status-live-text" id="liveText">Realtime</span>
           </div>
 
           <!-- Prominent Auth Controls in Top Header -->
-          <div id="headerAuthSection" style="display: flex; align-items: center; gap: 8px;">
-            <button class="primary-btn" id="headerAuthBtn" style="padding: 6px 14px; font-size: 13px; font-weight: 600; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+          <div id="headerAuthSection" style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
+            <button class="primary-btn" id="headerAuthBtn" style="padding: 6px 14px; font-size: 13px; font-weight: 600; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 6px; white-space: nowrap; flex-shrink: 0;">
               <span>🔑 Đăng nhập / Đăng ký</span>
             </button>
-            <div id="headerUserControls" class="hidden" style="display: flex; align-items: center; gap: 8px;">
+            <div id="headerUserControls" class="hidden" style="display: flex; align-items: center; gap: 8px; white-space: nowrap;">
               <span id="headerUserNameDisplay" style="font-size: 13px; font-weight: 600; color: var(--text-primary);"></span>
-              <button class="danger-btn" id="headerLogoutBtn" title="Đăng xuất khỏi tài khoản" style="padding: 5px 10px; font-size: 12px; font-weight: 600; color: #ef4444; border-radius: 6px; border: 1px solid rgba(239, 68, 68, 0.3); background: rgba(239, 68, 68, 0.1); cursor: pointer;">
+              <button class="danger-btn" id="headerLogoutBtn" title="Đăng xuất khỏi tài khoản" style="padding: 5px 10px; font-size: 12px; font-weight: 600; color: #ef4444; border-radius: 6px; border: 1px solid rgba(239, 68, 68, 0.3); background: rgba(239, 68, 68, 0.1); cursor: pointer; white-space: nowrap;">
                 🚪 Đăng xuất
               </button>
             </div>
@@ -307,17 +292,14 @@
               <div class="toolbar-right">
                 <div class="model-dropdown-wrapper">
                   <button class="model-dropdown-btn" id="modelDropdownBtn" title="Chọn người nhận hoặc nhóm chat">
-                    <span id="selectedModelLabel">Lương Thanh Hậu</span>
+                    <span id="selectedModelLabel">World Class 🌍</span>
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <polyline points="6 9 12 15 18 9"></polyline>
                     </svg>
                   </button>
                   <div class="model-dropdown-menu" id="modelDropdownMenu">
-                    <div class="dropdown-category">Người nhận:</div>
-                    <div class="dropdown-item selected" data-value="Dự Án Chung 🚀">🚀 Dự Án Chung</div>
-                    <div class="dropdown-item" data-value="Lương Thanh Hậu">👤 Lương Thanh Hậu</div>
-                    <div class="dropdown-item" data-value="Nguyễn Quang Tùng">👤 Nguyễn Quang Tùng</div>
-                    <div class="dropdown-item" data-value="Nguyễn Lâm Tùng">👤 Nguyễn Lâm Tùng</div>
+                    <div class="dropdown-category">Gửi đến:</div>
+                    <div class="dropdown-item selected" data-value="World Class 🌍">🌍 World Class (Công khai)</div>
                   </div>
                 </div>
 
@@ -866,6 +848,6 @@
   <!-- Hidden File Input for Attachments -->
   <input type="file" id="hiddenFileInput" style="display: none;" accept="image/*,video/*,.pdf,.doc,.docx,.txt,.json,.py,.zip">
 
-  <script src="app.js?v=2.3"></script>
+  <script src="app.js?v=2.4"></script>
 </body>
 </html>

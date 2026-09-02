@@ -428,6 +428,7 @@ body.sidebar-is-collapsed .header-sidebar-toggle {
   align-items: center;
   justify-content: space-between;
   padding: 4px 6px;
+  gap: 8px;
 }
 
 .user-info {
@@ -435,11 +436,14 @@ body.sidebar-is-collapsed .header-sidebar-toggle {
   align-items: center;
   gap: 8px;
   cursor: pointer;
+  min-width: 0;
+  flex: 1;
 }
 
 .user-avatar {
-  width: 24px;
-  height: 24px;
+  width: 26px;
+  height: 26px;
+  min-width: 26px;
   border-radius: 50%;
   background-color: #55534e;
   color: #fff;
@@ -448,28 +452,41 @@ body.sidebar-is-collapsed .header-sidebar-toggle {
   justify-content: center;
   font-size: 11px;
   font-weight: 600;
+  flex-shrink: 0;
 }
 
 .user-meta {
-  font-size: 13px;
+  font-size: 12.5px;
   display: flex;
   align-items: center;
   gap: 4px;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .user-name {
   font-weight: 500;
   color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .user-status-plan {
   color: var(--text-muted);
+  font-size: 11.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .user-actions {
   display: flex;
   align-items: center;
   gap: 2px;
+  flex-shrink: 0;
 }
 
 /* ==========================================================================

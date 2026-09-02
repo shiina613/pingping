@@ -430,13 +430,39 @@ function getOrCreateDirectChat(currentUser, targetUser) {
   });
 }
 
-function getAllChats() {
-  const chats = execQuery('SELECT id, title, type, created_by as createdBy, members_count_label as membersCount, updated_at as updatedAt FROM chats ORDER BY updated_at DESC');
+function getChatsForUser(user = null) {
+  let chats = [];
+  if (!user) {
+    // Khách: Chỉ được xem các phòng công khai toàn cầu (global_channel)
+    chats = execQuery(
+      'SELECT id, title, type, created_by as createdBy, members_count_label as membersCount, updated_at as updatedAt FROM chats WHERE type = ? ORDER BY updated_at DESC',
+      ['global_channel']
+    );
+  } else {
+    // Thành viên đã đăng nhập: Xem phòng công khai + các phòng/1-1 DMs mà chính mình tham gia hoặc tạo
+    const userId = user.id || '';
+    const displayName = user.displayName || user.name || '';
+    const username = user.username || '';
+    chats = execQuery(`
+      SELECT DISTINCT c.id, c.title, c.type, c.created_by as createdBy, c.members_count_label as membersCount, c.updated_at as updatedAt
+      FROM chats c
+      LEFT JOIN chat_members m ON c.id = m.chat_id
+      WHERE c.type = 'global_channel'
+         OR c.created_by = ?
+         OR m.user_id = ?
+         OR m.user_name = ?
+         OR m.user_name = ?
+      ORDER BY c.updated_at DESC
+    `, [userId, userId, displayName, username]);
+  }
 
   return chats.map(chat => {
     const memberRows = execQuery('SELECT user_name FROM chat_members WHERE chat_id = ?', [chat.id]);
     const members = memberRows.map(m => m.user_name);
-    const lastMsgRows = execQuery('SELECT content, author, created_at as createdAt, image, video, file_name as fileName, voice_duration as voiceDuration FROM messages WHERE chat_id = ? ORDER BY created_at DESC LIMIT 1', [chat.id]);
+    const lastMsgRows = execQuery(
+      'SELECT content, author, created_at as createdAt, image, video, file_name as fileName, voice_duration as voiceDuration FROM messages WHERE chat_id = ? ORDER BY created_at DESC LIMIT 1',
+      [chat.id]
+    );
     const lastMsg = lastMsgRows.length > 0 ? lastMsgRows[0] : null;
 
     return {
@@ -454,6 +480,32 @@ function getAllChats() {
       unread: 0
     };
   });
+}
+
+function isUserMemberOfChat(chatId, user = null) {
+  const chat = execQuery('SELECT id, type, created_by FROM chats WHERE id = ?', [chatId]);
+  if (chat.length === 0) return false;
+  // Phòng công khai toàn cầu mở cho mọi người
+  if (chat[0].type === 'global_channel') return true;
+
+  // Phòng riêng tư bắt buộc phải đăng nhập
+  if (!user) return false;
+
+  if (chat[0].created_by === user.id) return true;
+
+  const userId = user.id || '';
+  const displayName = user.displayName || user.name || '';
+  const username = user.username || '';
+
+  const membership = execQuery(
+    'SELECT id FROM chat_members WHERE chat_id = ? AND (user_id = ? OR user_name = ? OR user_name = ?)',
+    [chatId, userId, displayName, username]
+  );
+  return membership.length > 0;
+}
+
+function getAllChats() {
+  return getChatsForUser(null);
 }
 
 function getChatById(chatId) {
@@ -642,6 +694,8 @@ module.exports = {
   createUser,
   updateUserProfile,
   getAllChats,
+  getChatsForUser,
+  isUserMemberOfChat,
   getChatById,
   createChat,
   renameChat,

@@ -192,12 +192,70 @@ async function runTests() {
     }
   });
 
-  // --- SUITE 3: Chats & Sessions Management ---
-  console.log('\n--- Suite 3: Chats & Sessions Management ---');
+  // --- SUITE 3: RBAC Privacy & Data Authorization ---
+  console.log('\n--- Suite 3: RBAC Privacy & Data Authorization ---');
+
+  await test('GET /api/chats as guest returns ONLY global channels (chat-world-class)', async () => {
+    const res = await fetch(`${baseUrl}/api/chats`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = await res.json();
+    if (!json.success || !Array.isArray(json.data)) throw new Error('Invalid response format');
+    if (json.data.length !== 1 || json.data[0].id !== 'chat-world-class') {
+      throw new Error(`Guest should see only 1 global channel, but got: ${JSON.stringify(json.data.map(c => c.id))}`);
+    }
+  });
+
+  await test('GET /api/chats/chat-1/messages as guest is rejected with 403 Forbidden', async () => {
+    const res = await fetch(`${baseUrl}/api/chats/chat-1/messages`);
+    if (res.status !== 403) throw new Error(`Expected 403 Forbidden, got ${res.status}`);
+  });
+
+  await test('POST /api/chats/chat-1/messages as guest is rejected with 401 Unauthorized', async () => {
+    const res = await fetch(`${baseUrl}/api/chats/chat-1/messages`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: 'Tin nhắn gửi trộm không phép' })
+    });
+    if (res.status !== 401) throw new Error(`Expected 401, got ${res.status}`);
+  });
+
+  await test('GET /api/chats for member Lương Thanh Hậu returns only permitted chats and excludes other DMs', async () => {
+    const loginRes = await fetch(`${baseUrl}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: 'hau', password: 'password123' })
+    });
+    const loginJson = await loginRes.json();
+    const hauToken = loginJson.data.token;
+
+    const res = await fetch(`${baseUrl}/api/chats`, {
+      headers: { 'Authorization': `Bearer ${hauToken}` }
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = await res.json();
+    const ids = json.data.map(c => c.id);
+    if (!ids.includes('chat-world-class') || !ids.includes('chat-1') || !ids.includes('chat-2')) {
+      throw new Error(`Missing expected chats for Hậu: ${ids.join(', ')}`);
+    }
+    // Hậu must NOT see Tùng NQ DM (chat-3) or Lâm Tùng DM (chat-4)
+    if (ids.includes('chat-3') || ids.includes('chat-4')) {
+      throw new Error(`Privacy leak! Hậu should not see chat-3 or chat-4, but found: ${ids.join(', ')}`);
+    }
+  });
+
+  await test('GET /api/chats/chat-2/messages as unauthorized user is rejected with 403 Forbidden', async () => {
+    const res = await fetch(`${baseUrl}/api/chats/chat-2/messages`, {
+      headers: { 'Authorization': `Bearer ${authToken}` }
+    });
+    if (res.status !== 403) throw new Error(`Expected 403 Forbidden, got ${res.status}`);
+  });
+
+  // --- SUITE 4: Chats & Sessions Management ---
+  console.log('\n--- Suite 4: Chats & Sessions Management ---');
 
   let testChatId = `chat_test_${Date.now()}`;
 
-  await test('POST /api/chats creates a new group chat session', async () => {
+  await test('POST /api/chats creates a new group chat session for authenticated user', async () => {
     const res = await fetch(`${baseUrl}/api/chats`, {
       method: 'POST',
       headers: {
@@ -216,8 +274,10 @@ async function runTests() {
     if (!json.success || json.data.id !== testChatId) throw new Error('Failed to create chat');
   });
 
-  await test('GET /api/chats/:id returns chat details and members', async () => {
-    const res = await fetch(`${baseUrl}/api/chats/${testChatId}`);
+  await test('GET /api/chats/:id returns chat details and members for member', async () => {
+    const res = await fetch(`${baseUrl}/api/chats/${testChatId}`, {
+      headers: { 'Authorization': `Bearer ${authToken}` }
+    });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const json = await res.json();
     if (!json.success || json.data.title !== 'Nhóm Thử Nghiệm Alpha 🔬') {
@@ -228,7 +288,7 @@ async function runTests() {
     }
   });
 
-  await test('PATCH /api/chats/:id renames the chat session', async () => {
+  await test('PATCH /api/chats/:id renames the chat session for member', async () => {
     const res = await fetch(`${baseUrl}/api/chats/${testChatId}`, {
       method: 'PATCH',
       headers: {
@@ -260,8 +320,8 @@ async function runTests() {
     }
   });
 
-  // --- SUITE 4: Messages & Multimedia Storage ---
-  console.log('\n--- Suite 4: Messages & Multimedia Storage ---');
+  // --- SUITE 5: Messages & Multimedia Storage ---
+  console.log('\n--- Suite 5: Messages & Multimedia Storage ---');
 
   await test('POST /api/chats/:id/messages saves text message with auth binding', async () => {
     const res = await fetch(`${baseUrl}/api/chats/${testChatId}/messages`, {
@@ -309,8 +369,10 @@ async function runTests() {
     }
   });
 
-  await test('GET /api/chats/:id/messages returns saved messages chronologically', async () => {
-    const res = await fetch(`${baseUrl}/api/chats/${testChatId}/messages`);
+  await test('GET /api/chats/:id/messages returns saved messages chronologically for member', async () => {
+    const res = await fetch(`${baseUrl}/api/chats/${testChatId}/messages`, {
+      headers: { 'Authorization': `Bearer ${authToken}` }
+    });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const json = await res.json();
     if (!json.success || !Array.isArray(json.data) || json.data.length < 2) {
@@ -339,8 +401,8 @@ async function runTests() {
     }
   });
 
-  // --- SUITE 5: Realtime Socket.io Engine ---
-  console.log('\n--- Suite 5: Realtime Socket.io Engine ---');
+  // --- SUITE 6: Realtime Socket.io Engine ---
+  console.log('\n--- Suite 6: Realtime Socket.io Engine ---');
 
   await test('Socket.io connects and receives broadcasted messages in real time', async () => {
     const socket = ioClient(baseUrl, { transports: ['websocket', 'polling'] });
@@ -376,8 +438,8 @@ async function runTests() {
     socket.disconnect();
   });
 
-  // --- SUITE 6: Cleanup & Deletion ---
-  console.log('\n--- Suite 6: Cleanup & Deletion ---');
+  // --- SUITE 7: Cleanup & Deletion ---
+  console.log('\n--- Suite 7: Cleanup & Deletion ---');
 
   await test('DELETE /api/chats/:id removes chat and its associated messages', async () => {
     const res = await fetch(`${baseUrl}/api/chats/${testChatId}`, {
@@ -385,7 +447,9 @@ async function runTests() {
       headers: { 'Authorization': `Bearer ${authToken}` }
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const checkRes = await fetch(`${baseUrl}/api/chats/${testChatId}`);
+    const checkRes = await fetch(`${baseUrl}/api/chats/${testChatId}`, {
+      headers: { 'Authorization': `Bearer ${authToken}` }
+    });
     if (checkRes.status !== 404) throw new Error('Chat was not deleted');
   });
 

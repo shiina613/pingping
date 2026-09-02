@@ -1,5 +1,10 @@
 {
   "version": 2,
+  "functions": {
+    "api/index.js": {
+      "includeFiles": "database/**"
+    }
+  },
   "rewrites": [
     {
       "source": "/api/(.*)",
@@ -8,6 +13,11 @@
     {
       "source": "/health",
       "destination": "/api/index.js"
+    },
+    {
+      "source": "/uploads/(.*)",
+      "destination": "/api/index.js"
     }
   ]
 }
+

@@ -47,7 +47,15 @@ async function initDatabase() {
   if (initPromise) return initPromise;
 
   initPromise = (async () => {
-    const SQL = await initSqlJs();
+    let wasmConfig = {};
+    const bundledWasm = path.join(__dirname, 'database', 'sql-wasm.wasm');
+    const nodeModulesWasm = path.join(__dirname, 'node_modules', 'sql.js', 'dist', 'sql-wasm.wasm');
+    if (fs.existsSync(bundledWasm)) {
+      wasmConfig = { wasmBinary: fs.readFileSync(bundledWasm) };
+    } else if (fs.existsSync(nodeModulesWasm)) {
+      wasmConfig = { wasmBinary: fs.readFileSync(nodeModulesWasm) };
+    }
+    const SQL = await initSqlJs(wasmConfig);
     
     if (fs.existsSync(dbPath)) {
       try {

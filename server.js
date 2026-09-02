@@ -87,22 +87,22 @@ for (const ap of appPaths) {
 
 app.get('/style.css', (req, res) => {
   res.setHeader('Content-Type', 'text/css; charset=UTF-8');
-  res.setHeader('Cache-Control', 'public, max-age=3600');
-  if (styleContent) {
-    res.send(styleContent);
-  } else {
-    res.sendFile(path.join(__dirname, 'style.css'));
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  const sp = path.join(__dirname, 'style.css');
+  if (fs.existsSync(sp)) {
+    return res.sendFile(sp);
   }
+  res.send(styleContent);
 });
 
 app.get('/app.js', (req, res) => {
   res.setHeader('Content-Type', 'application/javascript; charset=UTF-8');
-  res.setHeader('Cache-Control', 'public, max-age=3600');
-  if (appContent) {
-    res.send(appContent);
-  } else {
-    res.sendFile(path.join(__dirname, 'app.js'));
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  const ap = path.join(__dirname, 'app.js');
+  if (fs.existsSync(ap)) {
+    return res.sendFile(ap);
   }
+  res.send(appContent);
 });
 
 // Serve frontend static assets

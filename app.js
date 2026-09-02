@@ -1,3 +1,14 @@
+// Safe HTML escaping helper
+function escapeHtml(str) {
+  if (typeof str !== 'string') return str == null ? '' : String(str);
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 // Initial Rich Mock Data with Multimedia (Images, Videos, Files, Links, Voice notes)
 const DEFAULT_CHATS = {
   'chat-world-class': {
@@ -663,18 +674,34 @@ function clearAuthAlert() {
 }
 
 function updateUserProfileUI() {
-  if (!state.currentUser) return;
   const currentUserNameEl = document.getElementById('currentUserName');
   const currentUserAvatarEl = document.getElementById('currentUserAvatar');
-  if (currentUserNameEl) currentUserNameEl.textContent = state.currentUser.name;
-  if (currentUserAvatarEl) currentUserAvatarEl.textContent = state.currentUser.name.charAt(0).toUpperCase();
+  const headerAuthBtn = document.getElementById('headerAuthBtn');
+  const headerUserControls = document.getElementById('headerUserControls');
+  const headerUserNameDisplay = document.getElementById('headerUserNameDisplay');
 
-  const nameText = document.getElementById('profileDisplayNameText');
-  const usernameText = document.getElementById('profileUsernameText');
-  const avatarDisplay = document.getElementById('profileAvatarDisplay');
-  if (nameText) nameText.textContent = state.currentUser.name;
-  if (usernameText) usernameText.textContent = '@' + (state.currentUser.username || state.currentUser.name.toLowerCase().replace(/\s+/g, ''));
-  if (avatarDisplay) avatarDisplay.textContent = state.currentUser.name.charAt(0).toUpperCase();
+  if (state.currentUser && state.authToken) {
+    if (currentUserNameEl) currentUserNameEl.textContent = state.currentUser.name;
+    if (currentUserAvatarEl) currentUserAvatarEl.textContent = state.currentUser.name.charAt(0).toUpperCase();
+
+    if (headerAuthBtn) headerAuthBtn.classList.add('hidden');
+    if (headerUserControls) headerUserControls.classList.remove('hidden');
+    if (headerUserNameDisplay) headerUserNameDisplay.textContent = `👤 ${state.currentUser.name}`;
+
+    const nameText = document.getElementById('profileDisplayNameText');
+    const usernameText = document.getElementById('profileUsernameText');
+    const avatarDisplay = document.getElementById('profileAvatarDisplay');
+    if (nameText) nameText.textContent = state.currentUser.name;
+    if (usernameText) usernameText.textContent = '@' + (state.currentUser.username || state.currentUser.name.toLowerCase().replace(/\s+/g, ''));
+    if (avatarDisplay) avatarDisplay.textContent = state.currentUser.name.charAt(0).toUpperCase();
+  } else {
+    if (currentUserNameEl) currentUserNameEl.textContent = 'Khách (Chưa đăng nhập)';
+    if (currentUserAvatarEl) currentUserAvatarEl.textContent = '👤';
+
+    if (headerAuthBtn) headerAuthBtn.classList.remove('hidden');
+    if (headerUserControls) headerUserControls.classList.add('hidden');
+    if (headerUserNameDisplay) headerUserNameDisplay.textContent = '';
+  }
 }
 
 async function handleLogin(username, password) {
@@ -2408,7 +2435,7 @@ function setupEventListeners() {
 
   // Profile Modal & Real Account Info
   elements.userProfileBtn?.addEventListener('click', () => {
-    if (state.currentUser) {
+    if (state.currentUser && state.authToken) {
       const nameText = document.getElementById('profileDisplayNameText');
       const usernameText = document.getElementById('profileUsernameText');
       const avatarDisplay = document.getElementById('profileAvatarDisplay');
@@ -2419,15 +2446,19 @@ function setupEventListeners() {
       if (elements.profileNameInput) elements.profileNameInput.value = state.currentUser.name;
       if (elements.profileRoleInput) elements.profileRoleInput.value = state.currentUser.role;
       if (elements.profileIdInput) elements.profileIdInput.value = state.currentUser.id || '';
+      openModal(elements.profileModal);
+    } else {
+      showAuthModal();
     }
-    openModal(elements.profileModal);
   });
   elements.closeProfileModalBtn?.addEventListener('click', () => closeModal(elements.profileModal));
   elements.cancelProfileBtn?.addEventListener('click', () => closeModal(elements.profileModal));
   elements.saveProfileBtn?.addEventListener('click', handleSaveProfile);
 
-  // Logout Button
+  // Logout & Auth Buttons
   document.getElementById('logoutBtn')?.addEventListener('click', handleLogout);
+  document.getElementById('headerLogoutBtn')?.addEventListener('click', handleLogout);
+  document.getElementById('headerAuthBtn')?.addEventListener('click', showAuthModal);
 
   // Auth Tabs (Login vs Register)
   document.getElementById('authTabLogin')?.addEventListener('click', () => {

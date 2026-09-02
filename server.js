@@ -158,11 +158,16 @@ io.on('connection', (socket) => {
       else if (voice) msgType = 'voice';
 
       const msgId = payload.id || `msg_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+      const registered = onlineUsers.get(socket.id);
+      const finalAuthor = (registered && registered.userName) || author || 'Thành viên';
+      const finalSenderId = (registered && registered.userId) || payload.sender_id || null;
+
       const messageToSave = {
         id: msgId,
         chat_id: chatId,
-        author: author || 'Shiina',
-        role: role || '',
+        sender_id: finalSenderId,
+        author: finalAuthor,
+        role: role || (registered && registered.role) || '',
         content: content || '',
         thought: thought || null,
         thought_time: thoughtTime || null,
@@ -340,7 +345,7 @@ app.post('/api/auth/login', (req, res) => {
     }
 
     const user = db.getUserByUsername(username);
-    if (!user || user.password !== password) {
+    if (!user || !db.verifyPassword(password, user.password)) {
       return res.status(401).json({ success: false, message: 'Sai tên đăng nhập hoặc mật khẩu' });
     }
 
@@ -359,6 +364,40 @@ app.post('/api/auth/login', (req, res) => {
       },
       message: 'Đăng nhập thành công'
     });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Create or find direct 1-1 chat between two real users
+app.post('/api/chats/direct', (req, res) => {
+  try {
+    const { targetUserId, targetUsername } = req.body;
+    let currentUser = null;
+
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      try {
+        const decoded = jwt.verify(authHeader.split(' ')[1], JWT_SECRET);
+        currentUser = db.getUserById(decoded.id);
+      } catch (e) {}
+    }
+
+    if (!currentUser && req.body.currentUserId) {
+      currentUser = db.getUserById(req.body.currentUserId);
+    }
+    if (!currentUser) {
+      return res.status(401).json({ success: false, message: 'Yêu cầu đăng nhập để tạo phòng chat' });
+    }
+
+    const targetUser = targetUserId ? db.getUserById(targetUserId) : db.getUserByUsername(targetUsername);
+    if (!targetUser) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng đối phương' });
+    }
+
+    const chat = db.getOrCreateDirectChat(currentUser, targetUser);
+    io.emit('new_chat_created', chat);
+    res.status(200).json({ success: true, data: chat });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -486,6 +525,23 @@ app.post('/api/chats/:id/messages', (req, res) => {
     const chatId = req.params.id;
     const { author, role, content, image, video, file, voice, thought, thoughtTime } = req.body;
 
+    let finalAuthor = author || 'Thành viên';
+    let finalRole = role || '';
+    let finalSenderId = req.body.sender_id || null;
+
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      try {
+        const decoded = jwt.verify(authHeader.split(' ')[1], JWT_SECRET);
+        const verifiedUser = db.getUserById(decoded.id);
+        if (verifiedUser) {
+          finalAuthor = verifiedUser.displayName;
+          finalRole = verifiedUser.role;
+          finalSenderId = verifiedUser.id;
+        }
+      } catch (e) {}
+    }
+
     let msgType = 'text';
     if (image) msgType = 'image';
     else if (video) msgType = 'video';
@@ -496,8 +552,9 @@ app.post('/api/chats/:id/messages', (req, res) => {
     const { message, prunedCount } = db.saveMessage({
       id: msgId,
       chat_id: chatId,
-      author: author || 'Shiina',
-      role: role || '',
+      sender_id: finalSenderId,
+      author: finalAuthor,
+      role: finalRole,
       content: content || '',
       thought: thought || null,
       thought_time: thoughtTime || null,

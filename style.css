@@ -2453,3 +2453,44 @@ input:checked + .slider:before {
   100% { transform: scale(0.95); opacity: 0.7; }
 }
 
+/* Auth Portal & Real User Badges */
+.auth-modal-card {
+  animation: authModalFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes authModalFadeIn {
+  from { opacity: 0; transform: scale(0.96) translateY(8px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+#authAlert.error {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #ef4444;
+}
+
+#authAlert.success {
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: #10b981;
+}
+
+.danger-btn:hover {
+  background: rgba(239, 68, 68, 0.28) !important;
+  border-color: rgba(239, 68, 68, 0.5) !important;
+  transform: translateY(-1px);
+}
+
+.danger-btn:active {
+  transform: translateY(0);
+}
+
+.user-account-badge {
+  transition: border-color var(--transition-fast);
+}
+
+.user-account-badge:hover {
+  border-color: var(--border-card);
+}
+
+

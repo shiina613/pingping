@@ -377,15 +377,36 @@ function getUserById(id) {
   return res.length > 0 ? res[0] : null;
 }
 
+const crypto = require('crypto');
+
+function hashPassword(password) {
+  if (!password) return '';
+  const salt = crypto.randomBytes(16).toString('hex');
+  const hash = crypto.pbkdf2Sync(password, salt, 1000, 64, 'sha512').toString('hex');
+  return `${salt}:${hash}`;
+}
+
+function verifyPassword(password, storedPassword) {
+  if (!password || !storedPassword) return false;
+  // Backward compatibility with initial seeded plain passwords (password123)
+  if (!storedPassword.includes(':')) {
+    return password === storedPassword;
+  }
+  const [salt, originalHash] = storedPassword.split(':');
+  const hash = crypto.pbkdf2Sync(password, salt, 1000, 64, 'sha512').toString('hex');
+  return hash === originalHash;
+}
+
 function getUserByUsername(username) {
   const res = execQuery('SELECT id, username, password, display_name as displayName, role, avatar_url as avatarUrl FROM users WHERE username = ?', [username]);
   return res.length > 0 ? res[0] : null;
 }
 
 function createUser({ id, username, password, displayName, role, avatarUrl }) {
+  const securePassword = password.includes(':') ? password : hashPassword(password);
   execRun(
     'INSERT INTO users (id, username, password, display_name, role, avatar_url) VALUES (?, ?, ?, ?, ?, ?)',
-    [id, username, password, displayName, role || 'Thành viên', avatarUrl || '']
+    [id, username, securePassword, displayName, role || 'Thành viên', avatarUrl || '']
   );
   return getUserById(id);
 }
@@ -396,6 +417,25 @@ function updateUserProfile(id, { displayName, role, avatarUrl }) {
     [displayName || null, role || null, avatarUrl || null, id]
   );
   return getUserById(id);
+}
+
+function getOrCreateDirectChat(currentUser, targetUser) {
+  const allChats = getAllChats();
+  const existing = allChats.find(c =>
+    c.type === 'direct' &&
+    c.members.includes(currentUser.displayName) &&
+    c.members.includes(targetUser.displayName)
+  );
+  if (existing) return existing;
+
+  const id = `chat_dm_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+  return createChat({
+    id,
+    title: targetUser.displayName,
+    type: 'direct',
+    createdBy: currentUser.id,
+    members: [currentUser.displayName, targetUser.displayName]
+  });
 }
 
 function getAllChats() {
@@ -617,5 +657,9 @@ module.exports = {
   addMemberToChat,
   removeMemberFromChat,
   getChatMessages,
-  saveMessage
+  saveMessage,
+  hashPassword,
+  verifyPassword,
+  getOrCreateDirectChat
 };
+

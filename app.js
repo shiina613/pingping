@@ -178,11 +178,8 @@ const CONTACTS_DIRECTORY = [
 
 // Global State
 const state = {
-  currentUser: {
-    name: 'Shiina',
-    role: 'Quản trị viên',
-    initials: 'S'
-  },
+  authToken: localStorage.getItem('pingping_token') || null,
+  currentUser: JSON.parse(localStorage.getItem('pingping_user') || 'null'),
   currentChatId: null,
   heroMode: 'chat', // 'chat' (1-1 direct) or 'cowork' (group/channel)
   heroSelectedRecipient: 'Lương Thanh Hậu',
@@ -218,6 +215,11 @@ const elements = {
   navProjects: document.getElementById('navProjects'),
   navConnect: document.getElementById('navConnect'),
   navCustomize: document.getElementById('navCustomize'),
+  authModal: document.getElementById('authModal'),
+  loginForm: document.getElementById('loginForm'),
+  registerForm: document.getElementById('registerForm'),
+  logoutBtn: document.getElementById('logoutBtn'),
+  newChatModal: document.getElementById('newChatModal'),
   
   // Views
   heroView: document.getElementById('heroView'),
@@ -631,6 +633,433 @@ async function syncDataFromServer() {
   }
 }
 
+// ================= AUTH PORTAL & SESSION LOGIC ================= //
+
+function showAuthModal() {
+  const modal = document.getElementById('authModal');
+  if (modal) {
+    modal.classList.remove('hidden');
+    clearAuthAlert();
+    document.getElementById('loginUsername')?.focus();
+  }
+}
+
+function hideAuthModal() {
+  const modal = document.getElementById('authModal');
+  if (modal) modal.classList.add('hidden');
+}
+
+function showAuthAlert(msg, type = 'error') {
+  const alertEl = document.getElementById('authAlert');
+  if (!alertEl) return;
+  alertEl.textContent = msg;
+  alertEl.className = type;
+  alertEl.classList.remove('hidden');
+}
+
+function clearAuthAlert() {
+  const alertEl = document.getElementById('authAlert');
+  if (alertEl) alertEl.classList.add('hidden');
+}
+
+function updateUserProfileUI() {
+  if (!state.currentUser) return;
+  const currentUserNameEl = document.getElementById('currentUserName');
+  const currentUserAvatarEl = document.getElementById('currentUserAvatar');
+  if (currentUserNameEl) currentUserNameEl.textContent = state.currentUser.name;
+  if (currentUserAvatarEl) currentUserAvatarEl.textContent = state.currentUser.name.charAt(0).toUpperCase();
+
+  const nameText = document.getElementById('profileDisplayNameText');
+  const usernameText = document.getElementById('profileUsernameText');
+  const avatarDisplay = document.getElementById('profileAvatarDisplay');
+  if (nameText) nameText.textContent = state.currentUser.name;
+  if (usernameText) usernameText.textContent = '@' + (state.currentUser.username || state.currentUser.name.toLowerCase().replace(/\s+/g, ''));
+  if (avatarDisplay) avatarDisplay.textContent = state.currentUser.name.charAt(0).toUpperCase();
+}
+
+async function handleLogin(username, password) {
+  const btn = document.getElementById('loginSubmitBtn');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Đang đăng nhập...';
+  }
+
+  try {
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+    const result = await res.json();
+    if (!res.ok || !result.success) {
+      showAuthAlert(result.message || 'Sai tên đăng nhập hoặc mật khẩu', 'error');
+      return;
+    }
+
+    const { token, user } = result.data;
+    state.authToken = token;
+    state.currentUser = {
+      id: user.id,
+      name: user.displayName,
+      username: user.username,
+      role: user.role,
+      avatar: user.avatarUrl || ''
+    };
+
+    localStorage.setItem('pingping_token', token);
+    localStorage.setItem('pingping_user', JSON.stringify(state.currentUser));
+
+    updateUserProfileUI();
+    hideAuthModal();
+    initSocket();
+    syncDataFromServer();
+    startPollingSync();
+    showToast(`Chào mừng ${state.currentUser.name} đã đăng nhập! 👋`);
+  } catch (err) {
+    showAuthAlert('Không thể kết nối đến máy chủ, vui lòng thử lại', 'error');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Đăng nhập vào PingPing';
+    }
+  }
+}
+
+async function handleRegister(username, displayName, role, password, confirmPassword) {
+  if (password !== confirmPassword) {
+    showAuthAlert('Xác nhận mật khẩu không khớp!', 'error');
+    return;
+  }
+  if (password.length < 6) {
+    showAuthAlert('Mật khẩu phải có tối thiểu 6 ký tự!', 'error');
+    return;
+  }
+
+  const btn = document.getElementById('regSubmitBtn');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Đang tạo tài khoản...';
+  }
+
+  try {
+    const res = await fetch('/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, displayName, role, password })
+    });
+    const result = await res.json();
+    if (!res.ok || !result.success) {
+      showAuthAlert(result.message || 'Đăng ký không thành công', 'error');
+      return;
+    }
+
+    const { token, user } = result.data;
+    state.authToken = token;
+    state.currentUser = {
+      id: user.id,
+      name: user.displayName,
+      username: user.username,
+      role: user.role,
+      avatar: user.avatarUrl || ''
+    };
+
+    localStorage.setItem('pingping_token', token);
+    localStorage.setItem('pingping_user', JSON.stringify(state.currentUser));
+
+    updateUserProfileUI();
+    hideAuthModal();
+    initSocket();
+    syncDataFromServer();
+    startPollingSync();
+    showToast(`Tạo tài khoản thành công! Chào mừng ${state.currentUser.name} 🎉`);
+  } catch (err) {
+    showAuthAlert('Không thể kết nối đến máy chủ, vui lòng thử lại', 'error');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Tạo tài khoản & Tham gia ngay';
+    }
+  }
+}
+
+function handleLogout() {
+  if (confirm('Bạn có chắc chắn muốn đăng xuất không?')) {
+    localStorage.removeItem('pingping_token');
+    localStorage.removeItem('pingping_user');
+    state.authToken = null;
+    state.currentUser = null;
+    if (socket && socket.connected) {
+      socket.disconnect();
+    }
+    stopPollingSync();
+    closeAllModals();
+    showAuthModal();
+    showToast('Đã đăng xuất thành công.');
+  }
+}
+
+async function checkAuthSession() {
+  const token = localStorage.getItem('pingping_token');
+  const savedUser = localStorage.getItem('pingping_user');
+
+  if (!token || !savedUser) {
+    showAuthModal();
+    return;
+  }
+
+  try {
+    state.currentUser = JSON.parse(savedUser);
+    state.authToken = token;
+    updateUserProfileUI();
+
+    const res = await fetch('/api/auth/me', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.success && data.data) {
+        state.currentUser = {
+          id: data.data.id,
+          name: data.data.displayName || data.data.username,
+          username: data.data.username,
+          role: data.data.role || 'Thành viên',
+          avatar: data.data.avatarUrl || ''
+        };
+        localStorage.setItem('pingping_user', JSON.stringify(state.currentUser));
+        updateUserProfileUI();
+        hideAuthModal();
+        initSocket();
+        syncDataFromServer();
+        startPollingSync();
+        return;
+      }
+    }
+  } catch (e) {
+    hideAuthModal();
+    initSocket();
+    syncDataFromServer();
+    startPollingSync();
+    return;
+  }
+
+  localStorage.removeItem('pingping_token');
+  localStorage.removeItem('pingping_user');
+  state.authToken = null;
+  state.currentUser = null;
+  showAuthModal();
+}
+
+// Smart Polling Sync for real-time messages
+let pollingInterval = null;
+function startPollingSync() {
+  if (pollingInterval) clearInterval(pollingInterval);
+  pollingInterval = setInterval(async () => {
+    if (!state.currentChatId) return;
+    try {
+      const headers = {};
+      if (state.authToken) headers['Authorization'] = `Bearer ${state.authToken}`;
+      const res = await fetch(`/api/chats/${state.currentChatId}/messages?limit=50`, { headers });
+      if (!res.ok) return;
+      const json = await res.json();
+      if (json.success && Array.isArray(json.data)) {
+        const chat = state.chats[state.currentChatId];
+        if (!chat) return;
+
+        const currentMsgIds = new Set((chat.messages || []).map(m => m.id));
+        let hasNew = false;
+        json.data.forEach(m => {
+          if (!currentMsgIds.has(m.id)) {
+            chat.messages.push(m);
+            hasNew = true;
+          }
+        });
+
+        if (hasNew) {
+          saveState();
+          renderCurrentChat();
+          renderSidebarChats();
+        }
+      }
+    } catch (e) {}
+  }, 3500);
+}
+
+function stopPollingSync() {
+  if (pollingInterval) {
+    clearInterval(pollingInterval);
+    pollingInterval = null;
+  }
+}
+
+// New Chat & Member Directory Helper
+async function openNewChatModal() {
+  const friendSelect = document.getElementById('quickFriendSelect');
+  const groupMemberList = document.querySelector('.member-checkbox-list');
+  const existingGroupSelect = document.getElementById('existingGroupSelect');
+
+  if (existingGroupSelect) {
+    existingGroupSelect.innerHTML = '';
+    Object.keys(state.chats).forEach(chatId => {
+      const c = state.chats[chatId];
+      if (c.type === 'channel' || c.type === 'group' || c.type === 'global_channel') {
+        const opt = document.createElement('option');
+        opt.value = chatId;
+        opt.textContent = `${c.title} (${(c.members && c.members.length) || ''} thành viên)`;
+        existingGroupSelect.appendChild(opt);
+      }
+    });
+  }
+
+  try {
+    const res = await fetch('/api/users');
+    if (res.ok) {
+      const json = await res.json();
+      if (json.success && Array.isArray(json.data)) {
+        const otherUsers = json.data.filter(u => !state.currentUser || u.id !== state.currentUser.id);
+
+        if (friendSelect) {
+          friendSelect.innerHTML = '';
+          otherUsers.forEach(u => {
+            const opt = document.createElement('option');
+            opt.value = u.displayName || u.username;
+            opt.dataset.userId = u.id;
+            opt.dataset.username = u.username;
+            opt.textContent = `👤 ${u.displayName} (${u.role || 'Thành viên'})`;
+            friendSelect.appendChild(opt);
+          });
+        }
+
+        if (groupMemberList) {
+          groupMemberList.innerHTML = '';
+          otherUsers.forEach(u => {
+            const label = document.createElement('label');
+            label.className = 'checkbox-item';
+            label.innerHTML = `<input type="checkbox" value="${u.displayName}"> <span>👤 ${u.displayName}</span>`;
+            groupMemberList.appendChild(label);
+          });
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('Could not fetch user list:', e);
+  }
+
+  openModal(document.getElementById('newChatModal'));
+}
+
+async function handleSubmitNewChat() {
+  const activeTab = document.querySelector('.new-modal-tabs .segment-btn.active')?.dataset.type || 'direct';
+  const initialMsg = document.getElementById('newInitialMsgInput')?.value.trim();
+
+  if (activeTab === 'direct') {
+    const friendSelect = document.getElementById('quickFriendSelect');
+    const customName = document.getElementById('newDirectRecipientInput')?.value.trim();
+    const selectedOption = friendSelect?.options[friendSelect.selectedIndex];
+
+    const targetUserId = selectedOption?.dataset?.userId;
+    const targetUsername = selectedOption?.dataset?.username;
+    const targetName = customName || selectedOption?.value;
+
+    if (!targetName) {
+      showToast('Vui lòng chọn hoặc nhập người nhận!');
+      return;
+    }
+
+    try {
+      const headers = { 'Content-Type': 'application/json' };
+      if (state.authToken) headers['Authorization'] = `Bearer ${state.authToken}`;
+      const res = await fetch('/api/chats/direct', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          targetUserId,
+          targetUsername,
+          currentUserId: state.currentUser?.id
+        })
+      });
+      const json = await res.json();
+      if (json.success && json.data) {
+        const newChat = json.data;
+        state.chats[newChat.id] = {
+          ...newChat,
+          messages: state.chats[newChat.id]?.messages || []
+        };
+        saveState();
+        renderSidebarChats();
+        showChatView(newChat.id);
+
+        if (initialMsg) {
+          elements.activeChatInput.value = initialMsg;
+          handleActiveChatSend();
+        }
+
+        closeModal(document.getElementById('newChatModal'));
+        showToast(`Đã mở trò chuyện với ${targetName}! 💬`);
+        return;
+      }
+    } catch (e) {
+      console.error('Error starting direct chat:', e);
+    }
+  } else if (activeTab === 'existing-group') {
+    const groupId = document.getElementById('existingGroupSelect')?.value;
+    if (groupId) {
+      closeModal(document.getElementById('newChatModal'));
+      showChatView(groupId);
+      if (initialMsg) {
+        elements.activeChatInput.value = initialMsg;
+        handleActiveChatSend();
+      }
+    }
+  } else if (activeTab === 'create-group') {
+    const groupName = document.getElementById('newGroupNameInput')?.value.trim();
+    if (!groupName) {
+      showToast('Vui lòng nhập tên nhóm mới!');
+      return;
+    }
+
+    const checkedMembers = Array.from(document.querySelectorAll('.member-checkbox-list input:checked')).map(i => i.value);
+    if (!checkedMembers.includes(state.currentUser?.name)) {
+      checkedMembers.push(state.currentUser?.name || 'Shiina');
+    }
+
+    try {
+      const headers = { 'Content-Type': 'application/json' };
+      if (state.authToken) headers['Authorization'] = `Bearer ${state.authToken}`;
+      const res = await fetch('/api/chats', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          title: groupName,
+          type: 'group',
+          createdBy: state.currentUser?.id,
+          members: checkedMembers
+        })
+      });
+      const json = await res.json();
+      if (json.success && json.data) {
+        const newGroup = json.data;
+        state.chats[newGroup.id] = {
+          ...newGroup,
+          messages: []
+        };
+        saveState();
+        renderSidebarChats();
+        showChatView(newGroup.id);
+
+        if (initialMsg) {
+          elements.activeChatInput.value = initialMsg;
+          handleActiveChatSend();
+        }
+
+        closeModal(document.getElementById('newChatModal'));
+        showToast(`Đã tạo nhóm "${groupName}" thành công! 🎉`);
+      }
+    } catch (e) {
+      console.error('Error creating group:', e);
+    }
+  }
+}
+
 // Initialize Application
 function init() {
   applyTheme(state.settings.theme);
@@ -638,12 +1067,11 @@ function init() {
   setupEventListeners();
   renderSidebarChats();
   updateHeroDropdownItems();
-  showHeroView(); // Mới vào hiển thị phiên chat trống trơn như Claude
+  showHeroView();
   autoResizeTextarea(elements.heroChatInput);
   autoResizeTextarea(elements.activeChatInput);
 
-  initSocket();
-  syncDataFromServer();
+  checkAuthSession();
 }
 
 // Switch Views
@@ -1502,13 +1930,13 @@ function handleHeroSend() {
       chatId: targetChatId
     });
   } else {
+    const headers = { 'Content-Type': 'application/json' };
+    if (state.authToken) headers['Authorization'] = `Bearer ${state.authToken}`;
     fetch(`/api/chats/${targetChatId}/messages`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify(newMsg)
     }).catch(() => {});
-
-    if (text) simulatePartnerReply(text);
   }
 
   elements.heroChatInput.value = '';
@@ -1538,8 +1966,9 @@ function handleActiveChatSend() {
 
   const newMsg = {
     id: 'm_' + Date.now(),
-    author: state.currentUser.name,
-    role: state.currentUser.role || '',
+    sender_id: state.currentUser?.id,
+    author: state.currentUser?.name || 'Thành viên',
+    role: state.currentUser?.role || '',
     time: timeStr,
     content: text
   };
@@ -1575,14 +2004,14 @@ function handleActiveChatSend() {
     });
     socket.emit('typing_stop', { chatId: state.currentChatId, userName: state.currentUser.name });
   } else {
-    // REST API fallback for Vercel / serverless deployments
+    // REST API fallback
+    const headers = { 'Content-Type': 'application/json' };
+    if (state.authToken) headers['Authorization'] = `Bearer ${state.authToken}`;
     fetch(`/api/chats/${state.currentChatId}/messages`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify(newMsg)
     }).catch(() => {});
-
-    if (text) simulatePartnerReply(text);
   }
 
   elements.activeChatInput.value = '';
@@ -1593,63 +2022,6 @@ function handleActiveChatSend() {
   playChimeSound('send');
 }
 
-// Simulate realistic incoming teammate response with typing spinner
-function simulatePartnerReply(userPrompt) {
-  if (!elements.typingIndicator) return;
-  const currentChatId = state.currentChatId;
-  const chat = state.chats[currentChatId];
-  if (!chat) return;
-
-  elements.typingIndicator.classList.remove('hidden');
-  if (elements.streamingStatusText) elements.streamingStatusText.textContent = 'Đang nhận phản hồi...';
-
-  const isGroup = chat.type === 'channel' || chat.type === 'group';
-  let partnerName = 'Lương Thanh Hậu';
-  if (isGroup && chat.members && chat.members.length > 1) {
-    const available = chat.members.filter(m => m !== state.currentUser.name);
-    partnerName = available[Math.floor(Math.random() * available.length)] || 'Lương Thanh Hậu';
-  } else {
-    partnerName = chat.title;
-  }
-
-  setTimeout(() => {
-    if (state.currentChatId !== currentChatId) {
-      elements.typingIndicator?.classList.add('hidden');
-      return;
-    }
-
-    elements.typingIndicator?.classList.add('hidden');
-
-    const now = new Date();
-    const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-
-    let replyContent = `Đã nhận được thông tin từ bạn: "${userPrompt}". Mình đang kiểm tra và sẽ phản hồi chi tiết ngay! 👍`;
-
-    if (userPrompt.toLowerCase().includes('nhiệt độ') || userPrompt.toLowerCase().includes('sensor') || userPrompt.toLowerCase().includes('code')) {
-      replyContent = `Dữ liệu cảm biến mới nhất từ chuồng trại ghi nhận lúc **${timeStr}**:
-- Nhiệt độ trung bình: **26.8°C** (Ổn định)
-- Độ ẩm không khí: **72%** (Đạt chuẩn)
-- Hệ thống thông gió: **Tự động cấp độ 2**`;
-    } else if (userPrompt.toLowerCase().includes('thức ăn') || userPrompt.toLowerCase().includes('cỏ')) {
-      replyContent = `Kế hoạch phân bổ thức ăn hôm nay đã hoàn tất:
-- Khẩu phần sáng: Cỏ voi ủ chua + Cám hỗn hợp (10kg/con)
-- Khẩu phần chiều: Cỏ tươi cắt trong ngày + Khoáng vi lượng`;
-    } else if (userPrompt.includes('@')) {
-      replyContent = `Chào bạn! Mình vừa nhận được thông báo tag vào nhóm. Mình có thể hỗ trợ được gì cho công việc này? 🤝`;
-    }
-
-    chat.messages.push({
-      id: 'm_' + Date.now(),
-      author: partnerName,
-      time: timeStr,
-      content: replyContent
-    });
-
-    saveState();
-    renderCurrentChat();
-    playChimeSound('receive');
-  }, 1200);
-}
 
 // Render Projects Grid View (with filter: all, groups, friends)
 function renderProjectsGrid(filter = 'all') {
@@ -1809,7 +2181,7 @@ function setupEventListeners() {
 
   elements.navConnect?.addEventListener('click', (e) => {
     e.preventDefault();
-    openModal(elements.connectModal);
+    openNewChatModal();
   });
 
   elements.navCustomize?.addEventListener('click', (e) => {
@@ -2026,54 +2398,81 @@ function setupEventListeners() {
   elements.closeSearchModalBtn?.addEventListener('click', () => closeModal(elements.searchModal));
   elements.globalSearchInput?.addEventListener('input', handleGlobalSearch);
 
-  // Profile Modal & Switch User Button
+  // Profile Modal & Real Account Info
   elements.userProfileBtn?.addEventListener('click', () => {
-    if (elements.profileNameInput) elements.profileNameInput.value = state.currentUser.name;
-    if (elements.profileRoleInput) elements.profileRoleInput.value = state.currentUser.role;
-    if (elements.profileIdInput) elements.profileIdInput.value = state.currentUser.id || 'u_shiina';
+    if (state.currentUser) {
+      const nameText = document.getElementById('profileDisplayNameText');
+      const usernameText = document.getElementById('profileUsernameText');
+      const avatarDisplay = document.getElementById('profileAvatarDisplay');
+      if (nameText) nameText.textContent = state.currentUser.name;
+      if (usernameText) usernameText.textContent = '@' + (state.currentUser.username || state.currentUser.name.toLowerCase().replace(/\s+/g, ''));
+      if (avatarDisplay) avatarDisplay.textContent = state.currentUser.name.charAt(0).toUpperCase();
+
+      if (elements.profileNameInput) elements.profileNameInput.value = state.currentUser.name;
+      if (elements.profileRoleInput) elements.profileRoleInput.value = state.currentUser.role;
+      if (elements.profileIdInput) elements.profileIdInput.value = state.currentUser.id || '';
+    }
     openModal(elements.profileModal);
   });
   elements.closeProfileModalBtn?.addEventListener('click', () => closeModal(elements.profileModal));
   elements.cancelProfileBtn?.addEventListener('click', () => closeModal(elements.profileModal));
   elements.saveProfileBtn?.addEventListener('click', handleSaveProfile);
 
-  elements.switchUserBtn?.addEventListener('click', () => {
-    const selectedUserId = elements.quickUserSelect?.value || 'u_shiina';
-    const userMap = {
-      'u_shiina': { name: 'Shiina', role: 'Quản trị viên', initials: 'S' },
-      'u_hau': { name: 'Lương Thanh Hậu', role: 'Quản lý', initials: 'LH' },
-      'u_tung_nq': { name: 'Nguyễn Quang Tùng', role: 'Kỹ thuật viên', initials: 'QT' },
-      'u_tung_nl': { name: 'Nguyễn Lâm Tùng', role: 'Giám sát', initials: 'LT' },
-      'u_alex': { name: 'Alex Rivers', role: 'Chuyên gia Thú y', initials: 'AR' },
-      'u_trang': { name: 'Phạm Thu Trang', role: 'Kế toán kho', initials: 'TT' },
-      'u_manh': { name: 'Trần Văn Mạnh', role: 'Vận hành máy', initials: 'TM' },
-      'u_elena': { name: 'Elena Rostova', role: 'Cố vấn Quốc tế', initials: 'ER' }
-    };
+  // Logout Button
+  document.getElementById('logoutBtn')?.addEventListener('click', handleLogout);
 
-    const targetUser = userMap[selectedUserId] || userMap['u_shiina'];
-    state.currentUser = {
-      id: selectedUserId,
-      name: targetUser.name,
-      role: targetUser.role,
-      initials: targetUser.initials
-    };
-
-    if (elements.profileNameInput) elements.profileNameInput.value = targetUser.name;
-    if (elements.profileRoleInput) elements.profileRoleInput.value = targetUser.role;
-    if (elements.profileIdInput) elements.profileIdInput.value = selectedUserId;
-
-    const currentUserNameEl = document.querySelector('.user-name');
-    const currentUserAvatarEl = document.querySelector('.user-avatar');
-    if (currentUserNameEl) currentUserNameEl.textContent = targetUser.name;
-    if (currentUserAvatarEl) currentUserAvatarEl.textContent = targetUser.initials;
-
-    if (socket && socket.connected) {
-      socket.emit('register_user', { userId: selectedUserId, userName: targetUser.name });
-    }
-
-    closeModal(elements.profileModal);
-    showToast(`Đã chuyển sang tài khoản ${targetUser.name}!`, '👤');
+  // Auth Tabs (Login vs Register)
+  document.getElementById('authTabLogin')?.addEventListener('click', () => {
+    document.getElementById('authTabLogin')?.classList.add('active');
+    document.getElementById('authTabRegister')?.classList.remove('active');
+    document.getElementById('loginForm')?.classList.remove('hidden');
+    document.getElementById('registerForm')?.classList.add('hidden');
+    clearAuthAlert();
+    document.getElementById('loginUsername')?.focus();
   });
+
+  document.getElementById('authTabRegister')?.addEventListener('click', () => {
+    document.getElementById('authTabRegister')?.classList.add('active');
+    document.getElementById('authTabLogin')?.classList.remove('active');
+    document.getElementById('registerForm')?.classList.remove('hidden');
+    document.getElementById('loginForm')?.classList.add('hidden');
+    clearAuthAlert();
+    document.getElementById('regUsername')?.focus();
+  });
+
+  // Auth Form Submissions
+  document.getElementById('loginForm')?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const u = document.getElementById('loginUsername')?.value.trim();
+    const p = document.getElementById('loginPassword')?.value;
+    if (u && p) handleLogin(u, p);
+  });
+
+  document.getElementById('registerForm')?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const u = document.getElementById('regUsername')?.value.trim();
+    const d = document.getElementById('regDisplayName')?.value.trim();
+    const r = document.getElementById('regRole')?.value.trim() || 'Thành viên';
+    const p = document.getElementById('regPassword')?.value;
+    const cp = document.getElementById('regConfirmPassword')?.value;
+    if (u && d && p) handleRegister(u, d, r, p, cp);
+  });
+
+  // New Chat Modal Tabs & Submission
+  document.querySelectorAll('.new-modal-tabs .segment-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.new-modal-tabs .segment-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const type = btn.dataset.type;
+      document.getElementById('formDirectSection')?.classList.toggle('hidden', type !== 'direct');
+      document.getElementById('formExistingGroupSection')?.classList.toggle('hidden', type !== 'existing-group');
+      document.getElementById('formCreateGroupSection')?.classList.toggle('hidden', type !== 'create-group');
+    });
+  });
+
+  document.getElementById('closeNewChatModalBtn')?.addEventListener('click', () => closeModal(document.getElementById('newChatModal')));
+  document.getElementById('cancelNewChatBtn')?.addEventListener('click', () => closeModal(document.getElementById('newChatModal')));
+  document.getElementById('submitNewChatBtn')?.addEventListener('click', handleSubmitNewChat);
 
   // Modal Backdrop click to close
   document.querySelectorAll('.modal-overlay').forEach(modal => {

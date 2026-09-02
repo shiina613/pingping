@@ -743,24 +743,16 @@
         <button class="modal-close-btn" id="closeProfileModalBtn">✕</button>
       </div>
       <div class="modal-body">
-        <div class="form-group">
-          <label class="form-label">Chuyển nhanh tài khoản để test nhiều bên:</label>
-          <div style="display: flex; gap: 8px;">
-            <select id="quickUserSelect" class="form-select" style="flex: 1;">
-              <option value="u_shiina">👑 Shiina (Quản trị viên)</option>
-              <option value="u_hau">💼 Lương Thanh Hậu (Quản lý)</option>
-              <option value="u_tung_nq">🔧 Nguyễn Quang Tùng (Kỹ thuật viên)</option>
-              <option value="u_tung_nl">📡 Nguyễn Lâm Tùng (Giám sát)</option>
-              <option value="u_alex">🩺 Alex Rivers (Chuyên gia Thú y)</option>
-              <option value="u_trang">📊 Phạm Thu Trang (Kế toán kho)</option>
-              <option value="u_manh">⚙️ Trần Văn Mạnh (Vận hành máy)</option>
-              <option value="u_elena">🌐 Elena Rostova (Cố vấn Quốc tế)</option>
-            </select>
-            <button class="secondary-btn" id="switchUserBtn" style="white-space: nowrap;">Đổi tài khoản</button>
+        <div class="user-account-badge" style="display: flex; align-items: center; gap: 14px; padding: 14px; background: var(--bg-hover); border-radius: 12px; margin-bottom: 16px; border: 1px solid var(--border-color);">
+          <div class="account-avatar-circle" id="profileAvatarDisplay" style="width: 48px; height: 48px; border-radius: 50%; background: var(--claude-coral); color: white; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 20px;">S</div>
+          <div style="flex: 1; min-width: 0;">
+            <div id="profileDisplayNameText" style="font-weight: 600; font-size: 16px; color: var(--text-primary); text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">Shiina</div>
+            <div id="profileUsernameText" style="font-size: 13px; color: var(--text-muted);">@shiina</div>
           </div>
+          <button type="button" class="danger-btn" id="logoutBtn" style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600; transition: all 0.2s; white-space: nowrap;">
+            🚪 Đăng xuất
+          </button>
         </div>
-
-        <div class="dropdown-divider" style="margin: 16px 0;"></div>
 
         <div class="form-group">
           <label class="form-label">Tên hiển thị của bạn:</label>
@@ -800,6 +792,75 @@
       </div>
       <div class="lightbox-body">
         <img src="" alt="Preview" class="lightbox-img" id="lightboxImg">
+      </div>
+    </div>
+  </div>
+
+  <!-- AUTH MODAL: LOGIN & REGISTER PORTAL -->
+  <div class="modal-overlay hidden" id="authModal" style="backdrop-filter: blur(14px); background: rgba(0, 0, 0, 0.78); z-index: 10000;">
+    <div class="modal-card auth-modal-card" style="max-width: 440px; border: 1px solid var(--border-color); box-shadow: 0 25px 70px rgba(0,0,0,0.5);">
+      <div class="modal-header" style="text-align: center; display: block; border-bottom: none; padding: 24px 24px 8px 24px;">
+        <div style="display: inline-flex; align-items: center; justify-content: center; width: 50px; height: 50px; border-radius: 14px; background: linear-gradient(135deg, var(--claude-coral), #d97706); color: white; font-size: 26px; margin-bottom: 12px; box-shadow: 0 6px 18px rgba(217, 119, 6, 0.35);">
+          💬
+        </div>
+        <h3 class="modal-title" style="font-size: 22px; font-weight: 700; margin-bottom: 6px; letter-spacing: -0.3px;">PingPing Messenger</h3>
+        <p style="font-size: 13px; color: var(--text-muted); margin: 0;">Mạng xã hội trò chuyện thời gian thực</p>
+      </div>
+
+      <div class="modal-body" style="padding: 12px 24px 24px 24px;">
+        <!-- Auth Tabs: Login vs Register -->
+        <div class="segmented-control" style="display: flex; gap: 4px; background: var(--bg-hover); padding: 4px; border-radius: 10px; margin-bottom: 18px; border: 1px solid var(--border-color);">
+          <button type="button" class="segment-btn active" id="authTabLogin" style="flex: 1; padding: 8px 12px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s;">Đăng nhập</button>
+          <button type="button" class="segment-btn" id="authTabRegister" style="flex: 1; padding: 8px 12px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s;">Đăng ký tài khoản</button>
+        </div>
+
+        <!-- Error / Success Alert -->
+        <div id="authAlert" class="hidden" style="padding: 10px 14px; border-radius: 8px; margin-bottom: 16px; font-size: 13px; line-height: 1.4;"></div>
+
+        <!-- FORM 1: LOGIN -->
+        <form id="loginForm">
+          <div class="form-group" style="margin-bottom: 14px;">
+            <label class="form-label" style="display: block; font-size: 12px; font-weight: 600; margin-bottom: 6px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Tên đăng nhập</label>
+            <input type="text" id="loginUsername" class="form-input" placeholder="Ví dụ: shiina hoặc username của bạn" required autocomplete="username">
+          </div>
+          <div class="form-group" style="margin-bottom: 18px;">
+            <label class="form-label" style="display: block; font-size: 12px; font-weight: 600; margin-bottom: 6px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Mật khẩu</label>
+            <input type="password" id="loginPassword" class="form-input" placeholder="Nhập mật khẩu..." required autocomplete="current-password">
+          </div>
+          <button type="submit" class="primary-btn" id="loginSubmitBtn" style="width: 100%; padding: 12px; font-size: 15px; font-weight: 600; border-radius: 10px; cursor: pointer;">
+            Đăng nhập vào PingPing
+          </button>
+          <div style="margin-top: 14px; font-size: 12px; text-align: center; color: var(--text-muted);">
+            Tài khoản mẫu: <b>shiina</b> · Mật khẩu: <b>password123</b>
+          </div>
+        </form>
+
+        <!-- FORM 2: REGISTER -->
+        <form id="registerForm" class="hidden">
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label class="form-label" style="display: block; font-size: 12px; font-weight: 600; margin-bottom: 6px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Tên đăng nhập (@username)</label>
+            <input type="text" id="regUsername" class="form-input" placeholder="Ví dụ: nguyenan, linh_chi..." required autocomplete="username">
+          </div>
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label class="form-label" style="display: block; font-size: 12px; font-weight: 600; margin-bottom: 6px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Tên hiển thị (Họ và tên)</label>
+            <input type="text" id="regDisplayName" class="form-input" placeholder="Ví dụ: Nguyễn Văn An" required>
+          </div>
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label class="form-label" style="display: block; font-size: 12px; font-weight: 600; margin-bottom: 6px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Chức danh / Giới thiệu</label>
+            <input type="text" id="regRole" class="form-input" placeholder="Ví dụ: Thành viên, Kỹ sư, Sinh viên..." value="Thành viên">
+          </div>
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label class="form-label" style="display: block; font-size: 12px; font-weight: 600; margin-bottom: 6px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Mật khẩu</label>
+            <input type="password" id="regPassword" class="form-input" placeholder="Tối thiểu 6 ký tự" required autocomplete="new-password">
+          </div>
+          <div class="form-group" style="margin-bottom: 18px;">
+            <label class="form-label" style="display: block; font-size: 12px; font-weight: 600; margin-bottom: 6px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Xác nhận mật khẩu</label>
+            <input type="password" id="regConfirmPassword" class="form-input" placeholder="Nhập lại mật khẩu..." required autocomplete="new-password">
+          </div>
+          <button type="submit" class="primary-btn" id="regSubmitBtn" style="width: 100%; padding: 12px; font-size: 15px; font-weight: 600; border-radius: 10px; cursor: pointer;">
+            Tạo tài khoản & Tham gia ngay
+          </button>
+        </form>
       </div>
     </div>
   </div>

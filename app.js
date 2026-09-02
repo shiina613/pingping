@@ -1065,9 +1065,17 @@ function init() {
   applyTheme(state.settings.theme);
   updateGreeting();
   setupEventListeners();
+
+  // Clean legacy farm mock data from client localStorage if present
+  if (state.chats && state.chats['chat-1'] && state.chats['chat-1'].title.includes('bò')) {
+    state.chats['chat-1'].title = 'Dự Án Chung 🚀';
+    saveState();
+  }
+
   renderSidebarChats();
   updateHeroDropdownItems();
   showHeroView();
+  closeArtifacts();
   autoResizeTextarea(elements.heroChatInput);
   autoResizeTextarea(elements.activeChatInput);
 
